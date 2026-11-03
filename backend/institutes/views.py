@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
-from .forms import InstituteAdminEditForm, InstituteRegistrationForm
+from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegistrationForm
 from .models import Institute, InstituteMembership
 
 
