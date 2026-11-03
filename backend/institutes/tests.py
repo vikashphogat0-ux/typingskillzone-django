@@ -234,7 +234,7 @@ class InstituteOwnerPortalTests(TestCase):
         response = self.client.get(reverse("institutes:owner_dashboard"))
         self.assertEqual(response.status_code, 403)
         self.assertTemplateUsed(response, "institutes/owner_access_status.html")
-        self.assertContains(response, "Application under review")
+        self.assertContains(response, "Application under review", status_code=403)
 
     def test_suspended_owner_is_blocked_from_dashboard(self):
         self.institute.status = Institute.Status.SUSPENDED
@@ -242,7 +242,7 @@ class InstituteOwnerPortalTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse("institutes:owner_dashboard"))
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, "Institute access suspended")
+        self.assertContains(response, "Institute access suspended", status_code=403)
 
     def test_rejected_owner_is_blocked_from_dashboard(self):
         self.institute.status = Institute.Status.REJECTED
@@ -250,7 +250,7 @@ class InstituteOwnerPortalTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse("institutes:owner_dashboard"))
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, "Application not approved")
+        self.assertContains(response, "Application not approved", status_code=403)
 
     def test_student_cannot_login_through_owner_portal(self):
         student = User.objects.create_user(
