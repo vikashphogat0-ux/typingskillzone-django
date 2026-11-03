@@ -1,9 +1,14 @@
+from datetime import timedelta
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 from django.urls import reverse
 
 from .forms import InstituteRegistrationForm
-from .models import Institute, InstituteMembership
+from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
 
 User = get_user_model()
 
@@ -602,3 +607,113 @@ class StudentAndStaffPortalTests(TestCase):
         response = self.client.post(reverse("institutes:staff_logout"))
         self.assertRedirects(response, reverse("institutes:staff_login"))
         self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+
+
+class InstituteSubscriptionManagementTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email="subscription-admin@example.test",
+            password="Admin-Strong-Password-2026!",
+        )
+        self.owner = User.objects.create_user(
+            email="subscription-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.institute = Institute.objects.create(
+            name="Subscription Academy",
+            owner=self.owner,
+            email="subscription-academy@example.test",
+            phone="9876543210",
+            status=Institute.Status.APPROVED,
+        )
+        self.plan = SubscriptionPlan.objects.create(
+            name="Starter Monthly",
+            code="starter-monthly",
+            duration_days=30,
+            price=Decimal("499.00"),
+        )
+
+    def test_super_admin_can_create_and_manage_subscription_in_admin(self):
+        self.client.force_login(self.admin)
+        response = self.client.get("/admin/institutes/institutesubscription/add/")
+        self.assertEqual(response.status_code, 200)
+        # Institute is an AJAX autocomplete, so its choices are loaded separately.
+        self.assertContains(response, 'id="id_institute"')
+        self.assertContains(response, 'data-model-name="institutesubscription"')
+        self.assertContains(response, "Starter Monthly")
+
+    def test_owner_dashboard_displays_assigned_plan_and_expiry(self):
+        ends_at = timezone.now() + timedelta(days=20)
+        InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=self.plan,
+            starts_at=timezone.now(),
+            ends_at=ends_at,
+            amount_paid=Decimal("499.00"),
+        )
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Starter Monthly")
+        self.assertContains(response, "ACTIVE")
+        self.assertContains(response, "Valid until")
+
+    def test_owner_dashboard_explains_when_no_plan_is_assigned(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Not assigned")
+        self.assertContains(response, "Contact the platform administrator")
+
+    def test_expired_subscription_is_not_reported_as_active(self):
+        subscription = InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=self.plan,
+            starts_at=timezone.now() - timedelta(days=40),
+            ends_at=timezone.now() - timedelta(days=10),
+        )
+        self.assertFalse(subscription.is_currently_active)
+        self.assertEqual(subscription.effective_status, InstituteSubscription.Status.EXPIRED)
+
+    def test_suspended_subscription_is_not_active(self):
+        subscription = InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=self.plan,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=29),
+            status=InstituteSubscription.Status.SUSPENDED,
+        )
+        self.assertFalse(subscription.is_currently_active)
+        self.assertEqual(subscription.effective_status, InstituteSubscription.Status.SUSPENDED)
+
+    def test_renewal_extends_from_existing_expiry_and_reactivates(self):
+        old_expiry = timezone.now() + timedelta(days=5)
+        subscription = InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=self.plan,
+            starts_at=timezone.now() - timedelta(days=25),
+            ends_at=old_expiry,
+            status=InstituteSubscription.Status.SUSPENDED,
+        )
+        subscription.renew(amount_paid=Decimal("499.00"), payment_reference="MANUAL-RENEWAL-01")
+        subscription.refresh_from_db()
+        self.assertEqual(subscription.status, InstituteSubscription.Status.ACTIVE)
+        self.assertEqual(subscription.starts_at, old_expiry)
+        self.assertEqual(subscription.ends_at, old_expiry + timedelta(days=30))
+        self.assertEqual(subscription.amount_paid, Decimal("499.00"))
+        self.assertEqual(subscription.payment_reference, "MANUAL-RENEWAL-01")
+
+    def test_each_institute_can_have_only_one_subscription(self):
+        InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=self.plan,
+            ends_at=timezone.now() + timedelta(days=30),
+        )
+        with self.assertRaises(IntegrityError):
+            InstituteSubscription.objects.create(
+                institute=self.institute,
+                plan=self.plan,
+                ends_at=timezone.now() + timedelta(days=30),
+            )
