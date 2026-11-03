@@ -116,3 +116,48 @@ class SuperAdminDashboardTests(TestCase):
         self.assertEqual(response.status_code, 405)
         self.institute.refresh_from_db()
         self.assertEqual(self.institute.status, Institute.Status.PENDING)
+
+
+class InstituteManagementTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email='manager@example.test', password='Admin-Strong-Password-2026!')
+        self.owner = User.objects.create_user(email='academy-owner@example.test', password='Owner-Strong-Password-2026!', role=User.Roles.INSTITUTE_OWNER)
+        self.institute = Institute.objects.create(name='Management Test Academy', owner=self.owner, email='academy@example.test', phone='9876543210', city='Panipat', state='Haryana')
+        self.client.force_login(self.admin)
+
+    def test_directory_lists_and_searches_institutes(self):
+        response = self.client.get(reverse('institutes:institute_list'), {'q': 'Management'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Management Test Academy')
+
+    def test_directory_filters_by_status(self):
+        response = self.client.get(reverse('institutes:institute_list'), {'status': Institute.Status.PENDING})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Management Test Academy')
+
+    def test_profile_and_edit_page_open(self):
+        detail = self.client.get(reverse('institutes:institute_detail', args=[self.institute.pk]))
+        edit = self.client.get(reverse('institutes:institute_edit', args=[self.institute.pk]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(edit.status_code, 200)
+
+    def test_admin_can_edit_institute_contact_details(self):
+        response = self.client.post(reverse('institutes:institute_edit', args=[self.institute.pk]), {'name': 'Updated Management Academy', 'email': 'updated@example.test', 'phone': '9999999999', 'address': 'New Road', 'city': 'Karnal', 'state': 'Haryana', 'postal_code': '132001'})
+        self.assertRedirects(response, reverse('institutes:institute_detail', args=[self.institute.pk]))
+        self.institute.refresh_from_db()
+        self.assertEqual(self.institute.name, 'Updated Management Academy')
+        self.assertEqual(self.institute.city, 'Karnal')
+
+    def test_suspended_institute_can_be_reactivated(self):
+        self.institute.status = Institute.Status.SUSPENDED
+        self.institute.save(update_fields=['status', 'updated_at'])
+        response = self.client.post(reverse('institutes:review_institute', args=[self.institute.pk, 'reactivate']))
+        self.assertRedirects(response, reverse('institutes:institute_detail', args=[self.institute.pk]))
+        self.institute.refresh_from_db()
+        self.assertEqual(self.institute.status, Institute.Status.APPROVED)
+
+    def test_student_cannot_open_institute_directory(self):
+        student = User.objects.create_user(email='directory-student@example.test', password='Student-Strong-Password-2026!')
+        self.client.force_login(student)
+        response = self.client.get(reverse('institutes:institute_list'))
+        self.assertEqual(response.status_code, 302)
