@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
@@ -708,7 +709,7 @@ class InstituteSubscriptionManagementTests(TestCase):
             plan=self.plan,
             ends_at=timezone.now() + timedelta(days=30),
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             InstituteSubscription.objects.create(
                 institute=self.institute,
                 plan=self.plan,
