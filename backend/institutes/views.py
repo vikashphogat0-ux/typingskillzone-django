@@ -1,14 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
-from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.models import User
 from .forms import InstituteRegistrationForm
-from .models import Institute, InstituteMembership
+from .models import Institute
 
 
 def is_super_admin(user):
@@ -16,7 +15,7 @@ def is_super_admin(user):
 
 
 @login_required
-@user_passes_test(is_super_admin)
+@user_passes_test(is_super_admin, login_url="/admin/login/")
 def super_admin_dashboard(request):
     status_counts = {
         item["status"]: item["total"]
@@ -37,7 +36,7 @@ def super_admin_dashboard(request):
 
 
 @login_required
-@user_passes_test(is_super_admin)
+@user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_POST
 def review_institute(request, pk, action):
     institute = get_object_or_404(Institute, pk=pk)
@@ -64,13 +63,17 @@ def review_institute(request, pk, action):
     return redirect("institutes:super_admin_dashboard")
 
 
+def institute_registration_page(request):
+    if request.user.is_authenticated:
+        messages.info(request, "Please log out before registering a new institute.")
+        return redirect("admin:index")
+    return render(request, "institutes/register.html", {"form": InstituteRegistrationForm()})
+
+
 @require_POST
 def institute_register(request):
     if request.user.is_authenticated:
-        messages.info(
-            request,
-            "Please log out before registering a new institute.",
-        )
+        messages.info(request, "Please log out before registering a new institute.")
         return redirect("admin:index")
 
     form = InstituteRegistrationForm(request.POST)
@@ -81,12 +84,4 @@ def institute_register(request):
             "institutes/registration_success.html",
             {"institute": institute},
         )
-
     return render(request, "institutes/register.html", {"form": form})
-
-
-def institute_registration_page(request):
-    if request.user.is_authenticated:
-        messages.info(request, "Please log out before registering a new institute.")
-        return redirect("admin:index")
-    return render(request, "institutes/register.html", {"form": InstituteRegistrationForm()})
