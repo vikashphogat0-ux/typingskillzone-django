@@ -66,3 +66,56 @@ class InstituteAdminEditForm(forms.ModelForm):
         widgets = {
             "address": forms.Textarea(attrs={"rows": 4}),
         }
+
+
+class InstituteMemberAddForm(forms.Form):
+    email = forms.EmailField(label="Registered account email")
+    role = forms.ChoiceField(
+        choices=[
+            (User.Roles.STUDENT, "Student"),
+            (User.Roles.INSTITUTE_STAFF, "Institute staff"),
+        ],
+        label="Membership type",
+    )
+
+    def __init__(self, *args, institute, **kwargs):
+        self.institute = institute
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+        except User.DoesNotExist:
+            raise forms.ValidationError(
+                "No active account was found for this email. Ask the person to register first."
+            )
+        if user.role not in {User.Roles.STUDENT, User.Roles.INSTITUTE_STAFF}:
+            raise forms.ValidationError(
+                "Only student and institute staff accounts can be added."
+            )
+        self.member_user = user
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        user = getattr(self, "member_user", None)
+        if user and self.institute.memberships.filter(user=user).exists():
+            self.add_error("email", "This account already has a membership in this institute.")
+        return cleaned_data
+
+    def save(self):
+        from .models import InstituteMembership
+
+        user = self.member_user
+        role = (
+            InstituteMembership.Role.STUDENT
+            if user.role == User.Roles.STUDENT
+            else InstituteMembership.Role.STAFF
+        )
+        return InstituteMembership.objects.create(
+            institute=self.institute,
+            user=user,
+            role=role,
+            is_active=True,
+        )
