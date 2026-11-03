@@ -1,20 +1,95 @@
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Count, Q
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
 from .forms import InstituteAdminEditForm, InstituteRegistrationForm
-from .models import Institute
+from .models import Institute, InstituteMembership
 
 
 def is_super_admin(user):
     return user.is_authenticated and user.is_superuser and user.role == User.Roles.SUPER_ADMIN
 
 
-super_admin_required = [login_required, user_passes_test(is_super_admin, login_url="/admin/login/")]
+def is_institute_owner(user):
+    return user.is_authenticated and user.is_active and user.role == User.Roles.INSTITUTE_OWNER
+
+
+def owner_login(request):
+    if request.user.is_authenticated:
+        if is_institute_owner(request.user):
+            return redirect("institutes:owner_dashboard")
+        if is_super_admin(request.user):
+            return redirect("institutes:super_admin_dashboard")
+        return HttpResponseForbidden("This login portal is for institute owners.")
+
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        if user.role != User.Roles.INSTITUTE_OWNER:
+            form.add_error(None, "This login portal is only for institute owner accounts.")
+        else:
+            login(request, user)
+            return redirect("institutes:owner_dashboard")
+    return render(request, "institutes/owner_login.html", {"form": form})
+
+
+@login_required
+def owner_dashboard(request):
+    if not is_institute_owner(request.user):
+        return HttpResponseForbidden("Institute owner access required.")
+
+    institutes = Institute.objects.filter(owner=request.user).prefetch_related("memberships")
+    approved_institutes = institutes.filter(status=Institute.Status.APPROVED)
+    if not approved_institutes.exists():
+        statuses = list(institutes.values_list("status", flat=True))
+        if not statuses:
+            access_status = "NO_INSTITUTE"
+        elif Institute.Status.SUSPENDED in statuses:
+            access_status = "SUSPENDED"
+        elif Institute.Status.REJECTED in statuses:
+            access_status = "REJECTED"
+        else:
+            access_status = "PENDING"
+        return render(
+            request,
+            "institutes/owner_access_status.html",
+            {"access_status": access_status},
+            status=403,
+        )
+
+    institute_rows = []
+    for institute in approved_institutes:
+        institute_rows.append({
+            "institute": institute,
+            "staff_count": InstituteMembership.objects.filter(
+                institute=institute, role=InstituteMembership.Role.STAFF, is_active=True
+            ).count(),
+            "student_count": InstituteMembership.objects.filter(
+                institute=institute, role=InstituteMembership.Role.STUDENT, is_active=True
+            ).count(),
+        })
+    return render(
+        request,
+        "institutes/owner_dashboard.html",
+        {"institute_rows": institute_rows},
+    )
+
+
+@login_required
+def owner_logout(request):
+    if request.method != "POST":
+        return HttpResponseForbidden("Logout must use POST.")
+    if not is_institute_owner(request.user):
+        return HttpResponseForbidden("Institute owner access required.")
+    logout(request)
+    return redirect("institutes:owner_login")
 
 
 @login_required
