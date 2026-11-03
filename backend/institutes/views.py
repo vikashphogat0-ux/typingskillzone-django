@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
 from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegistrationForm
-from .models import Institute, InstituteMembership
+from .models import Institute, InstituteMembership, InstituteSubscription
 
 
 def is_super_admin(user):
@@ -74,6 +74,7 @@ def owner_dashboard(request):
             "student_count": InstituteMembership.objects.filter(
                 institute=institute, role=InstituteMembership.Role.STUDENT, is_active=True
             ).count(),
+            "subscription": InstituteSubscription.objects.filter(institute=institute).select_related("plan").first(),
         })
     return render(
         request,
