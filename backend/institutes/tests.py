@@ -189,3 +189,103 @@ class InstituteManagementTests(TestCase):
         self.client.force_login(student)
         response = self.client.get(reverse('institutes:institute_list'))
         self.assertEqual(response.status_code, 302)
+
+
+class InstituteOwnerPortalTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="portal-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            first_name="Portal Owner",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.admin = User.objects.create_superuser(
+            email="portal-admin@example.test",
+            password="Admin-Strong-Password-2026!",
+        )
+        self.institute = Institute.objects.create(
+            name="Approved Owner Academy",
+            owner=self.owner,
+            email="approved@example.test",
+            phone="9876543210",
+            status=Institute.Status.APPROVED,
+            approved_by=self.admin,
+        )
+
+    def test_owner_login_page_renders(self):
+        response = self.client.get(reverse("institutes:owner_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "institutes/owner_login.html")
+
+    def test_approved_owner_can_login_and_open_dashboard(self):
+        response = self.client.post(
+            reverse("institutes:owner_login"),
+            {"username": self.owner.email, "password": "Owner-Strong-Password-2026!"},
+        )
+        self.assertRedirects(response, reverse("institutes:owner_dashboard"))
+        dashboard = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Approved Owner Academy")
+
+    def test_pending_owner_is_blocked_from_dashboard(self):
+        self.institute.status = Institute.Status.PENDING
+        self.institute.save(update_fields=["status", "updated_at"])
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, "institutes/owner_access_status.html")
+        self.assertContains(response, "Application under review")
+
+    def test_suspended_owner_is_blocked_from_dashboard(self):
+        self.institute.status = Institute.Status.SUSPENDED
+        self.institute.save(update_fields=["status", "updated_at"])
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Institute access suspended")
+
+    def test_rejected_owner_is_blocked_from_dashboard(self):
+        self.institute.status = Institute.Status.REJECTED
+        self.institute.save(update_fields=["status", "updated_at"])
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Application not approved")
+
+    def test_student_cannot_login_through_owner_portal(self):
+        student = User.objects.create_user(
+            email="portal-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        response = self.client.post(
+            reverse("institutes:owner_login"),
+            {"username": student.email, "password": "Student-Strong-Password-2026!"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+        self.assertTrue(response.context["form"].non_field_errors())
+
+    def test_owner_dashboard_only_shows_owned_approved_institutes(self):
+        other_owner = User.objects.create_user(
+            email="other-owner@example.test",
+            password="Other-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        Institute.objects.create(
+            name="Another Academy",
+            owner=other_owner,
+            email="another@example.test",
+            phone="9876543211",
+            status=Institute.Status.APPROVED,
+            approved_by=self.admin,
+        )
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertContains(response, "Approved Owner Academy")
+        self.assertNotContains(response, "Another Academy")
+
+    def test_owner_logout_requires_post(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("institutes:owner_logout"))
+        self.assertEqual(response.status_code, 403)
