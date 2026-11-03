@@ -103,7 +103,7 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
         self.assertIn("confirm_password", response.context["form"].errors)
         self.assertFalse(User.objects.filter(email="new-student@example.test").exists())
 
-    def test_valid_verification_activates_student_and_logs_them_in(self):
+    def test_verification_link_get_does_not_activate_or_log_in_student(self):
         student = User.objects.create_user(
             email="verify-student@example.test",
             password="Student-Strong-Password-2026!",
@@ -115,6 +115,27 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             salt="typingskillzone.student.email-verification",
         )
         response = self.client.get(
+            reverse("accounts:verify_email", kwargs={"token": token})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Confirm your email")
+        student.refresh_from_db()
+        self.assertFalse(student.is_active)
+        self.assertFalse(student.is_email_verified)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_valid_verification_post_activates_student_and_logs_them_in(self):
+        student = User.objects.create_user(
+            email="verify-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+            is_active=False,
+        )
+        token = signing.dumps(
+            {"user_id": student.pk},
+            salt="typingskillzone.student.email-verification",
+        )
+        response = self.client.post(
             reverse("accounts:verify_email", kwargs={"token": token})
         )
         self.assertEqual(response.status_code, 200)
