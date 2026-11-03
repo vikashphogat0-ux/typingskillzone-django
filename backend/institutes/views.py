@@ -161,6 +161,73 @@ def owner_member_status(request, institute_id, membership_id, action):
     return redirect("institutes:owner_member_list", institute_id=institute.pk)
 
 
+
+def _member_role_for_portal(portal):
+    return User.Roles.STUDENT if portal == "student" else User.Roles.INSTITUTE_STAFF
+
+
+def _member_dashboard_name(portal):
+    return f"institutes:{portal}_dashboard"
+
+
+def member_login(request, portal):
+    if portal not in {"student", "staff"}:
+        return HttpResponseForbidden("Unsupported member portal.")
+    required_role = _member_role_for_portal(portal)
+    if request.user.is_authenticated:
+        if request.user.role == required_role:
+            return redirect(_member_dashboard_name(portal))
+        return HttpResponseForbidden("This account cannot use this portal.")
+
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        if user.role != required_role or not user.is_active:
+            form.add_error(None, "The email or password is incorrect for this portal.")
+        else:
+            login(request, user)
+            return redirect(_member_dashboard_name(portal))
+    return render(request, f"institutes/{portal}_login.html", {"form": form, "portal": portal})
+
+
+@login_required
+def member_dashboard(request, portal):
+    if portal not in {"student", "staff"}:
+        return HttpResponseForbidden("Unsupported member portal.")
+    required_role = _member_role_for_portal(portal)
+    if not request.user.is_active or request.user.role != required_role:
+        return HttpResponseForbidden("Member access required.")
+
+    memberships = InstituteMembership.objects.filter(
+        user=request.user,
+        is_active=True,
+        institute__status=Institute.Status.APPROVED,
+    ).select_related("institute").order_by("institute__name")
+    if not memberships.exists():
+        return render(
+            request,
+            "institutes/member_access_status.html",
+            {"portal": portal},
+            status=403,
+        )
+    return render(request, f"institutes/{portal}_dashboard.html", {
+        "memberships": memberships,
+        "portal": portal,
+    })
+
+
+@login_required
+@require_POST
+def member_logout(request, portal):
+    if portal not in {"student", "staff"}:
+        return HttpResponseForbidden("Unsupported member portal.")
+    required_role = _member_role_for_portal(portal)
+    if request.user.role != required_role:
+        return HttpResponseForbidden("Member access required.")
+    logout(request)
+    return redirect(f"institutes:{portal}_login")
+
+
 @login_required
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def super_admin_dashboard(request):
