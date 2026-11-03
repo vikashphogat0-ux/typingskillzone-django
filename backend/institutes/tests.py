@@ -460,3 +460,145 @@ class InstituteOwnerMemberManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("email", response.context["form"].errors)
         self.assertEqual(InstituteMembership.objects.count(), 0)
+
+
+class StudentAndStaffPortalTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="portal-institute-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.admin = User.objects.create_superuser(
+            email="portal-superadmin@example.test",
+            password="Admin-Strong-Password-2026!",
+        )
+        self.approved_institute = Institute.objects.create(
+            name="Portal Approved Academy",
+            owner=self.owner,
+            email="portal-academy@example.test",
+            phone="9876543210",
+            status=Institute.Status.APPROVED,
+            approved_by=self.admin,
+        )
+        self.student = User.objects.create_user(
+            email="portal-member-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.staff = User.objects.create_user(
+            email="portal-member-staff@example.test",
+            password="Staff-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_STAFF,
+        )
+        self.student_membership = InstituteMembership.objects.create(
+            institute=self.approved_institute,
+            user=self.student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        self.staff_membership = InstituteMembership.objects.create(
+            institute=self.approved_institute,
+            user=self.staff,
+            role=InstituteMembership.Role.STAFF,
+        )
+
+    def test_student_can_login_and_view_active_approved_institute(self):
+        response = self.client.post(
+            reverse("institutes:student_login"),
+            {"username": self.student.email, "password": "Student-Strong-Password-2026!"},
+        )
+        self.assertRedirects(response, reverse("institutes:student_dashboard"))
+        dashboard = self.client.get(reverse("institutes:student_dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Portal Approved Academy")
+
+    def test_staff_can_login_and_view_active_approved_institute(self):
+        response = self.client.post(
+            reverse("institutes:staff_login"),
+            {"username": self.staff.email, "password": "Staff-Strong-Password-2026!"},
+        )
+        self.assertRedirects(response, reverse("institutes:staff_dashboard"))
+        dashboard = self.client.get(reverse("institutes:staff_dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Portal Approved Academy")
+
+    def test_student_cannot_login_through_staff_portal(self):
+        response = self.client.post(
+            reverse("institutes:staff_login"),
+            {"username": self.student.email, "password": "Student-Strong-Password-2026!"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+    def test_staff_cannot_login_through_student_portal(self):
+        response = self.client.post(
+            reverse("institutes:student_login"),
+            {"username": self.staff.email, "password": "Staff-Strong-Password-2026!"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+    def test_inactive_membership_blocks_student_dashboard(self):
+        self.student_membership.is_active = False
+        self.student_membership.save(update_fields=["is_active"])
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("institutes:student_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, "institutes/member_access_status.html")
+
+    def test_inactive_membership_blocks_staff_dashboard(self):
+        self.staff_membership.is_active = False
+        self.staff_membership.save(update_fields=["is_active"])
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("institutes:staff_dashboard"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_membership_in_unapproved_institute_does_not_grant_student_access(self):
+        self.approved_institute.status = Institute.Status.SUSPENDED
+        self.approved_institute.save(update_fields=["status", "updated_at"])
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("institutes:student_dashboard"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_student_dashboard_does_not_show_other_members_or_institutes(self):
+        other_owner = User.objects.create_user(
+            email="portal-other-owner@example.test",
+            password="Other-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        other_institute = Institute.objects.create(
+            name="Private Other Academy",
+            owner=other_owner,
+            email="private-other@example.test",
+            phone="9876543211",
+            status=Institute.Status.APPROVED,
+        )
+        other_student = User.objects.create_user(
+            email="portal-other-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        InstituteMembership.objects.create(
+            institute=other_institute,
+            user=other_student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("institutes:student_dashboard"))
+        self.assertContains(response, "Portal Approved Academy")
+        self.assertNotContains(response, "Private Other Academy")
+        self.assertNotContains(response, other_student.email)
+
+    def test_student_logout_requires_post(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("institutes:student_logout"))
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(response.wsgi_request.user.is_authenticated)
+
+    def test_staff_logout_requires_post_and_post_logs_out(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("institutes:staff_logout"))
+        self.assertEqual(response.status_code, 405)
+        response = self.client.post(reverse("institutes:staff_logout"))
+        self.assertRedirects(response, reverse("institutes:staff_login"))
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
