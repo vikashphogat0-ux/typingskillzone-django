@@ -1,17 +1,20 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
-from .forms import InstituteRegistrationForm
+from .forms import InstituteAdminEditForm, InstituteRegistrationForm
 from .models import Institute
 
 
 def is_super_admin(user):
     return user.is_authenticated and user.is_superuser and user.role == User.Roles.SUPER_ADMIN
+
+
+super_admin_required = [login_required, user_passes_test(is_super_admin, login_url="/admin/login/")]
 
 
 @login_required
@@ -37,10 +40,57 @@ def super_admin_dashboard(request):
 
 @login_required
 @user_passes_test(is_super_admin, login_url="/admin/login/")
+def institute_list(request):
+    institutes = Institute.objects.select_related("owner", "approved_by")
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    if query:
+        institutes = institutes.filter(
+            Q(name__icontains=query) |
+            Q(registration_code__icontains=query) |
+            Q(owner__email__icontains=query) |
+            Q(email__icontains=query) |
+            Q(city__icontains=query)
+        )
+    valid_statuses = {choice[0] for choice in Institute.Status.choices}
+    if status in valid_statuses:
+        institutes = institutes.filter(status=status)
+    return render(request, "institutes/institute_list.html", {
+        "institutes": institutes,
+        "query": query,
+        "selected_status": status,
+        "status_choices": Institute.Status.choices,
+    })
+
+
+@login_required
+@user_passes_test(is_super_admin, login_url="/admin/login/")
+def institute_detail(request, pk):
+    institute = get_object_or_404(
+        Institute.objects.select_related("owner", "approved_by").prefetch_related("memberships__user"),
+        pk=pk,
+    )
+    return render(request, "institutes/institute_detail.html", {"institute": institute})
+
+
+@login_required
+@user_passes_test(is_super_admin, login_url="/admin/login/")
+@require_http_methods(["GET", "POST"])
+def institute_edit(request, pk):
+    institute = get_object_or_404(Institute, pk=pk)
+    form = InstituteAdminEditForm(request.POST or None, instance=institute)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, f"{institute.name} details have been updated.")
+        return redirect("institutes:institute_detail", pk=institute.pk)
+    return render(request, "institutes/institute_edit.html", {"form": form, "institute": institute})
+
+
+@login_required
+@user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_POST
 def review_institute(request, pk, action):
     institute = get_object_or_404(Institute, pk=pk)
-
     if action == "approve" and institute.status == Institute.Status.PENDING:
         institute.status = Institute.Status.APPROVED
         institute.approved_by = request.user
@@ -57,10 +107,15 @@ def review_institute(request, pk, action):
         institute.status = Institute.Status.SUSPENDED
         institute.save(update_fields=["status", "updated_at"])
         messages.warning(request, f"{institute.name} has been suspended.")
+    elif action == "reactivate" and institute.status == Institute.Status.SUSPENDED:
+        institute.status = Institute.Status.APPROVED
+        institute.approved_by = request.user
+        institute.approved_at = timezone.now()
+        institute.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        messages.success(request, f"{institute.name} has been reactivated.")
     else:
         messages.error(request, "This action is not valid for the institute's current status.")
-
-    return redirect("institutes:super_admin_dashboard")
+    return redirect("institutes:institute_detail", pk=institute.pk)
 
 
 @require_http_methods(["GET", "POST"])
@@ -68,17 +123,11 @@ def institute_register(request):
     if request.user.is_authenticated:
         messages.info(request, "Please log out before registering a new institute.")
         return redirect("admin:index")
-
     if request.method == "POST":
         form = InstituteRegistrationForm(request.POST)
         if form.is_valid():
             institute = form.save()
-            return render(
-                request,
-                "institutes/registration_success.html",
-                {"institute": institute},
-            )
+            return render(request, "institutes/registration_success.html", {"institute": institute})
     else:
         form = InstituteRegistrationForm()
-
     return render(request, "institutes/register.html", {"form": form})
