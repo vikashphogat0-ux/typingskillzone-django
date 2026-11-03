@@ -3,10 +3,18 @@ from urllib.parse import urlparse
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.core import mail
+from datetime import timedelta
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
-from institutes.models import Institute, InstituteMembership
+from institutes.models import (
+    Institute,
+    InstituteMembership,
+    InstituteSubscription,
+    SubscriptionPlan,
+)
 
 User = get_user_model()
 
@@ -42,6 +50,23 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             phone="9876543210",
             status=Institute.Status.APPROVED,
             approved_by=self.admin,
+        )
+        # An approved institute must have an active trial or paid subscription
+        # before its enrolled students can access the member dashboard.
+        trial_plan = SubscriptionPlan.objects.create(
+            name="Enrollment Test Trial",
+            code="enrollment-test-trial",
+            duration_days=7,
+            price=0,
+            max_students=25,
+            max_staff=2,
+        )
+        InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=trial_plan,
+            starts_at=timezone.now() - timedelta(minutes=1),
+            ends_at=timezone.now() + timedelta(days=7),
+            amount_paid=0,
         )
 
     def test_registration_creates_inactive_student_and_sends_verification_email(self):
