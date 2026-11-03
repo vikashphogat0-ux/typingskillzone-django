@@ -450,3 +450,13 @@ class InstituteOwnerMemberManagementTests(TestCase):
         self.assertEqual(response.status_code, 405)
         membership.refresh_from_db()
         self.assertTrue(membership.is_active)
+
+
+    def test_selected_membership_type_must_match_account_role(self):
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": self.student.email, "role": User.Roles.INSTITUTE_STAFF},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email", response.context["form"].errors)
+        self.assertEqual(InstituteMembership.objects.count(), 0)
