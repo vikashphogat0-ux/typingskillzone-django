@@ -1,7 +1,9 @@
 from django.contrib import admin, messages
+from django.db import transaction
 from django.utils import timezone
 
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
+from .views import start_free_trial
 
 
 class InstituteMembershipInline(admin.TabularInline):
@@ -29,11 +31,27 @@ class InstituteAdmin(admin.ModelAdmin):
 
     @admin.action(description="Approve selected institute applications")
     def approve_selected(self, request, queryset):
-        updated = queryset.filter(status=Institute.Status.PENDING).update(
-            status=Institute.Status.APPROVED, approved_by=request.user,
-            approved_at=timezone.now(),
+        approved = 0
+        with transaction.atomic():
+            pending_institutes = queryset.select_for_update().filter(
+                status=Institute.Status.PENDING
+            )
+            for institute in pending_institutes:
+                institute.status = Institute.Status.APPROVED
+                institute.approved_by = request.user
+                institute.approved_at = timezone.now()
+                institute.save(update_fields=[
+                    "status", "approved_by", "approved_at", "updated_at"
+                ])
+                # Uses get_or_create so an existing paid subscription is never replaced.
+                start_free_trial(institute, created_by=request.user)
+                approved += 1
+
+        self.message_user(
+            request,
+            f"{approved} pending institute application(s) approved and trial access checked.",
+            level=messages.SUCCESS,
         )
-        self.message_user(request, f"{updated} pending institute application(s) approved.", level=messages.SUCCESS)
 
     @admin.action(description="Reject selected institute applications")
     def reject_selected(self, request, queryset):

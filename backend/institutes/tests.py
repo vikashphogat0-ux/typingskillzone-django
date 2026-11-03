@@ -151,6 +151,71 @@ class SuperAdminDashboardTests(TestCase):
         self.institute.refresh_from_db()
         self.assertEqual(self.institute.status, Institute.Status.PENDING)
 
+    def test_admin_bulk_approval_starts_seven_day_free_trial(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            "/admin/institutes/institute/",
+            {
+                "action": "approve_selected",
+                "index": "0",
+                "_selected_action": [str(self.institute.pk)],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.institute.refresh_from_db()
+        self.assertEqual(self.institute.status, Institute.Status.APPROVED)
+        subscription = InstituteSubscription.objects.select_related("plan").get(
+            institute=self.institute
+        )
+        self.assertEqual(subscription.plan.code, "free-trial")
+        self.assertEqual(subscription.status, InstituteSubscription.Status.ACTIVE)
+        self.assertEqual(subscription.plan.max_students, 25)
+        self.assertEqual(subscription.plan.max_staff, 2)
+        self.assertGreater(subscription.ends_at, timezone.now())
+        self.assertLessEqual(
+            subscription.ends_at - subscription.starts_at,
+            timedelta(days=7),
+        )
+
+    def test_admin_bulk_approval_preserves_existing_paid_subscription(self):
+        paid_plan = SubscriptionPlan.objects.create(
+            name="Paid Admin Action Plan",
+            code="paid-admin-action",
+            duration_days=30,
+            price=Decimal("999.00"),
+            max_students=100,
+            max_staff=10,
+        )
+        paid_subscription = InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=paid_plan,
+            status=InstituteSubscription.Status.ACTIVE,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=29),
+            amount_paid=Decimal("999.00"),
+            payment_reference="PAID-KEEP-THIS",
+        )
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            "/admin/institutes/institute/",
+            {
+                "action": "approve_selected",
+                "index": "0",
+                "_selected_action": [str(self.institute.pk)],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        paid_subscription.refresh_from_db()
+        self.assertEqual(paid_subscription.plan, paid_plan)
+        self.assertEqual(paid_subscription.amount_paid, Decimal("999.00"))
+        self.assertEqual(paid_subscription.payment_reference, "PAID-KEEP-THIS")
+        self.assertEqual(
+            InstituteSubscription.objects.filter(institute=self.institute).count(),
+            1,
+        )
+
 class InstituteManagementTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email='manager@example.test', password='Admin-Strong-Password-2026!')
