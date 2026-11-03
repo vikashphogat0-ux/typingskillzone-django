@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
 from .forms import InstituteRegistrationForm
@@ -63,25 +63,22 @@ def review_institute(request, pk, action):
     return redirect("institutes:super_admin_dashboard")
 
 
-def institute_registration_page(request):
-    if request.user.is_authenticated:
-        messages.info(request, "Please log out before registering a new institute.")
-        return redirect("admin:index")
-    return render(request, "institutes/register.html", {"form": InstituteRegistrationForm()})
-
-
-@require_POST
+@require_http_methods(["GET", "POST"])
 def institute_register(request):
     if request.user.is_authenticated:
         messages.info(request, "Please log out before registering a new institute.")
         return redirect("admin:index")
 
-    form = InstituteRegistrationForm(request.POST)
-    if form.is_valid():
-        institute = form.save()
-        return render(
-            request,
-            "institutes/registration_success.html",
-            {"institute": institute},
-        )
+    if request.method == "POST":
+        form = InstituteRegistrationForm(request.POST)
+        if form.is_valid():
+            institute = form.save()
+            return render(
+                request,
+                "institutes/registration_success.html",
+                {"institute": institute},
+            )
+    else:
+        form = InstituteRegistrationForm()
+
     return render(request, "institutes/register.html", {"form": form})
