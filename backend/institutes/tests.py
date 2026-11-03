@@ -1,42 +1,96 @@
-
-from django.contrib import messages
-from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
 
 from .forms import InstituteRegistrationForm
+from .models import Institute
+
+User = get_user_model()
 
 
-@require_http_methods(["GET", "POST"])
-def institute_register(request):
-    if request.user.is_authenticated:
-        messages.info(
-            request,
-            "Please log out before registering a new institute."
+class InstituteRegistrationViewTests(TestCase):
+    def registration_data(self, **overrides):
+        data = {
+            "name": "Example Typing Academy",
+            "email": "academy@example.test",
+            "phone": "9876543210",
+            "address": "Test Road",
+            "city": "Panipat",
+            "state": "Haryana",
+            "postal_code": "132103",
+            "owner_name": "Example Owner",
+            "owner_email": "owner@example.test",
+            "owner_phone": "9876543211",
+            "password": "A-Strong-Test-Password-2026!",
+            "confirm_password": "A-Strong-Test-Password-2026!",
+        }
+        data.update(overrides)
+        return data
+
+    def test_registration_page_renders(self):
+        response = self.client.get(reverse("institutes:register"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "institutes/register.html")
+        self.assertIsInstance(response.context["form"], InstituteRegistrationForm)
+
+    def test_valid_registration_creates_pending_institute_and_owner(self):
+        response = self.client.post(
+            reverse("institutes:register"),
+            self.registration_data(),
         )
-        return redirect("login")
 
-    if request.method == "POST":
-        form = InstituteRegistrationForm(request.POST)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "institutes/registration_success.html",
+        )
 
-        if form.is_valid():
-            institute = form.save()
+        owner = User.objects.get(email="owner@example.test")
+        institute = Institute.objects.get(name="Example Typing Academy")
 
-            messages.success(
-                request,
-                "Institute registration submitted successfully. "
-                "Your application is awaiting Super Admin approval."
-            )
+        self.assertEqual(owner.role, User.Roles.INSTITUTE_OWNER)
+        self.assertTrue(owner.check_password("A-Strong-Test-Password-2026!"))
+        self.assertEqual(institute.owner, owner)
+        self.assertEqual(institute.status, Institute.Status.PENDING)
+        self.assertEqual(len(institute.registration_code), 36)
+        self.assertIsNone(institute.approved_by)
+        self.assertIsNone(institute.approved_at)
 
-            return render(
-                request,
-                "institutes/registration_success.html",
-                {"institute": institute},
-            )
-    else:
-        form = InstituteRegistrationForm()
+    def test_mismatched_passwords_do_not_create_records(self):
+        data = self.registration_data(
+            confirm_password="Different-Test-Password-2026!",
+        )
+        response = self.client.post(reverse("institutes:register"), data)
 
-    return render(
-        request,
-        "institutes/register.html",
-        {"form": form},
-    )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors)
+        self.assertEqual(User.objects.count(), 0)
+        self.assertEqual(Institute.objects.count(), 0)
+
+    def test_existing_owner_email_is_rejected(self):
+        User.objects.create_user(
+            email="owner@example.test",
+            password="Existing-Strong-Password-2026!",
+        )
+
+        response = self.client.post(
+            reverse("institutes:register"),
+            self.registration_data(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("owner_email", response.context["form"].errors)
+        self.assertEqual(Institute.objects.count(), 0)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_authenticated_user_is_redirected_to_admin(self):
+        admin_user = User.objects.create_superuser(
+            email="admin@example.test",
+            password="Admin-Strong-Password-2026!",
+        )
+        self.client.force_login(admin_user)
+
+        response = self.client.get(reverse("institutes:register"))
+
+        self.assertRedirects(response, reverse("admin:index"))
+        self.assertEqual(Institute.objects.count(), 0)
