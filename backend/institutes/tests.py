@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .forms import InstituteRegistrationForm
-from .models import Institute
+from .models import Institute, InstituteMembership
 
 User = get_user_model()
 
@@ -289,3 +289,164 @@ class InstituteOwnerPortalTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse("institutes:owner_logout"))
         self.assertEqual(response.status_code, 403)
+
+
+class InstituteOwnerMemberManagementTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="members-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.other_owner = User.objects.create_user(
+            email="members-other-owner@example.test",
+            password="Other-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.institute = Institute.objects.create(
+            name="Member Management Academy",
+            owner=self.owner,
+            email="members-academy@example.test",
+            phone="9876543210",
+            status=Institute.Status.APPROVED,
+        )
+        self.other_institute = Institute.objects.create(
+            name="Other Owner Academy",
+            owner=self.other_owner,
+            email="other-academy@example.test",
+            phone="9876543211",
+            status=Institute.Status.APPROVED,
+        )
+        self.student = User.objects.create_user(
+            email="existing-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.staff = User.objects.create_user(
+            email="existing-staff@example.test",
+            password="Staff-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_STAFF,
+        )
+        self.client.force_login(self.owner)
+
+    def test_owner_can_view_only_their_institute_members(self):
+        own_member = InstituteMembership.objects.create(
+            institute=self.institute, user=self.student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        other_member = User.objects.create_user(
+            email="other-institute-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        InstituteMembership.objects.create(
+            institute=self.other_institute, user=other_member,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        response = self.client.get(
+            reverse("institutes:owner_member_list", args=[self.institute.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, own_member.user.email)
+        self.assertNotContains(response, other_member.email)
+
+    def test_owner_can_add_existing_student(self):
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": self.student.email, "role": User.Roles.STUDENT},
+        )
+        self.assertRedirects(
+            response,
+            reverse("institutes:owner_member_list", args=[self.institute.pk]),
+        )
+        membership = InstituteMembership.objects.get(
+            institute=self.institute, user=self.student
+        )
+        self.assertEqual(membership.role, InstituteMembership.Role.STUDENT)
+        self.assertTrue(membership.is_active)
+
+    def test_owner_can_add_existing_staff(self):
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": self.staff.email, "role": User.Roles.INSTITUTE_STAFF},
+        )
+        self.assertRedirects(
+            response,
+            reverse("institutes:owner_member_list", args=[self.institute.pk]),
+        )
+        membership = InstituteMembership.objects.get(
+            institute=self.institute, user=self.staff
+        )
+        self.assertEqual(membership.role, InstituteMembership.Role.STAFF)
+
+    def test_unknown_email_is_rejected_without_creating_membership(self):
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": "missing@example.test", "role": User.Roles.STUDENT},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email", response.context["form"].errors)
+        self.assertEqual(InstituteMembership.objects.count(), 0)
+
+    def test_owner_and_admin_accounts_cannot_be_added_as_members(self):
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": self.other_owner.email, "role": User.Roles.INSTITUTE_OWNER},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("role", response.context["form"].errors)
+        self.assertEqual(InstituteMembership.objects.count(), 0)
+
+    def test_duplicate_membership_is_rejected(self):
+        InstituteMembership.objects.create(
+            institute=self.institute, user=self.student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": self.student.email, "role": User.Roles.STUDENT},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email", response.context["form"].errors)
+        self.assertEqual(InstituteMembership.objects.count(), 1)
+
+    def test_owner_can_deactivate_and_reactivate_membership(self):
+        membership = InstituteMembership.objects.create(
+            institute=self.institute, user=self.student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        deactivate = self.client.post(reverse(
+            "institutes:owner_member_status",
+            args=[self.institute.pk, membership.pk, "deactivate"],
+        ))
+        self.assertRedirects(
+            deactivate,
+            reverse("institutes:owner_member_list", args=[self.institute.pk]),
+        )
+        membership.refresh_from_db()
+        self.assertFalse(membership.is_active)
+        self.client.post(reverse(
+            "institutes:owner_member_status",
+            args=[self.institute.pk, membership.pk, "activate"],
+        ))
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)
+
+    def test_owner_cannot_manage_another_owners_institute(self):
+        response = self.client.get(
+            reverse("institutes:owner_member_list", args=[self.other_institute.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_membership_status_change_rejects_get(self):
+        membership = InstituteMembership.objects.create(
+            institute=self.institute, user=self.student,
+            role=InstituteMembership.Role.STUDENT,
+        )
+        response = self.client.get(reverse(
+            "institutes:owner_member_status",
+            args=[self.institute.pk, membership.pk, "deactivate"],
+        ))
+        self.assertEqual(response.status_code, 405)
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)
