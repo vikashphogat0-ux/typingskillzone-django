@@ -36,6 +36,7 @@ def student_register(request):
     return render(request, "accounts/student_register.html", {"form": form})
 
 
+@require_http_methods(["GET", "POST"])
 def verify_student_email(request, token):
     try:
         payload = signing.loads(token, salt=VERIFICATION_SALT, max_age=VERIFICATION_MAX_AGE)
@@ -48,7 +49,21 @@ def verify_student_email(request, token):
     except User.DoesNotExist:
         return HttpResponse("Account not found.", status=404)
 
-    if not user.is_email_verified:
+    if request.method == "GET":
+        if user.is_email_verified and user.is_active:
+            return render(request, "accounts/verification_result.html", {
+                "success": True,
+                "message": "Your email is already verified. You can sign in to your student account.",
+                "already_verified": True,
+            })
+        return render(request, "accounts/verification_result.html", {
+            "success": False,
+            "confirmation": True,
+            "token": token,
+            "message": "Confirm that you want to verify this email address and activate your student account.",
+        })
+
+    if not user.is_email_verified or not user.is_active:
         user.is_email_verified = True
         user.is_active = True
         user.save(update_fields=["is_email_verified", "is_active"])
