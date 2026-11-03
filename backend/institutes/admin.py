@@ -58,8 +58,32 @@ class InstituteMembershipAdmin(admin.ModelAdmin):
     autocomplete_fields = ("institute", "user")
 
 
+class SuperAdminOnlyModelAdmin(admin.ModelAdmin):
+    def _is_super_admin(self, request):
+        return (
+            request.user.is_active
+            and request.user.is_superuser
+            and getattr(request.user, "role", None) == "SUPER_ADMIN"
+        )
+
+    def has_module_permission(self, request):
+        return self._is_super_admin(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._is_super_admin(request)
+
+    def has_add_permission(self, request):
+        return self._is_super_admin(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._is_super_admin(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._is_super_admin(request)
+
+
 @admin.register(SubscriptionPlan)
-class SubscriptionPlanAdmin(admin.ModelAdmin):
+class SubscriptionPlanAdmin(SuperAdminOnlyModelAdmin):
     list_display = ("name", "code", "duration_days", "price", "currency", "is_active")
     list_filter = ("is_active", "currency")
     search_fields = ("name", "code")
@@ -67,7 +91,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
 
 
 @admin.register(InstituteSubscription)
-class InstituteSubscriptionAdmin(admin.ModelAdmin):
+class InstituteSubscriptionAdmin(SuperAdminOnlyModelAdmin):
     list_display = ("institute", "plan", "status", "starts_at", "ends_at", "amount_paid", "effective_status")
     list_filter = ("status", "plan", "starts_at", "ends_at")
     search_fields = ("institute__name", "institute__owner__email", "payment_reference")
