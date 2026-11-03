@@ -800,6 +800,19 @@ class InstituteTrialEnforcementTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertContains(response, "No active institute membership", status_code=403)
 
+        staff = User.objects.create_user(
+            email="trial-staff@example.test",
+            password="Staff-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_STAFF,
+        )
+        InstituteMembership.objects.create(
+            institute=self.institute, user=staff, role=InstituteMembership.Role.STAFF
+        )
+        self.client.force_login(staff)
+        staff_response = self.client.get(reverse("institutes:staff_dashboard"))
+        self.assertEqual(staff_response.status_code, 403)
+        self.assertContains(staff_response, "No active institute membership", status_code=403)
+
     def test_trial_seat_limit_prevents_adding_extra_student(self):
         self.client.force_login(self.admin)
         self.client.post(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
