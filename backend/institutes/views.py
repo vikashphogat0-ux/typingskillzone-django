@@ -1,4 +1,3 @@
-
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
@@ -11,16 +10,15 @@ def institute_register(request):
     if request.user.is_authenticated:
         messages.info(
             request,
-            "Please log out before registering a new institute."
+            "Please log out before registering a new institute.",
         )
-        return redirect("/admin/")
+        return redirect("admin:index")
 
     if request.method == "POST":
         form = InstituteRegistrationForm(request.POST)
 
         if form.is_valid():
             institute = form.save()
-
             return render(
                 request,
                 "institutes/registration_success.html",
