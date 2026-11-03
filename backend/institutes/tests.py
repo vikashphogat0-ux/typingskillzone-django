@@ -639,7 +639,9 @@ class InstituteSubscriptionManagementTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get("/admin/institutes/institutesubscription/add/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Subscription Academy")
+        # Institute is an AJAX autocomplete, so its choices are loaded separately.
+        self.assertContains(response, 'id="id_institute"')
+        self.assertContains(response, 'data-model-name="institutesubscription"')
         self.assertContains(response, "Starter Monthly")
 
     def test_owner_dashboard_displays_assigned_plan_and_expiry(self):
