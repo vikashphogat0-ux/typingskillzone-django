@@ -798,7 +798,7 @@ class InstituteTrialEnforcementTests(TestCase):
         self.client.force_login(student)
         response = self.client.get(reverse("institutes:student_dashboard"))
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, "No active institute access", status_code=403)
+        self.assertContains(response, "No active institute membership", status_code=403)
 
     def test_trial_seat_limit_prevents_adding_extra_student(self):
         self.client.force_login(self.admin)
