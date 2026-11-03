@@ -2,6 +2,7 @@
 import decimal
 import django.db.models.deletion
 import django.utils.timezone
+import uuid
 from django.conf import settings
 from django.db import migrations, models
 
@@ -13,6 +14,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterField(
+            model_name="institute",
+            name="registration_code",
+            field=models.CharField(default=uuid.uuid4, editable=False, max_length=36, unique=True),
+        ),
         migrations.CreateModel(
             name="SubscriptionPlan",
             fields=[
