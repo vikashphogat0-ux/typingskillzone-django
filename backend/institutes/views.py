@@ -199,9 +199,19 @@ def owner_member_add(request, institute_id):
         return HttpResponseForbidden("Institute owner access required.")
     form = InstituteMemberAddForm(request.POST or None, institute=institute)
     if request.method == "POST" and form.is_valid():
-        membership = form.save()
-        messages.success(request, f"{membership.user.email} was added to {institute.name}.")
-        return redirect("institutes:owner_member_list", institute_id=institute.pk)
+        requested_role = (
+            InstituteMembership.Role.STUDENT
+            if form.cleaned_data["role"] == User.Roles.STUDENT
+            else InstituteMembership.Role.STAFF
+        )
+        if active_subscription_for(institute) is None:
+            form.add_error(None, "This institute's trial or subscription has expired. Contact the platform administrator.")
+        elif subscription_limit_reached(institute, requested_role):
+            form.add_error(None, "The seat limit for this membership type has been reached. Upgrade the subscription to add more members.")
+        else:
+            membership = form.save()
+            messages.success(request, f"{membership.user.email} was added to {institute.name}.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
     return render(request, "institutes/owner_member_add.html", {
         "institute": institute,
         "form": form,
@@ -222,13 +232,18 @@ def owner_member_status(request, institute_id, membership_id, action):
     if action == "deactivate":
         membership.is_active = False
     elif action == "activate":
+        if active_subscription_for(institute) is None:
+            messages.error(request, "This institute's trial or subscription has expired.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
+        if not membership.is_active and subscription_limit_reached(institute, membership.role):
+            messages.error(request, "The seat limit for this membership type has been reached.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
         membership.is_active = True
     else:
         return HttpResponseForbidden("Unsupported membership action.")
     membership.save(update_fields=["is_active"])
     messages.success(request, f"{membership.user.email} membership status updated.")
     return redirect("institutes:owner_member_list", institute_id=institute.pk)
-
 
 
 def _member_role_for_portal(portal):
