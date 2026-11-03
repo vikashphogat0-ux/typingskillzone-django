@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ institute.name }} | TypingSkillZone</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#14243a;--line:#2a4263;--text:#edf4ff;--muted:#9fb2cc;--blue:#438cff;--green:#1c9b72;--red:#a83e50;--amber:#8a6423}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% 0%,#173d70,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:1050px;margin:auto;padding:32px 22px}.panel{margin-top:22px;padding:23px;background:linear-gradient(145deg,#172b46,var(--panel));border:1px solid var(--line);border-radius:16px}.muted{color:var(--muted)}a{color:#8dbaff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.item{padding:13px;background:#0d1a2c;border:1px solid var(--line);border-radius:10px}.label{font-size:12px;color:var(--muted)}.value{font-weight:650;overflow-wrap:anywhere}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}button,.btn{border:0;border-radius:8px;padding:10px 14px;color:white;font-weight:700;cursor:pointer;text-decoration:none}.approve{background:var(--green)}.reject{background:var(--red)}.suspend{background:var(--amber)}.edit{background:var(--blue)}.status{display:inline-block;border-radius:20px;padding:4px 10px;font-size:12px}.PENDING{background:#f2b84b22;color:#f2c35e}.APPROVED{background:#32c48d22;color:#42d5a0}.REJECTED,.SUSPENDED{background:#ef6b7822;color:#ff8792}@media(max-width:650px){.grid{grid-template-columns:1fr}.wrap{padding:22px 13px}.panel{padding:16px}}
+</style></head><body><main class="wrap"><a href="{% url 'institutes:institute_list' %}">← Institute directory</a><section class="panel"><div class="muted">INSTITUTE PROFILE</div><h1>{{ institute.name }}</h1><span class="status {{ institute.status }}">{{ institute.get_status_display }}</span>
+<div class="grid" style="margin-top:20px">
+<div class="item"><div class="label">Registration code</div><div class="value">{{ institute.registration_code }}</div></div>
+<div class="item"><div class="label">Owner account</div><div class="value">{{ institute.owner.get_full_name|default:institute.owner.email }}<br>{{ institute.owner.email }}</div></div>
+<div class="item"><div class="label">Institute email</div><div class="value">{{ institute.email }}</div></div>
+<div class="item"><div class="label">Phone</div><div class="value">{{ institute.phone }}</div></div>
+<div class="item"><div class="label">Address</div><div class="value">{{ institute.address|default:"—" }}</div></div>
+<div class="item"><div class="label">Location</div><div class="value">{{ institute.city|default:"—" }}, {{ institute.state|default:"—" }} {{ institute.postal_code }}</div></div>
+<div class="item"><div class="label">Submitted</div><div class="value">{{ institute.created_at|date:"d M Y, H:i" }}</div></div>
+<div class="item"><div class="label">Last reviewed</div><div class="value">{% if institute.approved_by %}{{ institute.approved_by.email }} · {{ institute.approved_at|date:"d M Y, H:i" }}{% else %}Not reviewed{% endif %}</div></div>
+</div>
+<div class="actions"><a class="btn edit" href="{% url 'institutes:institute_edit' institute.pk %}">Edit details</a>
+{% if institute.status == "PENDING" %}<form method="post" action="{% url 'institutes:review_institute' institute.pk 'approve' %}">{% csrf_token %}<button class="approve">Approve institute</button></form><form method="post" action="{% url 'institutes:review_institute' institute.pk 'reject' %}">{% csrf_token %}<button class="reject">Reject application</button></form>
+{% elif institute.status == "APPROVED" %}<form method="post" action="{% url 'institutes:review_institute' institute.pk 'suspend' %}">{% csrf_token %}<button class="suspend">Suspend institute</button></form>
+{% elif institute.status == "SUSPENDED" %}<form method="post" action="{% url 'institutes:review_institute' institute.pk 'reactivate' %}">{% csrf_token %}<button class="approve">Reactivate institute</button></form>{% endif %}
+</div></section></main></body></html>
