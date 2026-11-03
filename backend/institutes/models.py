@@ -1,5 +1,6 @@
 
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
@@ -187,7 +188,7 @@ class InstituteSubscription(models.Model):
     def renew(self, *, start_at=None, amount_paid=None, payment_reference=None):
         start_at = start_at or max(timezone.now(), self.ends_at)
         self.starts_at = start_at
-        self.ends_at = start_at + timezone.timedelta(days=self.plan.duration_days)
+        self.ends_at = start_at + timedelta(days=self.plan.duration_days)
         self.status = self.Status.ACTIVE
         if amount_paid is not None:
             self.amount_paid = amount_paid
