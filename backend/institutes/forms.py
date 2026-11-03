@@ -100,8 +100,20 @@ class InstituteMemberAddForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         user = getattr(self, "member_user", None)
-        if user and self.institute.memberships.filter(user=user).exists():
-            self.add_error("email", "This account already has a membership in this institute.")
+        requested_role = cleaned_data.get("role")
+        if user:
+            expected_role = (
+                User.Roles.STUDENT
+                if user.role == User.Roles.STUDENT
+                else User.Roles.INSTITUTE_STAFF
+            )
+            if requested_role != expected_role:
+                self.add_error(
+                    "email",
+                    "The selected membership type does not match this account's registered role.",
+                )
+            if self.institute.memberships.filter(user=user).exists():
+                self.add_error("email", "This account already has a membership in this institute.")
         return cleaned_data
 
     def save(self):
