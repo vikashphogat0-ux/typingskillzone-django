@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edit Institute | TypingSkillZone</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#14243a;--line:#2a4263;--text:#edf4ff;--muted:#9fb2cc;--blue:#438cff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% 0%,#173d70,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:800px;margin:auto;padding:32px 22px}.panel{margin-top:22px;padding:24px;background:linear-gradient(145deg,#172b46,var(--panel));border:1px solid var(--line);border-radius:16px}a{color:#8dbaff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-bottom:14px}.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}.field input,.field textarea{width:100%;padding:11px;background:#0d1a2c;border:1px solid #38577e;border-radius:8px;color:var(--text)}.errors{color:#ff9aa3;font-size:12px}.btn{background:var(--blue);color:white;border:0;border-radius:8px;padding:11px 16px;font-weight:700;cursor:pointer}.errorlist{color:#ff9aa3}@media(max-width:600px){.grid{grid-template-columns:1fr}.wrap{padding:22px 13px}.panel{padding:16px}}
+</style></head><body><main class="wrap"><a href="{% url 'institutes:institute_detail' institute.pk %}">← Back to institute profile</a><section class="panel"><h1>Edit institute details</h1><p style="color:var(--muted)">Update contact and location information. Owner login credentials are not changed here.</p>
+<form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<div class="field"><label for="{{ form.name.id_for_label }}">Institute name</label>{{ form.name }}{{ form.name.errors }}</div>
+<div class="field"><label for="{{ form.email.id_for_label }}">Institute email</label>{{ form.email }}{{ form.email.errors }}</div>
+<div class="field"><label for="{{ form.phone.id_for_label }}">Phone</label>{{ form.phone }}{{ form.phone.errors }}</div>
+<div class="field"><label for="{{ form.address.id_for_label }}">Address</label>{{ form.address }}{{ form.address.errors }}</div>
+<div class="grid"><div class="field"><label for="{{ form.city.id_for_label }}">City</label>{{ form.city }}{{ form.city.errors }}</div><div class="field"><label for="{{ form.state.id_for_label }}">State</label>{{ form.state }}{{ form.state.errors }}</div></div>
+<div class="field"><label for="{{ form.postal_code.id_for_label }}">Postal code</label>{{ form.postal_code }}{{ form.postal_code.errors }}</div>
+<button class="btn" type="submit">Save changes</button></form></section></main></body></html>
