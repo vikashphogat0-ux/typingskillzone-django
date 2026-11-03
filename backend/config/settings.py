@@ -19,7 +19,6 @@ DEBUG = env_bool("DJANGO_DEBUG", True)
 if not SECRET_KEY:
     if not DEBUG:
         raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is false.")
-    # Local-development fallback only. Set DJANGO_SECRET_KEY in every deployed environment.
     SECRET_KEY = "django-insecure-local-development-only-change-before-deployment"
 
 ALLOWED_HOSTS = [
@@ -98,8 +97,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Local development prints emails to the terminal. Configure SMTP through environment variables
-# when an email provider is selected for deployment.
 EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
@@ -112,11 +109,10 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
 
 AUTH_USER_MODEL = "accounts.User"
-LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/institutes/dashboard/super-admin/"
+LOGOUT_REDIRECT_URL = "/admin/login/"
 
-# Production security defaults are enabled only when DEBUG is disabled.
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = True

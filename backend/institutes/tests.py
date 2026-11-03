@@ -34,20 +34,11 @@ class InstituteRegistrationViewTests(TestCase):
         self.assertIsInstance(response.context["form"], InstituteRegistrationForm)
 
     def test_valid_registration_creates_pending_institute_and_owner(self):
-        response = self.client.post(
-            reverse("institutes:register"),
-            self.registration_data(),
-        )
-
+        response = self.client.post(reverse("institutes:register"), self.registration_data())
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(
-            response,
-            "institutes/registration_success.html",
-        )
-
+        self.assertTemplateUsed(response, "institutes/registration_success.html")
         owner = User.objects.get(email="owner@example.test")
         institute = Institute.objects.get(name="Example Typing Academy")
-
         self.assertEqual(owner.role, User.Roles.INSTITUTE_OWNER)
         self.assertTrue(owner.check_password("A-Strong-Test-Password-2026!"))
         self.assertEqual(institute.owner, owner)
@@ -57,40 +48,71 @@ class InstituteRegistrationViewTests(TestCase):
         self.assertIsNone(institute.approved_at)
 
     def test_mismatched_passwords_do_not_create_records(self):
-        data = self.registration_data(
-            confirm_password="Different-Test-Password-2026!",
-        )
+        data = self.registration_data(confirm_password="Different-Test-Password-2026!")
         response = self.client.post(reverse("institutes:register"), data)
-
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["form"].errors)
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(Institute.objects.count(), 0)
 
     def test_existing_owner_email_is_rejected(self):
-        User.objects.create_user(
-            email="owner@example.test",
-            password="Existing-Strong-Password-2026!",
-        )
-
-        response = self.client.post(
-            reverse("institutes:register"),
-            self.registration_data(),
-        )
-
+        User.objects.create_user(email="owner@example.test", password="Existing-Strong-Password-2026!")
+        response = self.client.post(reverse("institutes:register"), self.registration_data())
         self.assertEqual(response.status_code, 200)
         self.assertIn("owner_email", response.context["form"].errors)
         self.assertEqual(Institute.objects.count(), 0)
         self.assertEqual(User.objects.count(), 1)
 
     def test_authenticated_user_is_redirected_to_admin(self):
-        admin_user = User.objects.create_superuser(
-            email="admin@example.test",
-            password="Admin-Strong-Password-2026!",
-        )
+        admin_user = User.objects.create_superuser(email="admin@example.test", password="Admin-Strong-Password-2026!")
         self.client.force_login(admin_user)
-
         response = self.client.get(reverse("institutes:register"))
-
         self.assertRedirects(response, reverse("admin:index"))
         self.assertEqual(Institute.objects.count(), 0)
+
+
+class SuperAdminDashboardTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="superadmin@example.test", password="Admin-Strong-Password-2026!")
+        self.owner = User.objects.create_user(
+            email="owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.institute = Institute.objects.create(
+            name="Dashboard Test Academy",
+            owner=self.owner,
+            email="academy@example.test",
+            phone="9876543210",
+            city="Panipat",
+            state="Haryana",
+        )
+
+    def test_super_admin_can_open_dashboard(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("institutes:super_admin_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dashboard Test Academy")
+        self.assertEqual(response.context["pending_institutes"], 1)
+
+    def test_non_super_admin_is_redirected_to_admin_login(self):
+        student = User.objects.create_user(email="student@example.test", password="Student-Strong-Password-2026!")
+        self.client.force_login(student)
+        response = self.client.get(reverse("institutes:super_admin_dashboard"))
+        self.assertRedirects(response, "/admin/login/?next=/institutes/dashboard/super-admin/")
+
+    def test_super_admin_can_approve_pending_institute(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
+        self.assertRedirects(response, reverse("institutes:super_admin_dashboard"))
+        self.institute.refresh_from_db()
+        self.assertEqual(self.institute.status, Institute.Status.APPROVED)
+        self.assertEqual(self.institute.approved_by, self.admin)
+        self.assertIsNotNone(self.institute.approved_at)
+
+    def test_approval_action_rejects_get_requests(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
+        self.assertEqual(response.status_code, 405)
+        self.institute.refresh_from_db()
+        self.assertEqual(self.institute.status, Institute.Status.PENDING)
