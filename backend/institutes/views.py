@@ -10,7 +10,75 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
 from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegistrationForm
-from .models import Institute, InstituteMembership, InstituteSubscription
+from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
+
+
+TRIAL_PLAN_CODE = "free-trial"
+TRIAL_STUDENT_LIMIT = 25
+TRIAL_STAFF_LIMIT = 2
+TRIAL_DURATION_DAYS = 7
+
+
+def get_free_trial_plan():
+    plan, _ = SubscriptionPlan.objects.get_or_create(
+        code=TRIAL_PLAN_CODE,
+        defaults={
+            "name": "7-Day Free Trial",
+            "description": "Seven-day institute trial with 25 student seats and 2 staff seats.",
+            "duration_days": TRIAL_DURATION_DAYS,
+            "price": 0,
+            "currency": "INR",
+            "max_students": TRIAL_STUDENT_LIMIT,
+            "max_staff": TRIAL_STAFF_LIMIT,
+            "is_active": True,
+        },
+    )
+    return plan
+
+
+def start_free_trial(institute, *, created_by=None):
+    if institute.status != Institute.Status.APPROVED:
+        return None
+    plan = get_free_trial_plan()
+    now = timezone.now()
+    subscription, _ = InstituteSubscription.objects.get_or_create(
+        institute=institute,
+        defaults={
+            "plan": plan,
+            "status": InstituteSubscription.Status.ACTIVE,
+            "starts_at": now,
+            "ends_at": now + timezone.timedelta(days=TRIAL_DURATION_DAYS),
+            "amount_paid": 0,
+            "created_by": created_by,
+        },
+    )
+    return subscription
+
+
+def active_subscription_for(institute):
+    try:
+        subscription = institute.subscription
+    except InstituteSubscription.DoesNotExist:
+        return None
+    return subscription if subscription.is_currently_active else None
+
+
+def subscription_limit_reached(institute, role):
+    subscription = active_subscription_for(institute)
+    if subscription is None:
+        return True
+    limit = (
+        subscription.plan.max_students
+        if role == InstituteMembership.Role.STUDENT
+        else subscription.plan.max_staff
+    )
+    if limit is None:
+        return False
+    current = InstituteMembership.objects.filter(
+        institute=institute, role=role, is_active=True
+    ).count()
+    return current >= limit
+
 
 
 def is_super_admin(user):
@@ -131,9 +199,19 @@ def owner_member_add(request, institute_id):
         return HttpResponseForbidden("Institute owner access required.")
     form = InstituteMemberAddForm(request.POST or None, institute=institute)
     if request.method == "POST" and form.is_valid():
-        membership = form.save()
-        messages.success(request, f"{membership.user.email} was added to {institute.name}.")
-        return redirect("institutes:owner_member_list", institute_id=institute.pk)
+        requested_role = (
+            InstituteMembership.Role.STUDENT
+            if form.cleaned_data["role"] == User.Roles.STUDENT
+            else InstituteMembership.Role.STAFF
+        )
+        if active_subscription_for(institute) is None:
+            form.add_error(None, "This institute's trial or subscription has expired. Contact the platform administrator.")
+        elif subscription_limit_reached(institute, requested_role):
+            form.add_error(None, "The seat limit for this membership type has been reached. Upgrade the subscription to add more members.")
+        else:
+            membership = form.save()
+            messages.success(request, f"{membership.user.email} was added to {institute.name}.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
     return render(request, "institutes/owner_member_add.html", {
         "institute": institute,
         "form": form,
@@ -154,13 +232,18 @@ def owner_member_status(request, institute_id, membership_id, action):
     if action == "deactivate":
         membership.is_active = False
     elif action == "activate":
+        if active_subscription_for(institute) is None:
+            messages.error(request, "This institute's trial or subscription has expired.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
+        if not membership.is_active and subscription_limit_reached(institute, membership.role):
+            messages.error(request, "The seat limit for this membership type has been reached.")
+            return redirect("institutes:owner_member_list", institute_id=institute.pk)
         membership.is_active = True
     else:
         return HttpResponseForbidden("Unsupported membership action.")
     membership.save(update_fields=["is_active"])
     messages.success(request, f"{membership.user.email} membership status updated.")
     return redirect("institutes:owner_member_list", institute_id=institute.pk)
-
 
 
 def _member_role_for_portal(portal):
@@ -199,10 +282,14 @@ def member_dashboard(request, portal):
     if not request.user.is_active or request.user.role != required_role:
         return HttpResponseForbidden("Member access required.")
 
+    now = timezone.now()
     memberships = InstituteMembership.objects.filter(
         user=request.user,
         is_active=True,
         institute__status=Institute.Status.APPROVED,
+        institute__subscription__status=InstituteSubscription.Status.ACTIVE,
+        institute__subscription__starts_at__lte=now,
+        institute__subscription__ends_at__gt=now,
     ).select_related("institute").order_by("institute__name")
     if not memberships.exists():
         return render(
@@ -308,7 +395,8 @@ def review_institute(request, pk, action):
         institute.approved_by = request.user
         institute.approved_at = timezone.now()
         institute.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
-        messages.success(request, f"{institute.name} has been approved.")
+        start_free_trial(institute, created_by=request.user)
+        messages.success(request, f"{institute.name} has been approved and its 7-day free trial has started.")
     elif action == "reject" and institute.status == Institute.Status.PENDING:
         institute.status = Institute.Status.REJECTED
         institute.approved_by = request.user
@@ -324,6 +412,7 @@ def review_institute(request, pk, action):
         institute.approved_by = request.user
         institute.approved_at = timezone.now()
         institute.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        start_free_trial(institute, created_by=request.user)
         messages.success(request, f"{institute.name} has been reactivated.")
     else:
         messages.error(request, "This action is not valid for the institute's current status.")

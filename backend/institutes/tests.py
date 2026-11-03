@@ -315,6 +315,20 @@ class InstituteOwnerMemberManagementTests(TestCase):
             phone="9876543210",
             status=Institute.Status.APPROVED,
         )
+        plan = SubscriptionPlan.objects.create(
+            name="Member Test Plan",
+            code="member-test-plan",
+            duration_days=30,
+            price=Decimal("499.00"),
+            max_students=25,
+            max_staff=2,
+        )
+        InstituteSubscription.objects.create(
+            institute=self.institute,
+            plan=plan,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=29),
+        )
         self.other_institute = Institute.objects.create(
             name="Other Owner Academy",
             owner=self.other_owner,
@@ -485,6 +499,20 @@ class StudentAndStaffPortalTests(TestCase):
             phone="9876543210",
             status=Institute.Status.APPROVED,
             approved_by=self.admin,
+        )
+        plan = SubscriptionPlan.objects.create(
+            name="Portal Test Plan",
+            code="portal-test-plan",
+            duration_days=30,
+            price=Decimal("499.00"),
+            max_students=25,
+            max_staff=2,
+        )
+        InstituteSubscription.objects.create(
+            institute=self.approved_institute,
+            plan=plan,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=29),
         )
         self.student = User.objects.create_user(
             email="portal-member-student@example.test",
@@ -717,3 +745,124 @@ class InstituteSubscriptionManagementTests(TestCase):
                 plan=self.plan,
                 ends_at=timezone.now() + timedelta(days=30),
             )
+
+
+class InstituteTrialEnforcementTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email="trial-admin@example.test",
+            password="Admin-Strong-Password-2026!",
+        )
+        self.owner = User.objects.create_user(
+            email="trial-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        self.institute = Institute.objects.create(
+            name="Newly Approved Trial Academy",
+            owner=self.owner,
+            email="trial-academy@example.test",
+            phone="9876543210",
+            status=Institute.Status.PENDING,
+        )
+
+    def test_approval_starts_seven_day_trial_with_defined_seat_limits(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("institutes:review_institute", args=[self.institute.pk, "approve"])
+        )
+        self.assertRedirects(response, reverse("institutes:institute_detail", args=[self.institute.pk]))
+        subscription = InstituteSubscription.objects.select_related("plan").get(institute=self.institute)
+        self.assertEqual(subscription.plan.code, "free-trial")
+        self.assertEqual(subscription.plan.duration_days, 7)
+        self.assertEqual(subscription.plan.max_students, 25)
+        self.assertEqual(subscription.plan.max_staff, 2)
+        self.assertEqual(subscription.amount_paid, Decimal("0.00"))
+        self.assertLessEqual(subscription.ends_at - subscription.starts_at, timedelta(days=7))
+        self.assertGreater(subscription.ends_at - subscription.starts_at, timedelta(days=6, hours=23))
+
+    def test_expired_trial_blocks_student_and_staff_portal_access(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
+        subscription = InstituteSubscription.objects.get(institute=self.institute)
+        subscription.ends_at = timezone.now() - timedelta(seconds=1)
+        subscription.save(update_fields=["ends_at", "updated_at"])
+        student = User.objects.create_user(
+            email="trial-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        InstituteMembership.objects.create(
+            institute=self.institute, user=student, role=InstituteMembership.Role.STUDENT
+        )
+        self.client.force_login(student)
+        response = self.client.get(reverse("institutes:student_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "No active institute membership", status_code=403)
+
+        staff = User.objects.create_user(
+            email="trial-staff@example.test",
+            password="Staff-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_STAFF,
+        )
+        InstituteMembership.objects.create(
+            institute=self.institute, user=staff, role=InstituteMembership.Role.STAFF
+        )
+        self.client.force_login(staff)
+        staff_response = self.client.get(reverse("institutes:staff_dashboard"))
+        self.assertEqual(staff_response.status_code, 403)
+        self.assertContains(staff_response, "No active institute membership", status_code=403)
+
+    def test_trial_seat_limit_prevents_adding_extra_student(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
+        student_users = [
+            User.objects.create_user(
+                email=f"trial-seat-{index}@example.test",
+                password="Student-Strong-Password-2026!",
+                role=User.Roles.STUDENT,
+            )
+            for index in range(25)
+        ]
+        InstituteMembership.objects.bulk_create([
+            InstituteMembership(
+                institute=self.institute,
+                user=user,
+                role=InstituteMembership.Role.STUDENT,
+                is_active=True,
+            )
+            for user in student_users
+        ])
+        extra_student = User.objects.create_user(
+            email="trial-extra-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": extra_student.email, "role": User.Roles.STUDENT},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "seat limit")
+        self.assertFalse(InstituteMembership.objects.filter(institute=self.institute, user=extra_student).exists())
+
+    def test_expired_subscription_prevents_owner_from_adding_members(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("institutes:review_institute", args=[self.institute.pk, "approve"]))
+        subscription = InstituteSubscription.objects.get(institute=self.institute)
+        subscription.ends_at = timezone.now() - timedelta(seconds=1)
+        subscription.save(update_fields=["ends_at", "updated_at"])
+        student = User.objects.create_user(
+            email="expired-trial-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("institutes:owner_member_add", args=[self.institute.pk]),
+            {"email": student.email, "role": User.Roles.STUDENT},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "subscription has expired")
+        self.assertFalse(InstituteMembership.objects.filter(institute=self.institute, user=student).exists())
