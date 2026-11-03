@@ -92,6 +92,75 @@ def owner_logout(request):
     return redirect("institutes:owner_login")
 
 
+def get_owner_institute(request, institute_id):
+    if not is_institute_owner(request.user):
+        return None
+    return get_object_or_404(
+        Institute,
+        pk=institute_id,
+        owner=request.user,
+        status=Institute.Status.APPROVED,
+    )
+
+
+@login_required
+def owner_member_list(request, institute_id):
+    institute = get_owner_institute(request, institute_id)
+    if institute is None:
+        return HttpResponseForbidden("Institute owner access required.")
+    memberships = InstituteMembership.objects.filter(
+        institute=institute
+    ).select_related("user").order_by("role", "user__email")
+    selected_role = request.GET.get("role", "")
+    if selected_role in {InstituteMembership.Role.STAFF, InstituteMembership.Role.STUDENT}:
+        memberships = memberships.filter(role=selected_role)
+    return render(request, "institutes/owner_member_list.html", {
+        "institute": institute,
+        "memberships": memberships,
+        "selected_role": selected_role,
+        "role_choices": InstituteMembership.Role.choices,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def owner_member_add(request, institute_id):
+    institute = get_owner_institute(request, institute_id)
+    if institute is None:
+        return HttpResponseForbidden("Institute owner access required.")
+    form = InstituteMemberAddForm(request.POST or None, institute=institute)
+    if request.method == "POST" and form.is_valid():
+        membership = form.save()
+        messages.success(request, f"{membership.user.email} was added to {institute.name}.")
+        return redirect("institutes:owner_member_list", institute_id=institute.pk)
+    return render(request, "institutes/owner_member_add.html", {
+        "institute": institute,
+        "form": form,
+    })
+
+
+@login_required
+@require_POST
+def owner_member_status(request, institute_id, membership_id, action):
+    institute = get_owner_institute(request, institute_id)
+    if institute is None:
+        return HttpResponseForbidden("Institute owner access required.")
+    membership = get_object_or_404(
+        InstituteMembership,
+        pk=membership_id,
+        institute=institute,
+    )
+    if action == "deactivate":
+        membership.is_active = False
+    elif action == "activate":
+        membership.is_active = True
+    else:
+        return HttpResponseForbidden("Unsupported membership action.")
+    membership.save(update_fields=["is_active"])
+    messages.success(request, f"{membership.user.email} membership status updated.")
+    return redirect("institutes:owner_member_list", institute_id=institute.pk)
+
+
 @login_required
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def super_admin_dashboard(request):
