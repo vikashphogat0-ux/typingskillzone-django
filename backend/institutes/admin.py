@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django.contrib import admin, messages
 from django.utils import timezone
 
