@@ -143,3 +143,35 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result.scoring_version, "tsz-char-word-v1")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
+
+
+class TypingSessionViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.learner = User.objects.create_user(email="view@example.com", password="SafePassword123!")
+        self.exam = ExamConfiguration.objects.create(
+            code="view-exam", name="View Exam", language="ENGLISH", script="LATIN",
+            duration_seconds=600,
+        )
+        self.source = PassageSource.objects.create(
+            title="View sample", content="sample text", language="ENGLISH",
+            script="LATIN", status=PassageSource.Status.PUBLISHED,
+        )
+        self.publication = publish_source_to_exam(self.source, self.exam)
+
+    def test_opening_expired_attempt_marks_it_expired(self):
+        from django.urls import reverse
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        TypingSession.objects.filter(pk=attempt.pk).update(
+            deadline_at=timezone.now() - timedelta(seconds=1)
+        )
+        self.client.force_login(self.learner)
+        response = self.client.get(
+            reverse("typing_sessions:session", kwargs={"session_id": attempt.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "typing_sessions/result.html")
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
+        self.assertEqual(attempt.result_snapshot, {})
