@@ -41,6 +41,9 @@ def publish_source_to_exam(source: PassageSource, exam) -> SimulatorPassage:
 
 @transaction.atomic
 def publish_source_to_selected_exams(source: PassageSource):
+    if source.status != PassageSource.Status.PUBLISHED:
+        source.status = PassageSource.Status.PUBLISHED
+        source.save(update_fields=("status", "updated_at"))
     publications = []
     for exam in source.target_exams.filter(is_active=True).order_by("id"):
         publications.append(publish_source_to_exam(source, exam))
