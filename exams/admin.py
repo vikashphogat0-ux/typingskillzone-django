@@ -5,7 +5,7 @@ from .models import ExamConfiguration
 
 @admin.register(ExamConfiguration)
 class ExamConfigurationAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("name", "code", "category", "language", "script", "passage_layout", "presentation_reference_status", "verification_status", "is_active")
+    list_display = ("name", "code", "category", "language", "script", "backspace_policy", "scoring_mode", "passage_layout", "presentation_reference_status", "verification_status", "is_active")
     list_filter = ("category", "language", "script", "verification_status", "presentation_reference_status", "passage_layout", "is_active")
     search_fields = ("name", "code", "official_source_url", "source_title", "presentation_reference_title", "presentation_reference_url")
     ordering = ("category", "display_order", "name")
