@@ -56,6 +56,7 @@
   input.addEventListener("keydown", event => {
     if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
     if (!allowEnter && event.key === "Enter") event.preventDefault();
+    if (event.key === " " && rules.space_behavior === "DISABLED") event.preventDefault();
     if (event.key === "Backspace") blockDeletion(event,true);
     if (event.key === "Delete") blockDeletion(event,false);
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && rules.allow_paste === false) event.preventDefault();
