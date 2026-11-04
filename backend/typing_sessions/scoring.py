@@ -32,8 +32,8 @@ def _count_character_errors(reference, typed):
 
 
 def _count_word_errors(reference, typed):
-    ref_words = re.findall(r"\\S+", reference)
-    typed_words = re.findall(r"\\S+", typed)
+    ref_words = re.findall(r"\S+", reference)
+    typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     errors = 0
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
