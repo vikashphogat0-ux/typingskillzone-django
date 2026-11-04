@@ -33,14 +33,18 @@ PROFILES = {
         "duration_seconds": 600, "language": "ENGLISH", "minimum_wpm": 35,
         "strokes_per_word": 5, "error_allowance_percent": 5,
         "scoring_mode": "ERROR_PERCENTAGE",
-        "rule_notes": "BSF-led CAPF direct recruitment 2024 profile: 10 minutes, 35 WPM English, 5% permitted mistakes. Backspace behaviour not specified.",
+        "error_rules": {"count_word_errors": True},
+        "scoring_rules": {"excess_mistake_deduction_words": 10},
+        "rule_notes": "BSF-led CAPF direct recruitment 2024 profile: 10 minutes, 35 WPM English, 5% permitted mistakes; each excess mistake deducts 10 words. Backspace behaviour not specified.",
     },
     "BSF HCM Hindi Mangal Gail": {
         "duration_seconds": 600, "language": "HINDI", "minimum_wpm": 30,
         "keyboard_layout": "Remington Gail", "text_encoding": "Mangal",
         "strokes_per_word": 5, "error_allowance_percent": 5,
         "scoring_mode": "ERROR_PERCENTAGE",
-        "rule_notes": "BSF-led CAPF direct recruitment 2024 profile: 10 minutes, 30 WPM Hindi, Mangal font; 5% permitted mistakes. Backspace behaviour not specified.",
+        "error_rules": {"count_word_errors": True},
+        "scoring_rules": {"excess_mistake_deduction_words": 10},
+        "rule_notes": "BSF-led CAPF direct recruitment 2024 profile: 10 minutes, 30 WPM Hindi, Mangal font, 5% permitted mistakes; each excess mistake deducts 10 words. Backspace behaviour not specified.",
     },
     "BSF HCM Hindi Mangal Inscript": {
         "duration_seconds": 600, "language": "HINDI", "minimum_wpm": 30,
@@ -84,6 +88,7 @@ PROFILES = {
     "Jharkhand HC English (Adv.03-24)": {
         "duration_seconds": 300, "language": "ENGLISH", "minimum_wpm": 40,
         "passage_word_limit": 200, "passage_source_mode": "SCREEN",
+        "allow_passage_repeat": True,
         "rule_notes": "Jharkhand Civil Court 2024: 200 English words in 5 minutes (40 WPM); qualifying. Passage may be repeated and continued typing counted. Backspace policy not specified.",
     },
     "Jharkhand HC Hindi (Adv.03-24)": {
