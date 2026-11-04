@@ -43,7 +43,7 @@ class LearnerProfile(models.Model):
     class Meta:
         ordering = ("display_name", "user__email")
         indexes = [
-            models.Index(fields=("preferred_language", "onboarding_completed")),
+            models.Index(fields=("preferred_language", "onboarding_completed"), name="lrn_lang_onboard_idx"),
         ]
 
     def __str__(self):
