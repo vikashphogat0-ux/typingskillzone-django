@@ -7,6 +7,12 @@
   <h1>{{ passage.source.title }}</h1>
   <p>{{ passage.source.language }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %} · {{ exam.get_passage_layout_display }}</p>
   {% if exam.passage_layout == "UNCONFIGURED" %}<p class="muted">Presentation format is awaiting reference verification. Original source formatting is retained.</p>{% endif %}
-  <article class="passage" style="font-family:{{ exam.passage_font_family|default:'Arial'|escape }};font-size:{{ exam.passage_font_size_pt }}pt;line-height:{{ exam.passage_line_height }};text-align:{{ exam.passage_alignment }};tab-size:{{ exam.passage_tab_size }};white-space:pre-wrap;{% if exam.passage_first_line_indent_em %}text-indent:{{ exam.passage_first_line_indent_em }}em;{% endif %}">{{ passage.rendered_content }}</article>
+  <article class="passage" style="font-family:{{ exam.passage_font_family|default:'Arial'|escape }};font-size:{{ exam.passage_font_size_pt }}pt;line-height:{{ exam.passage_line_height }};text-align:{{ exam.passage_alignment }};tab-size:{{ exam.passage_tab_size }};white-space:pre-wrap;{% if exam.passage_first_line_indent_em %}text-indent:{{ exam.passage_first_line_indent_em }}em;{% endif %}">
+    {% if exam.passage_layout == "PARAGRAPHS" or exam.passage_layout == "TCS" %}
+      {% for paragraph in passage.rendered_paragraphs %}<p style="margin:0 0 {{ exam.passage_paragraph_spacing_pt }}pt 0;">{{ paragraph }}</p>{% endfor %}
+    {% else %}
+      {{ passage.rendered_content }}
+    {% endif %}
+  </article>
 </section>
 {% endblock %}
