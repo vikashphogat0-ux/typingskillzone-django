@@ -14,5 +14,6 @@
       {{ passage.rendered_content }}
     {% endif %}
   </article>
+  <form method="post" action="{% url 'typing_sessions:start' exam.code passage.passage_id %}" style="margin-top:1.5rem;">{% csrf_token %}<button type="submit" class="button">Start typing test</button></form>
 </section>
 {% endblock %}
