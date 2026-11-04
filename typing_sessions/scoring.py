@@ -83,6 +83,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
     score = None
     qualification = None
     qualification_note = "Qualification is not configured."
+    permitted_error_count = excess_error_count = net_words = None
     if scoring_mode == "CORRECT_WORDS":
         net_wpm = round(correct_words / minutes, 2)
     elif scoring_mode == "NET_WPM":
@@ -111,6 +112,16 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
         except (TypeError, ValueError):
             allowance = None
         error_percent = round(error_count * 100 / max(1, gross_words), 2)
+        permitted_error_count = max(0, int(gross_words * allowance / 100)) if allowance is not None else None
+        excess_error_count = max(0, error_count - permitted_error_count) if permitted_error_count is not None else 0
+        deduction_words = scoring_rules.get("excess_mistake_deduction_words", 0)
+        try:
+            deduction_words = max(0, int(deduction_words))
+        except (TypeError, ValueError):
+            deduction_words = 0
+        net_words = max(0, gross_words - excess_error_count * deduction_words)
+        if deduction_words:
+            net_wpm = round(net_words / minutes, 2)
         try:
             minimum_wpm = float(rules.get("minimum_wpm"))
         except (TypeError, ValueError):
@@ -139,6 +150,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
         "gross_words": gross_words,
         "scoring_mode": scoring_mode,
         "score": score,
+        "permitted_error_count": permitted_error_count,
+        "excess_error_count": excess_error_count,
+        "net_words": net_words,
         "error_count": error_count,
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
