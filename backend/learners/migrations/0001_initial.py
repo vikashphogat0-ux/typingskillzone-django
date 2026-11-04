@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
             model_name="learnerprofile",
             index=models.Index(
                 fields=["preferred_language", "onboarding_completed"],
-                name="learners_lear_prefere_6a7c8f_idx",
+                name="lrn_lang_onboard_idx",
             ),
         ),
     ]
