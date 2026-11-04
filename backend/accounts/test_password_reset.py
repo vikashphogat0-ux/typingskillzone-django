@@ -29,9 +29,12 @@ class PasswordResetWorkflowTests(TestCase):
             if "/accounts/password-reset/confirm/" in line
         )
         path = "/" + reset_url.split("/", 3)[3]
-        confirm = self.client.get(path)
+        # Django's built-in reset view consumes the emailed token on the first
+        # GET, then redirects to a token-safe URL before rendering the form.
+        confirm = self.client.get(path, follow=True)
         self.assertEqual(confirm.status_code, 200)
-        response = self.client.post(path, {
+        safe_path = confirm.request["PATH_INFO"]
+        response = self.client.post(safe_path, {
             "new_password1": "New-Strong-Password-2026!",
             "new_password2": "New-Strong-Password-2026!",
         })
