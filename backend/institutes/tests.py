@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -931,3 +932,62 @@ class InstituteTrialEnforcementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "subscription has expired")
         self.assertFalse(InstituteMembership.objects.filter(institute=self.institute, user=student).exists())
+
+
+class SuperAdminAdminPermissionTests(TestCase):
+    def setUp(self):
+        self.staff_admin = User.objects.create_user(
+            email="limited-admin@example.test",
+            password="Staff-Admin-Strong-Password-2026!",
+            role=User.Roles.ADMIN,
+            is_staff=True,
+        )
+        # Deliberately grant every app-level permission: access must still be
+        # denied unless the account is the designated platform Super Admin.
+        permissions = Permission.objects.filter(
+            content_type__app_label__in=["accounts", "institutes"]
+        )
+        self.staff_admin.user_permissions.add(*permissions)
+
+        self.super_admin = User.objects.create_superuser(
+            email="permission-superadmin@example.test",
+            password="Super-Admin-Strong-Password-2026!",
+        )
+
+    def test_staff_admin_with_model_permissions_cannot_access_sensitive_admin_models(self):
+        self.client.force_login(self.staff_admin)
+        admin_urls = [
+            "/admin/accounts/user/",
+            "/admin/institutes/institute/",
+            "/admin/institutes/institutemembership/",
+            "/admin/institutes/subscriptionplan/",
+            "/admin/institutes/institutesubscription/",
+        ]
+        for url in admin_urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 403)
+
+    def test_superuser_with_wrong_platform_role_cannot_access_sensitive_admin_models(self):
+        incorrectly_labelled_superuser = User.objects.create_superuser(
+            email="wrong-role-superuser@example.test",
+            password="Wrong-Role-Strong-Password-2026!",
+        )
+        incorrectly_labelled_superuser.role = User.Roles.ADMIN
+        incorrectly_labelled_superuser.save(update_fields=["role"])
+        self.client.force_login(incorrectly_labelled_superuser)
+        response = self.client.get("/admin/institutes/institute/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_designated_super_admin_can_access_sensitive_admin_models(self):
+        self.client.force_login(self.super_admin)
+        for url in [
+            "/admin/accounts/user/",
+            "/admin/institutes/institute/",
+            "/admin/institutes/institutemembership/",
+            "/admin/institutes/subscriptionplan/",
+            "/admin/institutes/institutesubscription/",
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
