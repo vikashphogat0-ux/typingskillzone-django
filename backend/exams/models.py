@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils.text import slugify
 
 
 class ExamConfiguration(models.Model):
@@ -53,13 +52,18 @@ class ExamConfiguration(models.Model):
 
     class Meta:
         ordering = ("category", "display_order", "name")
-        indexes = [models.Index(fields=("category", "is_active")), models.Index(fields=("verification_status", "is_active"))]
+        indexes = [
+            models.Index(fields=("category", "is_active")),
+            models.Index(fields=("verification_status", "is_active")),
+        ]
 
     def clean(self):
         super().clean()
         if self.verification_status == self.Verification.VERIFIED:
             if not self.official_source_url or not self.source_title or not self.source_checked_at:
-                raise ValidationError("Verified rules require an official source URL, source title and checked date.")
+                raise ValidationError(
+                    "Verified rules require an official source URL, source title and checked date."
+                )
             if not self.duration_seconds:
                 raise ValidationError("Verified rules require a confirmed test duration.")
 
