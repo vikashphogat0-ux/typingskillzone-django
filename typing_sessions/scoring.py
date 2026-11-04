@@ -136,6 +136,34 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
             qualification_note = "Qualification calculated from the configured speed and error thresholds."
         else:
             qualification_note = "Qualification remains pending: verified source and at least one configured threshold are required."
+    elif scoring_mode == "CUSTOM":
+        penalty_words = scoring_rules.get("mistake_penalty_words", 0)
+        try:
+            penalty_words = max(0, int(penalty_words))
+        except (TypeError, ValueError):
+            penalty_words = 0
+        if penalty_words:
+            net_words = max(0, gross_words - error_count * penalty_words)
+            net_wpm = round(net_words / minutes, 2)
+        disqualify_at = scoring_rules.get("disqualify_at_mistakes")
+        if disqualify_at is not None and error_count >= int(disqualify_at):
+            score = 0
+            qualification = False if rules.get("verification_status") == "VERIFIED" else None
+            qualification_note = "Disqualification threshold reached." if qualification is not None else "Disqualification threshold reached in practice; official qualification is not claimed."
+        bands = scoring_rules.get("score_bands") or []
+        if bands:
+            eligible = []
+            for band in bands:
+                try:
+                    threshold, marks = float(band[0]), float(band[1])
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if net_wpm >= threshold:
+                    eligible.append(marks)
+            if eligible and score is None:
+                score = max(eligible)
+        if not bands and score is None:
+            qualification_note = "Custom scoring data is stored, but no executable score formula is configured."
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
