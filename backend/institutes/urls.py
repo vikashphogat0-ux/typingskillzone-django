@@ -1,12 +1,14 @@
 from django.urls import path
 
-from . import views
+from . import views, owner_verification
 
 app_name = "institutes"
 
 urlpatterns = [
     path("register/", views.institute_register, name="register"),
     path("owner/login/", views.owner_login, name="owner_login"),
+    path("owner/verify/<str:token>/", owner_verification.verify_owner_email, name="verify_owner_email"),
+    path("owner/verify/resend/", owner_verification.resend_owner_verification, name="resend_owner_verification"),
     path("student/login/", views.member_login, {"portal": "student"}, name="student_login"),
     path("student/dashboard/", views.member_dashboard, {"portal": "student"}, name="student_dashboard"),
     path("student/logout/", views.member_logout, {"portal": "student"}, name="student_logout"),
