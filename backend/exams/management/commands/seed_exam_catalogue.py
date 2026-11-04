@@ -27,14 +27,8 @@ def presentation_defaults(name):
                 "Confirm exact tab stops, font and spacing against the current test instructions."
             ),
         }
-    return {
-        "passage_layout": ExamConfiguration.PassageLayout.UNCONFIGURED,
-        "presentation_reference_status": ExamConfiguration.PresentationReferenceStatus.PENDING,
-        "presentation_notes": (
-            "No sufficiently specific presentation layout has been verified for this catalogue entry. "
-            "Do not infer formatting from its exam name or a different exam's sample."
-        ),
-    }
+    # Leave existing admin-configured profiles untouched. New records inherit UNCONFIGURED/PENDING defaults.
+    return {}
 
 
 class Command(BaseCommand):
