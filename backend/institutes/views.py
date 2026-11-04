@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
+from accounts.security import is_rate_limited
 from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegistrationForm
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
 
@@ -97,6 +98,8 @@ def owner_login(request):
             return redirect("institutes:super_admin_dashboard")
         return HttpResponseForbidden("This login portal is for institute owners.")
 
+    if request.method == "POST" and is_rate_limited("owner-login", request, identity=request.POST.get("username", ""), limit=8, window=900):
+        return HttpResponseForbidden("Too many login attempts. Please try again later.")
     form = AuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
@@ -263,6 +266,8 @@ def member_login(request, portal):
             return redirect(_member_dashboard_name(portal))
         return HttpResponseForbidden("This account cannot use this portal.")
 
+    if request.method == "POST" and is_rate_limited(f"{portal}-login", request, identity=request.POST.get("username", ""), limit=8, window=900):
+        return HttpResponseForbidden("Too many login attempts. Please try again later.")
     form = AuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
