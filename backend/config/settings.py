@@ -123,19 +123,24 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# In production the database cache is shared by every web worker and needs no
-# additional cache vendor. Run python manage.py createcachetable once per DB.
-# A Redis-compatible backend can be selected explicitly with DJANGO_CACHE_BACKEND.
+# Redis provides atomic INCR counters shared across all production web workers.
+# Install django-redis and configure DJANGO_CACHE_URL in production.
 DEFAULT_CACHE_BACKEND = (
-    "django.core.cache.backends.db.DatabaseCache"
+    "django_redis.cache.RedisCache"
     if not DEBUG
     else "django.core.cache.backends.locmem.LocMemCache"
 )
 CACHES = {
     "default": {
         "BACKEND": os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND),
-        "LOCATION": os.environ.get("DJANGO_CACHE_LOCATION", "django_cache" if not DEBUG else "typingskillzone-auth-throttle"),
+        "LOCATION": os.environ.get(
+            "DJANGO_CACHE_URL",
+            os.environ.get("DJANGO_CACHE_LOCATION", "typingskillzone-auth-throttle" if DEBUG else ""),
+        ),
         "TIMEOUT": 900,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"}
+        if "django_redis" in os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND)
+        else {},
     }
 }
 
