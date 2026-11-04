@@ -35,6 +35,8 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
             try:
                 created = publish_source_to_selected_exams(source)
             except ValueError as exc:
+                source.status = PassageSource.Status.DRAFT
+                source.save(update_fields=("status", "updated_at"))
                 self.message_user(request, str(exc), level=messages.ERROR)
                 return
             self.message_user(
