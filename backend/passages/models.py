@@ -70,6 +70,14 @@ class SimulatorPassage(models.Model):
         raw = self.source.content.replace("\r\n", "\n").replace("\r", "\n").strip()
         exam = self.exam
         layout = exam.passage_layout
+        # Backward compatibility for records configured before presentation profiles existed.
+        if layout == exam.PassageLayout.UNCONFIGURED:
+            if exam.passage_format == exam.PassageFormat.CONTINUOUS:
+                layout = exam.PassageLayout.CONTINUOUS
+            elif exam.passage_format == exam.PassageFormat.PARAGRAPHS:
+                layout = exam.PassageLayout.PARAGRAPHS
+            elif exam.passage_format == exam.PassageFormat.TCS:
+                layout = exam.PassageLayout.TCS
         if layout == exam.PassageLayout.CONTINUOUS:
             parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return " ".join(parts)
