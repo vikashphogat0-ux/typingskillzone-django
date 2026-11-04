@@ -54,6 +54,15 @@ The institute portal is not the whole product. Public visitors and independent l
 | `institutes` | Institute tenant, owner/staff/student memberships, institute subscription and seats |
 | `exams` | Central exam catalogue, rule versions, source provenance and verification |
 | `passages` (planned) | Passage content, language/script variants, IDs, assignment and publication |
+
+### Passage ID standard (required)
+
+- Every passage receives a human-readable, numeric serial ID beginning at `01`: `01`, `02`, `03`, …, `09`, `10`, and onward.
+- The serial is globally unique across the passage library, including all exams, languages, scripts and monthly collections. It must not restart for a new month, exam or language.
+- IDs are assigned automatically when a passage is first created, are immutable, and are never reused after archive/deletion. Gaps are acceptable; duplicates and renumbering are not.
+- Keep the database primary key separate from this public passage ID. Do not expose UUIDs as passage IDs.
+- Allocation must be transaction-safe so simultaneous admin uploads cannot receive the same serial. Bulk uploads must use the same allocator as individual creation.
+- Display and search passages by this serial ID throughout admin, learner and institute interfaces.
 | `typing` (planned) | Typing session lifecycle, input capture, timer and keyboard behavior |
 | `scoring` (planned) | Versioned scoring algorithms, error classification, WPM and qualification |
 | `learning` (planned) | Lessons, drills, curriculum, personal goals and learning progress |
