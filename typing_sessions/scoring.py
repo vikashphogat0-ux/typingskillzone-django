@@ -45,8 +45,8 @@ def _count_word_errors(reference, typed):
 
 
 def _count_correct_words(reference, typed):
-    ref_words = re.findall(r"\\S+", reference)
-    typed_words = re.findall(r"\\S+", typed)
+    ref_words = re.findall(r"\S+", reference)
+    typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
@@ -74,7 +74,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
     scoring_mode = rules.get("scoring_mode", "GENERIC")
     scoring_rules = rules.get("scoring_rules") or {}
     correct_words = _count_correct_words(reference, typed)
-    gross_words = len(re.findall(r"\\S+", typed))
+    gross_words = len(re.findall(r"\S+", typed))
     strokes_per_word = rules.get("strokes_per_word") or scoring_rules.get("strokes_per_word") or 5
     try:
         strokes_per_word = max(1, int(strokes_per_word))
@@ -127,8 +127,6 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
             qualification_note = "Qualification remains pending: verified source and at least one configured threshold are required."
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
-    elif scoring_mode == "QUALIFYING_ONLY":
-        score = None
 
     return {
         "scoring_version": SCORING_VERSION,
