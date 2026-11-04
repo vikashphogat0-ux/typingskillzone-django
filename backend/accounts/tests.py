@@ -110,8 +110,10 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             role=User.Roles.STUDENT,
             is_active=False,
         )
+        student.email_verification_sent_at = timezone.now()
+        student.save(update_fields=["email_verification_sent_at"])
         token = signing.dumps(
-            {"user_id": student.pk},
+            {"user_id": student.pk, "issued_at": student.email_verification_sent_at.isoformat()},
             salt="typingskillzone.student.email-verification",
         )
         response = self.client.get(
@@ -131,8 +133,10 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             role=User.Roles.STUDENT,
             is_active=False,
         )
+        student.email_verification_sent_at = timezone.now()
+        student.save(update_fields=["email_verification_sent_at"])
         token = signing.dumps(
-            {"user_id": student.pk},
+            {"user_id": student.pk, "issued_at": student.email_verification_sent_at.isoformat()},
             salt="typingskillzone.student.email-verification",
         )
         response = self.client.post(
