@@ -256,17 +256,27 @@ def owner_member_status(request, institute_id, membership_id, action):
     )
     if action == "deactivate":
         membership.is_active = False
+        membership.save(update_fields=["is_active"])
     elif action == "activate":
-        if active_subscription_for(institute) is None:
-            messages.error(request, "This institute's trial or subscription has expired.")
+        try:
+            with transaction.atomic():
+                locked_institute = Institute.objects.select_for_update().get(pk=institute.pk)
+                locked_membership = InstituteMembership.objects.select_for_update().get(
+                    pk=membership.pk, institute=locked_institute
+                )
+                if active_subscription_for(locked_institute) is None:
+                    raise ValidationError("This institute's trial or subscription has expired.")
+                if not locked_membership.is_active and subscription_limit_reached(
+                    locked_institute, locked_membership.role
+                ):
+                    raise ValidationError("The seat limit for this membership type has been reached.")
+                locked_membership.is_active = True
+                locked_membership.save(update_fields=["is_active"])
+        except ValidationError as error:
+            messages.error(request, error)
             return redirect("institutes:owner_member_list", institute_id=institute.pk)
-        if not membership.is_active and subscription_limit_reached(institute, membership.role):
-            messages.error(request, "The seat limit for this membership type has been reached.")
-            return redirect("institutes:owner_member_list", institute_id=institute.pk)
-        membership.is_active = True
     else:
         return HttpResponseForbidden("Unsupported membership action.")
-    membership.save(update_fields=["is_active"])
     messages.success(request, f"{membership.user.email} membership status updated.")
     return redirect("institutes:owner_member_list", institute_id=institute.pk)
 
