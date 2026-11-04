@@ -170,6 +170,25 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["gross_words"], 2)
         self.assertEqual(result["net_wpm"], 1.0)
 
+    def test_custom_score_bands_and_mistake_penalty_are_configurable(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello",
+            typed="hello",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "scoring_rules": {
+                    "mistake_penalty_words": 1,
+                    "score_bands": [[1, 5], [2, 10]],
+                },
+            },
+        )
+        self.assertEqual(result["net_wpm"], 1.0)
+        self.assertEqual(result["score"], 5)
+
     def test_stroke_penalty_mode_uses_admin_configured_penalty(self):
         from .scoring import calculate_result
 
