@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError, transaction
 
 User = get_user_model()
 
@@ -70,10 +71,11 @@ class InstituteEnrollmentForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_registration_code(self):
-        from institutes.models import Institute, InstituteMembership
+        from institutes.models import Institute, InstituteMembership, InstituteSubscription
+
         code = self.cleaned_data["registration_code"].strip()
         try:
-            institute = Institute.objects.get(
+            institute = Institute.objects.select_related("subscription__plan").get(
                 registration_code__iexact=code,
                 status=Institute.Status.APPROVED,
             )
@@ -81,14 +83,42 @@ class InstituteEnrollmentForm(forms.Form):
             raise forms.ValidationError("No approved institute was found for this registration code.")
         if InstituteMembership.objects.filter(institute=institute, user=self.student).exists():
             raise forms.ValidationError("You already have a membership with this institute.")
+        try:
+            subscription = institute.subscription
+        except InstituteSubscription.DoesNotExist:
+            raise forms.ValidationError("This institute does not have an active subscription.")
+        if not subscription.is_currently_active:
+            raise forms.ValidationError("This institute's trial or subscription has expired.")
+        limit = subscription.plan.max_students
+        if limit is not None and InstituteMembership.objects.filter(
+            institute=institute, role=InstituteMembership.Role.STUDENT, is_active=True
+        ).count() >= limit:
+            raise forms.ValidationError("This institute has reached its student seat limit.")
         self.institute = institute
         return code
 
+    @transaction.atomic
     def save(self):
-        from institutes.models import InstituteMembership
-        return InstituteMembership.objects.create(
-            institute=self.institute,
-            user=self.student,
-            role=InstituteMembership.Role.STUDENT,
-            is_active=True,
-        )
+        from institutes.models import Institute, InstituteMembership, InstituteSubscription
+
+        institute = Institute.objects.select_for_update().get(pk=self.institute.pk)
+        try:
+            subscription = InstituteSubscription.objects.select_related("plan").get(institute=institute)
+        except InstituteSubscription.DoesNotExist:
+            raise forms.ValidationError("This institute does not have an active subscription.")
+        if institute.status != Institute.Status.APPROVED or not subscription.is_currently_active:
+            raise forms.ValidationError("This institute's trial or subscription has expired.")
+        limit = subscription.plan.max_students
+        if limit is not None and InstituteMembership.objects.filter(
+            institute=institute, role=InstituteMembership.Role.STUDENT, is_active=True
+        ).count() >= limit:
+            raise forms.ValidationError("This institute has reached its student seat limit.")
+        try:
+            return InstituteMembership.objects.create(
+                institute=institute,
+                user=self.student,
+                role=InstituteMembership.Role.STUDENT,
+                is_active=True,
+            )
+        except IntegrityError:
+            raise forms.ValidationError("You already have a membership with this institute.")
