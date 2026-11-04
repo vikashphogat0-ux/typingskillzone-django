@@ -8,4 +8,5 @@
 <label for="{{ form.username.id_for_label }}">Email address</label>{{ form.username }}{% if form.username.errors %}<div class="error">{{ form.username.errors }}</div>{% endif %}
 <label for="{{ form.password.id_for_label }}">Password</label>{{ form.password }}{% if form.password.errors %}<div class="error">{{ form.password.errors }}</div>{% endif %}
 <button type="submit">Sign in to dashboard</button></form>
+<p class="help muted"><a href="{% url 'accounts:password_reset' %}">Forgot your password?</a></p>
 <p class="help muted">New institute? <a href="{% url 'institutes:register' %}">Register your institute</a></p></main></body></html>

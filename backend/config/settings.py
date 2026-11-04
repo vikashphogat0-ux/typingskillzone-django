@@ -73,12 +73,38 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# SQLite remains the local-development default. Production must provide a shared
+# PostgreSQL database so select_for_update() can serialize seat reservations.
+DB_ENGINE = os.environ.get(
+    "DJANGO_DB_ENGINE",
+    "django.db.backends.sqlite3" if DEBUG else "django.db.backends.postgresql",
+)
+if DB_ENGINE == "django.db.backends.sqlite3":
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": os.environ.get("DJANGO_DB_NAME", str(BASE_DIR / "db.sqlite3")),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": os.environ.get("DJANGO_DB_NAME", ""),
+            "USER": os.environ.get("DJANGO_DB_USER", ""),
+            "PASSWORD": os.environ.get("DJANGO_DB_PASSWORD", ""),
+            "HOST": os.environ.get("DJANGO_DB_HOST", ""),
+            "PORT": os.environ.get("DJANGO_DB_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.environ.get("DJANGO_DB_CONN_MAX_AGE", "60")),
+            "OPTIONS": {"connect_timeout": 5},
+        }
+    }
+
+if not DEBUG and DB_ENGINE == "django.db.backends.sqlite3":
+    raise RuntimeError(
+        "SQLite is not supported for production: configure DJANGO_DB_ENGINE "
+        "and the DJANGO_DB_* PostgreSQL connection variables."
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -97,16 +123,24 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Authentication throttling uses Django's cache. Configure a shared cache backend
-# (for example, a managed Redis-compatible service) when running multiple workers.
+# Redis provides atomic INCR counters shared across all production web workers.
+# Install django-redis and configure DJANGO_CACHE_URL in production.
+DEFAULT_CACHE_BACKEND = (
+    "django_redis.cache.RedisCache"
+    if not DEBUG
+    else "django.core.cache.backends.locmem.LocMemCache"
+)
 CACHES = {
     "default": {
-        "BACKEND": os.environ.get(
-            "DJANGO_CACHE_BACKEND",
-            "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND),
+        "LOCATION": os.environ.get(
+            "DJANGO_CACHE_URL",
+            os.environ.get("DJANGO_CACHE_LOCATION", "typingskillzone-auth-throttle" if DEBUG else ""),
         ),
-        "LOCATION": os.environ.get("DJANGO_CACHE_LOCATION", "typingskillzone-auth-throttle"),
         "TIMEOUT": 900,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"}
+        if "django_redis" in os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND)
+        else {},
     }
 }
 
@@ -123,6 +157,7 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
 
@@ -133,11 +168,19 @@ LOGOUT_REDIRECT_URL = "/admin/login/"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    # Enable only when a trusted reverse proxy overwrites X-Forwarded-Proto.
+    if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", False):
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_REFERRER_POLICY = "same-origin"
-    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "0"))
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
     SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
+
+
+if not DEBUG and EMAIL_BACKEND.endswith("console.EmailBackend"):
+    raise RuntimeError("Configure a real production email backend; console email is development-only.")
+
