@@ -283,7 +283,7 @@ class SuperAdminDashboardTests(TestCase):
 class InstituteManagementTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email='manager@example.test', password='Admin-Strong-Password-2026!')
-        self.owner = User.objects.create_user(email='academy-owner@example.test', password='Owner-Strong-Password-2026!', role=User.Roles.INSTITUTE_OWNER)
+        self.owner = User.objects.create_user(email='academy-owner@example.test', password='Owner-Strong-Password-2026!', role=User.Roles.INSTITUTE_OWNER, is_email_verified=True)
         self.institute = Institute.objects.create(name='Management Test Academy', owner=self.owner, email='academy@example.test', phone='9876543210', city='Panipat', state='Haryana')
         self.client.force_login(self.admin)
 
