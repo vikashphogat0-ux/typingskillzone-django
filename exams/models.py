@@ -143,7 +143,7 @@ class ExamConfiguration(models.Model):
         elif self.backspace_policy in {
             self.BackspacePolicy.FULL, self.BackspacePolicy.WORD_ONLY,
             self.BackspacePolicy.WORD_LOCK_AFTER_SEPARATOR,
-            self.BackspacePolicy.NOT_SPECIFIED, self.BackspacePolicy.PROVISIONAL_WORD_ONLY,
+            self.BackspacePolicy.PROVISIONAL_WORD_ONLY,
         }:
             self.allow_backspace = True
         if self.minimum_wpm is not None and self.minimum_wpm < 0:
