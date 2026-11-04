@@ -35,7 +35,7 @@ class Command(BaseCommand):
     help = "Create or safely update the initial TypingSkillZone exam catalogue."
 
     def handle(self, *args, **options):
-        created = updated = 0
+        created = preserved = 0
         used_codes = set()
         seen_names = set()
         display_order = 0
@@ -64,13 +64,13 @@ class Command(BaseCommand):
                 "display_order": display_order,
             }
             defaults.update(presentation_defaults(name))
-            _, was_created = ExamConfiguration.objects.update_or_create(name=name, defaults=defaults)
+            _, was_created = ExamConfiguration.objects.get_or_create(name=name, defaults=defaults)
             created += int(was_created)
-            updated += int(not was_created)
+            preserved += int(not was_created)
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Exam catalogue ready: {created} created, {updated} refreshed, "
+                f"Exam catalogue ready: {created} created, {preserved} existing configurations preserved, "
                 f"{len(seen_names)} unique exams processed."
             )
         )
