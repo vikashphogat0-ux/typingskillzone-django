@@ -87,7 +87,8 @@ def resend_student_verification(request):
 
 @require_http_methods(["GET", "POST"])
 def verify_student_email(request, token):
-    if is_rate_limited("student-verify", request, limit=20, window=900):
+    # Do not throttle GET previews: email security scanners may open links automatically.
+    if request.method == "POST" and is_rate_limited("student-verify", request, limit=10, window=900):
         return HttpResponse("Too many verification attempts. Please try again later.", status=429)
     try:
         payload = signing.loads(token, salt=VERIFICATION_SALT, max_age=VERIFICATION_MAX_AGE)
