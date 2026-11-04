@@ -2,18 +2,20 @@ from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
 
+from accounts.admin_permissions import SuperAdminOnlyAdminMixin
+
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
 from .views import start_free_trial
 
 
-class InstituteMembershipInline(admin.TabularInline):
+class InstituteMembershipInline(SuperAdminOnlyAdminMixin, admin.TabularInline):
     model = InstituteMembership
     extra = 0
     autocomplete_fields = ("user",)
 
 
 @admin.register(Institute)
-class InstituteAdmin(admin.ModelAdmin):
+class InstituteAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = ("name", "registration_code", "owner", "email", "city", "state", "status", "created_at")
     list_filter = ("status", "state", "created_at")
     search_fields = ("name", "registration_code", "email", "phone", "owner__email", "city")
@@ -68,7 +70,7 @@ class InstituteAdmin(admin.ModelAdmin):
 
 
 @admin.register(InstituteMembership)
-class InstituteMembershipAdmin(admin.ModelAdmin):
+class InstituteMembershipAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = ("institute", "user", "role", "is_active", "joined_at")
     list_filter = ("role", "is_active", "institute")
     search_fields = ("institute__name", "user__email")
@@ -76,28 +78,8 @@ class InstituteMembershipAdmin(admin.ModelAdmin):
     autocomplete_fields = ("institute", "user")
 
 
-class SuperAdminOnlyModelAdmin(admin.ModelAdmin):
-    def _is_super_admin(self, request):
-        return (
-            request.user.is_active
-            and request.user.is_superuser
-            and getattr(request.user, "role", None) == "SUPER_ADMIN"
-        )
-
-    def has_module_permission(self, request):
-        return self._is_super_admin(request)
-
-    def has_view_permission(self, request, obj=None):
-        return self._is_super_admin(request)
-
-    def has_add_permission(self, request):
-        return self._is_super_admin(request)
-
-    def has_change_permission(self, request, obj=None):
-        return self._is_super_admin(request)
-
-    def has_delete_permission(self, request, obj=None):
-        return self._is_super_admin(request)
+class SuperAdminOnlyModelAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
+    pass
 
 
 @admin.register(SubscriptionPlan)

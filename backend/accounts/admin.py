@@ -1,11 +1,12 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from .admin_permissions import SuperAdminOnlyAdminMixin
 from .models import User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(SuperAdminOnlyAdminMixin, UserAdmin):
     ordering = ('email',)
 
     list_display = (
