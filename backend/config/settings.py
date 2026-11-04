@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "institutes",
     "exams",
     "passages",
-    "typing",
+    "typing_sessions",
     "learners",
 ]
 
