@@ -85,5 +85,17 @@ class SimulatorPassage(models.Model):
         # Unconfigured/custom layouts never silently impose a guessed transformation.
         return raw
 
+    @property
+    def rendered_paragraphs(self):
+        """Paragraph blocks for layouts that render each paragraph as a separate element."""
+        import re
+
+        raw = self.source.content.replace("\\r\\n", "\\n").replace("\\r", "\\n").strip()
+        return [
+            re.sub(r"\\s+", " ", part).strip()
+            for part in re.split(r"\\n\\s*\\n", raw)
+            if part.strip()
+        ]
+
     def __str__(self):
         return f"{self.exam.name} — Passage {self.passage_id}"
