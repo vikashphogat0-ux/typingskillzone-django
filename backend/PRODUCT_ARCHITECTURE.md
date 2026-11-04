@@ -50,10 +50,31 @@ The institute portal is not the whole product. Public visitors and independent l
 | App / domain | Responsibility |
 |---|---|
 | `accounts` | Shared identity, authentication, verification, security and account recovery |
-| `learners` (planned) | Learner profile, goals, onboarding and individual learning preferences |
+| `learners` | Learner profile, goals, onboarding and individual learning preferences |
 | `institutes` | Institute tenant, owner/staff/student memberships, institute subscription and seats |
 | `exams` | Central exam catalogue, rule versions, source provenance and verification |
 | `passages` (planned) | Passage content, language/script variants, IDs, assignment and publication |
+
+### Central passage publishing and simulator distribution
+
+- Admins create and manage passages in one **central Passage Studio**. They should not have to upload the same passage separately inside every exam simulator.
+- When publishing, the admin selects the target exam simulators. A single central source passage can be distributed to multiple selected simulators.
+- Each target simulator receives its own exam-specific published passage entry linked to the central source. The simulator identifies it by its exam name and its own passage ID.
+- The shared source text remains the source of truth. Each simulator presents it using that exam's configured passage format and verified rules (for example, continuous text, paragraph layout, font/script, spacing and other presentation requirements). Do not alter or lose the original source text while rendering an exam-specific format.
+- Distribution must respect language/script compatibility and the target simulator's configured exam rules. Do not publish a language/script into an incompatible simulator.
+- Admins can manage the central source once and see where it has been published; edits and republishing must be explicit and must not silently rewrite historical test attempts.
+
+### Passage ID standard (required)
+
+- Passage IDs are assigned **separately inside each exam simulator**, starting from `01`: `01`, `02`, `03`, …, `09`, `10`, and onward.
+- Each simulator maintains its own independent sequence. For example, Delhi Police HCM can have passage `01`, BSF HCM can also have passage `01`, and SSC CGL can also have passage `01`.
+- If one central source passage is published to three simulators, it receives a separate simulator-specific passage ID in each target simulator.
+- The sequence must not be global across all exams. It advances only within the target simulator and must not restart for a new month or a new central upload.
+- IDs are assigned automatically when a passage is first published to a simulator, are immutable, and are never reused after archive/deletion. Gaps are acceptable; duplicates and renumbering are not.
+- Keep the database primary key separate from the public simulator passage ID. Do not expose UUIDs as passage IDs.
+- Allocation must be transaction-safe so simultaneous admin uploads cannot receive the same ID in one simulator. Bulk distribution must use the same allocator as individual publishing.
+- Display and search passage IDs within their exam simulator, with the exam name shown alongside the ID wherever passages are listed outside that simulator.
+
 | `typing` (planned) | Typing session lifecycle, input capture, timer and keyboard behavior |
 | `scoring` (planned) | Versioned scoring algorithms, error classification, WPM and qualification |
 | `learning` (planned) | Lessons, drills, curriculum, personal goals and learning progress |
@@ -128,4 +149,4 @@ Build the shared engine before either portal is allowed to fork its own behavior
 
 ## Current implementation status
 
-The current Django repository already has shared accounts and institute management. The Phase C branch introduces the central exam catalogue. The `learners`, `passages`, `typing`, `scoring`, `learning`, `assignments`, `results`, `billing`, `notifications` and `audit` domains above are architectural boundaries and planned work, not claims that those applications are already implemented.
+The current Django repository has shared accounts and institute management, the central exam catalogue, and the initial learner profile domain. The `passages`, `typing`, `scoring`, `learning`, `assignments`, `results`, `billing`, `notifications` and `audit` domains remain planned work, not claims that those applications are already implemented.
