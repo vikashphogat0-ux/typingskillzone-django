@@ -1,0 +1,11 @@
+{% extends "passages/base.html" %}
+{% block title %}{{ exam.name }} · Passage {{ passage.passage_id }} | TypingSkillZone{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'passages:simulator-list' exam.code %}">← Back to {{ exam.name }} passages</a>
+<section class="panel">
+  <div class="eyebrow">{{ exam.name }} · Passage {{ passage.passage_id }}</div>
+  <h1>{{ passage.source.title }}</h1>
+  <p>{{ passage.source.language }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %} · {{ exam.get_passage_format_display }}</p>
+  <article class="passage">{{ passage.rendered_content }}</article>
+</section>
+{% endblock %}
