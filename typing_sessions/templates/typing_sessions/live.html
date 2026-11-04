@@ -55,9 +55,12 @@
   function blockDeletion(event, backward) {
     if (backward && backspacePolicy === "DISABLED") { event.preventDefault(); return; }
     if (!backward && rules.allow_delete === false) { event.preventDefault(); return; }
-    if ((backspacePolicy === "WORD_ONLY" || backspacePolicy === "PROVISIONAL_WORD_ONLY") &&
-        backward && input.selectionStart === input.selectionEnd &&
-        input.selectionStart <= currentWordStart(input.selectionStart)) event.preventDefault();
+    if (backspacePolicy === "WORD_ONLY" || backspacePolicy === "PROVISIONAL_WORD_ONLY") {
+      const wordStart = currentWordStart(input.selectionEnd);
+      if (input.selectionStart < wordStart ||
+          (backward && input.selectionStart === input.selectionEnd &&
+           input.selectionStart <= wordStart)) event.preventDefault();
+    }
     if (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   }
   input.addEventListener("keydown", event => {
