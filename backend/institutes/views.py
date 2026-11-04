@@ -2,7 +2,9 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -80,6 +82,27 @@ def subscription_limit_reached(institute, role):
     ).count()
     return current >= limit
 
+
+
+def create_membership_within_limits(institute, form, role):
+    """Recheck subscription and seat capacity inside the membership write transaction."""
+    with transaction.atomic():
+        locked_institute = Institute.objects.select_for_update().get(pk=institute.pk)
+        if locked_institute.status != Institute.Status.APPROVED:
+            raise ValidationError("This institute is not approved.")
+        subscription = active_subscription_for(locked_institute)
+        if subscription is None:
+            raise ValidationError("This institute's trial or subscription has expired.")
+        limit = (
+            subscription.plan.max_students
+            if role == InstituteMembership.Role.STUDENT
+            else subscription.plan.max_staff
+        )
+        if limit is not None and InstituteMembership.objects.filter(
+            institute=locked_institute, role=role, is_active=True
+        ).count() >= limit:
+            raise ValidationError("The seat limit for this membership type has been reached.")
+        return form.save()
 
 
 def is_super_admin(user):
@@ -207,12 +230,11 @@ def owner_member_add(request, institute_id):
             if form.cleaned_data["role"] == User.Roles.STUDENT
             else InstituteMembership.Role.STAFF
         )
-        if active_subscription_for(institute) is None:
-            form.add_error(None, "This institute's trial or subscription has expired. Contact the platform administrator.")
-        elif subscription_limit_reached(institute, requested_role):
-            form.add_error(None, "The seat limit for this membership type has been reached. Upgrade the subscription to add more members.")
+        try:
+            membership = create_membership_within_limits(institute, form, requested_role)
+        except (ValidationError, IntegrityError) as error:
+            form.add_error(None, error)
         else:
-            membership = form.save()
             messages.success(request, f"{membership.user.email} was added to {institute.name}.")
             return redirect("institutes:owner_member_list", institute_id=institute.pk)
     return render(request, "institutes/owner_member_add.html", {
