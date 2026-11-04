@@ -152,6 +152,7 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
 
@@ -177,5 +178,4 @@ if not DEBUG:
 
 if not DEBUG and EMAIL_BACKEND.endswith("console.EmailBackend"):
     raise RuntimeError("Configure a real production email backend; console email is development-only.")
-if not DEBUG and not DEFAULT_FROM_EMAIL:
-    raise RuntimeError("DEFAULT_FROM_EMAIL must be configured in production.")
+
