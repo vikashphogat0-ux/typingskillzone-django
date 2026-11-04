@@ -95,14 +95,11 @@ class SimulatorPassage(models.Model):
 
     @property
     def rendered_paragraphs(self):
-        """Paragraph blocks for layouts that render each paragraph as a separate element."""
-        import re
-
-        raw = self.source.content.replace("\\r\\n", "\\n").replace("\\r", "\\n").strip()
+        """Return normalized paragraph blocks for paragraph-based simulator templates."""
         return [
-            re.sub(r"\\s+", " ", part).strip()
-            for part in re.split(r"\\n\\s*\\n", raw)
-            if part.strip()
+            paragraph.strip()
+            for paragraph in self.rendered_content.split("\n\n")
+            if paragraph.strip()
         ]
 
     def __str__(self):
