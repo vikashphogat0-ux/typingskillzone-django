@@ -157,6 +157,36 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["error_count"], 1)
         self.assertEqual(result["error_count_method"], "word")
 
+    def test_correct_words_scoring_mode_uses_only_matched_words(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world",
+            typed="hello wurld",
+            duration_seconds=60,
+            rules={"scoring_mode": "CORRECT_WORDS"},
+        )
+        self.assertEqual(result["correct_words"], 1)
+        self.assertEqual(result["gross_words"], 2)
+        self.assertEqual(result["net_wpm"], 1.0)
+
+    def test_stroke_penalty_mode_uses_admin_configured_penalty(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world",
+            typed="hello wurld",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "STROKE_PENALTY",
+                "strokes_per_word": 5,
+                "mistake_penalty_strokes": 5,
+                "error_rules": {"count_word_errors": True},
+            },
+        )
+        self.assertEqual(result["error_count"], 1)
+        self.assertEqual(result["net_wpm"], 1.2)
+
     def test_unverified_exam_never_receives_qualification_claim(self):
         from .scoring import calculate_result
 
