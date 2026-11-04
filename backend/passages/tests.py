@@ -10,7 +10,7 @@ User = get_user_model()
 
 
 class CentralPassagePublishingTests(TestCase):
-    def make_exam(self, code, name, language="ENGLISH", passage_format="PARAGRAPHS", script="LATIN"):
+    def make_exam(self, code, name, language="ENGLISH", passage_format="CUSTOM", script="LATIN"):
         return ExamConfiguration.objects.create(
             code=code,
             name=name,
