@@ -53,8 +53,14 @@ class ExamConfiguration(models.Model):
     class Meta:
         ordering = ("category", "display_order", "name")
         indexes = [
-            models.Index(fields=("category", "is_active")),
-            models.Index(fields=("verification_status", "is_active")),
+            models.Index(
+                fields=("category", "is_active"),
+                name="exams_exam_categor_2c4b13_idx",
+            ),
+            models.Index(
+                fields=("verification_status", "is_active"),
+                name="exams_exam_verifi_12a4ab_idx",
+            ),
         ]
 
     def clean(self):
