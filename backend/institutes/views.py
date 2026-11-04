@@ -106,11 +106,22 @@ def create_membership_within_limits(institute, form, role):
 
 
 def is_super_admin(user):
-    return user.is_authenticated and user.is_superuser and user.role == User.Roles.SUPER_ADMIN
+    return (
+        user.is_authenticated
+        and user.is_active
+        and user.is_staff
+        and user.is_superuser
+        and user.role == User.Roles.SUPER_ADMIN
+    )
 
 
 def is_institute_owner(user):
-    return user.is_authenticated and user.is_active and user.role == User.Roles.INSTITUTE_OWNER
+    return (
+        user.is_authenticated
+        and user.is_active
+        and user.is_email_verified
+        and user.role == User.Roles.INSTITUTE_OWNER
+    )
 
 
 def owner_login(request):
