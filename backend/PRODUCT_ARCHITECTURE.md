@@ -53,14 +53,14 @@ The institute portal is not the whole product. Public visitors and independent l
 | `learners` | Learner profile, goals, onboarding and individual learning preferences |
 | `institutes` | Institute tenant, owner/staff/student memberships, institute subscription and seats |
 | `exams` | Central exam catalogue, rule versions, source provenance and verification |
-| `passages` (planned) | Passage content, language/script variants, IDs, assignment and publication |
+| `passages` | Central source passage management, exam-specific publications, independent simulator serials and passage browsing |
 
 ### Central passage publishing and simulator distribution
 
 - Admins create and manage passages in one **central Passage Studio**. They should not have to upload the same passage separately inside every exam simulator.
 - When publishing, the admin selects the target exam simulators. A single central source passage can be distributed to multiple selected simulators.
 - Each target simulator receives its own exam-specific published passage entry linked to the central source. The simulator identifies it by its exam name and its own passage ID.
-- The shared source text remains the source of truth. Each simulator presents it using that exam's configured passage format and verified rules (for example, continuous text, paragraph layout, font/script, spacing and other presentation requirements). Do not alter or lose the original source text while rendering an exam-specific format.
+- The shared source text remains the source of truth. Each simulator presents it using that exam's independent passage-presentation profile (layout, font/script, size, line height, paragraph spacing, alignment, indentation and tab behavior). Profiles without sufficient reference evidence remain Pending format verification and preserve the original text. Do not alter or lose the original source text while rendering an exam-specific format. Presentation-reference review is separate from official exam-rule verification.
 - Distribution must respect language/script compatibility and the target simulator's configured exam rules. Do not publish a language/script into an incompatible simulator.
 - Admins can manage the central source once and see where it has been published; edits and republishing must be explicit and must not silently rewrite historical test attempts.
 
