@@ -149,6 +149,7 @@ class SuperAdminDashboardTests(TestCase):
             email="owner@example.test",
             password="Owner-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.institute = Institute.objects.create(
             name="Dashboard Test Academy",
@@ -331,6 +332,7 @@ class InstituteOwnerPortalTests(TestCase):
             password="Owner-Strong-Password-2026!",
             first_name="Portal Owner",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.admin = User.objects.create_superuser(
             email="portal-admin@example.test",
@@ -404,6 +406,7 @@ class InstituteOwnerPortalTests(TestCase):
             email="other-owner@example.test",
             password="Other-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         Institute.objects.create(
             name="Another Academy",
@@ -430,11 +433,13 @@ class InstituteOwnerMemberManagementTests(TestCase):
             email="members-owner@example.test",
             password="Owner-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.other_owner = User.objects.create_user(
             email="members-other-owner@example.test",
             password="Other-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.institute = Institute.objects.create(
             name="Member Management Academy",
@@ -615,6 +620,7 @@ class StudentAndStaffPortalTests(TestCase):
             email="portal-institute-owner@example.test",
             password="Owner-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.admin = User.objects.create_superuser(
             email="portal-superadmin@example.test",
@@ -726,6 +732,7 @@ class StudentAndStaffPortalTests(TestCase):
             email="portal-other-owner@example.test",
             password="Other-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         other_institute = Institute.objects.create(
             name="Private Other Academy",
@@ -776,6 +783,7 @@ class InstituteSubscriptionManagementTests(TestCase):
             email="subscription-owner@example.test",
             password="Owner-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.institute = Institute.objects.create(
             name="Subscription Academy",
@@ -885,6 +893,7 @@ class InstituteTrialEnforcementTests(TestCase):
             email="trial-owner@example.test",
             password="Owner-Strong-Password-2026!",
             role=User.Roles.INSTITUTE_OWNER,
+            is_email_verified=True,
         )
         self.institute = Institute.objects.create(
             name="Newly Approved Trial Academy",
