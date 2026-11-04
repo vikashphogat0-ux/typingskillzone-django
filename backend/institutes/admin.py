@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.admin_permissions import SuperAdminOnlyAdminMixin
+from accounts.admin_permissions import SuperAdminOnlyAdminMixin, is_platform_super_admin
 
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
 from .views import start_free_trial
@@ -26,7 +26,7 @@ class InstituteAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super().get_actions(request)
-        if not request.user.is_superuser:
+        if not is_platform_super_admin(request):
             for action_name in self.actions:
                 actions.pop(action_name, None)
         return actions
