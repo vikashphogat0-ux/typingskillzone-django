@@ -48,6 +48,7 @@ class User(AbstractUser):
     )
     phone = models.CharField(max_length=20, blank=True)
     is_email_verified = models.BooleanField(default=False)
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
