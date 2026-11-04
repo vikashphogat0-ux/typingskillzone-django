@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core import signing
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -150,12 +151,8 @@ def enroll_institute(request):
     if request.method == "POST" and form.is_valid():
         try:
             membership = form.save()
-        except Exception as error:
-            from django.db import IntegrityError
-            if isinstance(error, IntegrityError):
-                form.add_error("registration_code", "You already have a membership with this institute.")
-            else:
-                raise
+        except ValidationError as error:
+            form.add_error("registration_code", error)
         else:
             messages.success(request, f"You are now enrolled at {membership.institute.name}.")
             return redirect("institutes:student_dashboard")
