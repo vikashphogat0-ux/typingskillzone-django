@@ -14,6 +14,7 @@ from accounts.models import User
 from accounts.security import is_rate_limited
 from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegistrationForm
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
+from .owner_verification import send_owner_verification_email
 
 
 TRIAL_PLAN_CODE = "free-trial"
@@ -139,6 +140,8 @@ def owner_login(request):
         user = form.get_user()
         if user.role != User.Roles.INSTITUTE_OWNER:
             form.add_error(None, "This login portal is only for institute owner accounts.")
+        elif not user.is_email_verified:
+            form.add_error(None, "Please verify your email address before signing in.")
         else:
             login(request, user)
             return redirect("institutes:owner_dashboard")
@@ -472,10 +475,18 @@ def institute_register(request):
     if request.user.is_authenticated:
         messages.info(request, "Please log out before registering a new institute.")
         return redirect("admin:index")
+    if request.method == "POST" and is_rate_limited("institute-register", request, limit=5, window=3600):
+        return HttpResponseForbidden("Too many registration attempts. Please try again later.")
     if request.method == "POST":
         form = InstituteRegistrationForm(request.POST)
         if form.is_valid():
             institute = form.save()
+            try:
+                send_owner_verification_email(request, institute.owner)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception("Unable to send owner verification email for user %s", institute.owner_id)
+                messages.warning(request, "Registration was saved, but the verification email could not be sent. Use the resend option below.")
             return render(request, "institutes/registration_success.html", {"institute": institute})
     else:
         form = InstituteRegistrationForm()
