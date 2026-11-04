@@ -88,6 +88,19 @@ class TypingSessionTests(TestCase):
 
 
 class TypingScoringTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.learner = User.objects.create_user(email="scoring@example.com", password="SafePassword123!")
+        self.exam = ExamConfiguration.objects.create(
+            code="scoring-exam", name="Scoring Exam", language="ENGLISH", script="LATIN",
+            duration_seconds=600, allow_backspace=True,
+        )
+        self.source = PassageSource.objects.create(
+            title="Scoring sample", content="hello world", language="ENGLISH",
+            script="LATIN", status=PassageSource.Status.PUBLISHED,
+        )
+        self.publication = publish_source_to_exam(self.source, self.exam)
+
     def test_character_level_substitution_insertion_and_deletion(self):
         from .scoring import calculate_result
 
