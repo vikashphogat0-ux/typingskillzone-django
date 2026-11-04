@@ -110,8 +110,10 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             role=User.Roles.STUDENT,
             is_active=False,
         )
+        student.email_verification_sent_at = timezone.now()
+        student.save(update_fields=["email_verification_sent_at"])
         token = signing.dumps(
-            {"user_id": student.pk},
+            {"user_id": student.pk, "issued_at": student.email_verification_sent_at.isoformat()},
             salt="typingskillzone.student.email-verification",
         )
         response = self.client.get(
@@ -131,8 +133,10 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             role=User.Roles.STUDENT,
             is_active=False,
         )
+        student.email_verification_sent_at = timezone.now()
+        student.save(update_fields=["email_verification_sent_at"])
         token = signing.dumps(
-            {"user_id": student.pk},
+            {"user_id": student.pk, "issued_at": student.email_verification_sent_at.isoformat()},
             salt="typingskillzone.student.email-verification",
         )
         response = self.client.post(
@@ -231,3 +235,90 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
         enroll = self.client.get(reverse("accounts:enroll_institute"))
         self.assertEqual(profile.status_code, 403)
         self.assertEqual(enroll.status_code, 403)
+
+
+    def test_student_self_enrollment_rejects_expired_subscription(self):
+        self.institute.subscription.ends_at = timezone.now() - timedelta(seconds=1)
+        self.institute.subscription.save(update_fields=["ends_at", "updated_at"])
+        student = User.objects.create_user(
+            email="expired-self-enroll@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.client.force_login(student)
+        response = self.client.post(
+            reverse("accounts:enroll_institute"),
+            {"registration_code": self.institute.registration_code},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("registration_code", response.context["form"].errors)
+        self.assertFalse(InstituteMembership.objects.filter(institute=self.institute, user=student).exists())
+
+    def test_student_self_enrollment_rejects_full_student_seats(self):
+        students = [
+            User.objects.create_user(
+                email=f"self-enroll-seat-{index}@example.test",
+                password="Student-Strong-Password-2026!",
+                role=User.Roles.STUDENT,
+            )
+            for index in range(25)
+        ]
+        InstituteMembership.objects.bulk_create([
+            InstituteMembership(
+                institute=self.institute,
+                user=student,
+                role=InstituteMembership.Role.STUDENT,
+                is_active=True,
+            )
+            for student in students
+        ])
+        extra = User.objects.create_user(
+            email="self-enroll-over-limit@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.client.force_login(extra)
+        response = self.client.post(
+            reverse("accounts:enroll_institute"),
+            {"registration_code": self.institute.registration_code},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("registration_code", response.context["form"].errors)
+        self.assertFalse(InstituteMembership.objects.filter(institute=self.institute, user=extra).exists())
+
+    def test_verification_token_cannot_be_replayed_after_success(self):
+        student = User.objects.create_user(
+            email="replay-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+            is_active=False,
+        )
+        student.email_verification_sent_at = timezone.now()
+        student.save(update_fields=["email_verification_sent_at"])
+        token = signing.dumps(
+            {"user_id": student.pk, "issued_at": student.email_verification_sent_at.isoformat()},
+            salt="typingskillzone.student.email-verification",
+        )
+        first = self.client.post(reverse("accounts:verify_email", kwargs={"token": token}))
+        self.assertEqual(first.status_code, 200)
+        replay_client = self.client_class()
+        replay = replay_client.post(reverse("accounts:verify_email", kwargs={"token": token}))
+        self.assertEqual(replay.status_code, 400)
+        self.assertNotIn("_auth_user_id", replay_client.session)
+
+    def test_resend_verification_sends_new_link_without_revealing_account_existence(self):
+        student = User.objects.create_user(
+            email="resend-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+            is_active=False,
+            is_email_verified=False,
+        )
+        response = self.client.post(
+            reverse("accounts:resend_verification"),
+            {"email": student.email},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        student.refresh_from_db()
+        self.assertIsNotNone(student.email_verification_sent_at)
