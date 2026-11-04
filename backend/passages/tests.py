@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 
 from exams.models import ExamConfiguration
 from .models import PassageSource, SimulatorPassage
@@ -72,6 +73,17 @@ class CentralPassagePublishingTests(TestCase):
         source.refresh_from_db()
         self.assertEqual(source.content, "First paragraph.\n\nSecond paragraph.")
 
+    def test_archived_publication_keeps_its_id_and_next_id_advances(self):
+        source_a = self.make_source(title="A")
+        source_b = self.make_source(title="B")
+        exam = self.make_exam("archive-test", "Archive Test")
+        first = publish_source_to_exam(source_a, exam)
+        first.status = SimulatorPassage.Status.ARCHIVED
+        first.save(update_fields=("status",))
+        second = publish_source_to_exam(source_b, exam)
+        self.assertEqual(first.passage_id, "01")
+        self.assertEqual(second.passage_id, "02")
+
     def test_bulk_distribution_uses_same_allocator(self):
         source = self.make_source()
         first = self.make_exam("exam-one", "Exam One")
@@ -79,4 +91,20 @@ class CentralPassagePublishingTests(TestCase):
         source.target_exams.add(first, second)
         published = publish_source_to_selected_exams(source)
         self.assertEqual([item.passage_id for item in published], ["01", "01"])
+
+    def test_simulator_passage_pages_require_login(self):
+        exam = self.make_exam("delhi-police-hcm", "Delhi Police HCM")
+        response = self.client.get(reverse("passages:simulator-list", args=[exam.code]))
+        self.assertEqual(response.status_code, 302)
+
+    def test_simulator_passage_list_shows_exam_local_serial(self):
+        user = User.objects.create_user(email="learner@example.com", password="SafePass!234")
+        self.client.force_login(user)
+        source = self.make_source()
+        exam = self.make_exam("delhi-police-hcm", "Delhi Police HCM")
+        publish_source_to_exam(source, exam)
+        response = self.client.get(reverse("passages:simulator-list", args=[exam.code]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "01")
+        self.assertContains(response, "Central source")
 
