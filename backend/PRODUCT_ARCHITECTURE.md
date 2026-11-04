@@ -50,7 +50,7 @@ The institute portal is not the whole product. Public visitors and independent l
 | App / domain | Responsibility |
 |---|---|
 | `accounts` | Shared identity, authentication, verification, security and account recovery |
-| `learners` (planned) | Learner profile, goals, onboarding and individual learning preferences |
+| `learners` | Learner profile, goals, onboarding and individual learning preferences |
 | `institutes` | Institute tenant, owner/staff/student memberships, institute subscription and seats |
 | `exams` | Central exam catalogue, rule versions, source provenance and verification |
 | `passages` (planned) | Passage content, language/script variants, IDs, assignment and publication |
@@ -128,4 +128,4 @@ Build the shared engine before either portal is allowed to fork its own behavior
 
 ## Current implementation status
 
-The current Django repository already has shared accounts and institute management. The Phase C branch introduces the central exam catalogue. The `learners`, `passages`, `typing`, `scoring`, `learning`, `assignments`, `results`, `billing`, `notifications` and `audit` domains above are architectural boundaries and planned work, not claims that those applications are already implemented.
+The current Django repository has shared accounts and institute management, the central exam catalogue, and the initial learner profile domain. The `passages`, `typing`, `scoring`, `learning`, `assignments`, `results`, `billing`, `notifications` and `audit` domains remain planned work, not claims that those applications are already implemented.
