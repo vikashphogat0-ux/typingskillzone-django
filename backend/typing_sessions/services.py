@@ -7,6 +7,7 @@ from django.utils import timezone
 from passages.models import SimulatorPassage, PassageSource
 
 from .models import TypingSession
+from .scoring import SCORING_VERSION, calculate_result
 
 
 @transaction.atomic
@@ -36,6 +37,13 @@ def start_session(*, learner, publication):
         "scoring_rules": exam.scoring_rules,
         "qualification_rules": exam.qualification_rules,
         "passage_layout": exam.passage_layout,
+        "passage_format": exam.passage_format,
+        "passage_font_family": exam.passage_font_family,
+        "passage_font_size_pt": exam.passage_font_size_pt,
+        "passage_line_height": str(exam.passage_line_height),
+        "passage_alignment": exam.passage_alignment,
+        "passage_preserve_tabs": exam.passage_preserve_tabs,
+        "passage_tab_size": exam.passage_tab_size,
     }
     return TypingSession.objects.create(
         learner=learner,
@@ -50,25 +58,48 @@ def start_session(*, learner, publication):
 
 @transaction.atomic
 def submit_session(*, session_id, learner, typed_text):
-    if not learner or not learner.is_authenticated:
-        raise PermissionDenied("Authentication required.")
-    session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
+    if not learner or not learner.is_authenticated or not learner.is_active:
+        raise PermissionDenied("An active account is required.")
+    session = TypingSession.objects.select_for_update().select_related("publication").get(
+        pk=session_id, learner=learner
+    )
     if session.state != TypingSession.State.ACTIVE:
         raise ValidationError("This session has already ended.")
     if not isinstance(typed_text, str):
         raise ValidationError("Typed text must be a string.")
     if len(typed_text) > 100000:
         raise ValidationError("Submission exceeds the allowed size.")
+
     now = timezone.now()
-    session.state = TypingSession.State.EXPIRED if session.deadline_at and now >= session.deadline_at else TypingSession.State.SUBMITTED
+    expired = bool(session.deadline_at and now >= session.deadline_at)
+    effective_end = min(now, session.deadline_at) if session.deadline_at else now
+    elapsed = max(1, int((effective_end - session.started_at).total_seconds()))
+    if session.duration_seconds:
+        elapsed = min(elapsed, session.duration_seconds)
+
+    # An expired attempt is scored only from text received by this endpoint; the
+    # browser's countdown or claimed completion time is never accepted.
+    result = calculate_result(
+        reference=session.reference_text,
+        typed=typed_text,
+        duration_seconds=elapsed,
+        rules=session.rules_snapshot,
+    )
+    session.state = TypingSession.State.EXPIRED if expired else TypingSession.State.SUBMITTED
     session.submitted_text = typed_text
     session.completed_at = now
-    session.save(update_fields=("state", "submitted_text", "completed_at"))
+    session.scoring_version = SCORING_VERSION
+    session.result_snapshot = result
+    session.save(update_fields=(
+        "state", "submitted_text", "completed_at", "scoring_version", "result_snapshot"
+    ))
     return session
 
 
 @transaction.atomic
 def expire_session(*, session_id, learner):
+    if not learner or not learner.is_authenticated or not learner.is_active:
+        raise PermissionDenied("An active account is required.")
     session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
     if session.state != TypingSession.State.ACTIVE:
         return session

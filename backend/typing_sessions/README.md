@@ -1,15 +1,22 @@
-# Phase F — shared typing session foundation
+# Shared typing-test engine
 
-One learner-owned typing session service for individual learners and institute members.
+The app provides one learner-owned typing engine for individual learners and institute members. Institute visibility is not inferred; authorized assignment/reporting access must be implemented explicitly.
 
-- Start only against an active published source and active simulator publication.
-- Snapshot reference text, timer, input permissions and exam-rule provenance at start.
-- Persist an absolute server-side deadline; never trust a browser timer for expiry.
-- Submit once with row locking; repeated submissions are rejected.
-- Keep attempts private to their learner. Institute assignment and reporting authorization are future explicit domains.
-- Never calculate or claim an official qualification result from unverified exam rules.
-- Scoring version and result snapshot are reserved for the future versioned scoring engine.
-- No payment/seat logic and no mutation of source passages.
-- This phase does **not** implement a browser typing interface, event-stream capture, pause, or verified scoring.
+## Current capabilities
+- Start an attempt from a published simulator passage; snapshot passage text and exam input/presentation rules.
+- Server-side absolute deadline; refresh does not reset the deadline.
+- Live browser interface with countdown, estimated live WPM/accuracy, keyboard restrictions, and automatic submission at timeout.
+- Server-side character alignment, substitutions, insertions, deletions, word error count, accuracy, gross WPM, correct WPM and configurable net-WPM penalty.
+- Persist one immutable result snapshot and scoring version; duplicate submissions are rejected under a row lock.
+- Qualification is deliberately not inferred. Unverified rules never produce an official pass/fail claim.
 
-Run: `python manage.py test typing_sessions`.
+## Important limitations requiring rule verification
+- The browser countdown and live metrics are convenience displays; the server deadline and server score are authoritative.
+- Backspace, arrow, Enter and Tab restrictions are client-side input controls and must be tested against each exam's verified interface requirements. A hostile client can bypass browser controls; the server can validate final text and deadline but cannot reconstruct physical keystrokes from a plain textarea submission.
+- Pause/resume is not enabled by this implementation. Do not assume it is permitted by an exam.
+- Word-level error mode and WPM penalty are activated only through explicit `error_rules` configuration.
+- The scoring algorithm is a versioned general practice metric, not a claim that it matches every exam's official marking scheme.
+- The live page currently uses a textarea-based input surface; exam-specific rich Enter/Tab navigation and event-stream integrity need a further implementation phase.
+
+## Run tests
+`python manage.py test typing_sessions`

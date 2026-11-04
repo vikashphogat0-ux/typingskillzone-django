@@ -85,3 +85,61 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.rules_snapshot["verification_status"], "UNVERIFIED")
         self.assertEqual(attempt.result_snapshot, {})
         self.assertEqual(attempt.scoring_version, "")
+
+
+class TypingScoringTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.learner = User.objects.create_user(email="scoring@example.com", password="SafePassword123!")
+        self.exam = ExamConfiguration.objects.create(
+            code="scoring-exam", name="Scoring Exam", language="ENGLISH", script="LATIN",
+            duration_seconds=600, allow_backspace=True,
+        )
+        self.source = PassageSource.objects.create(
+            title="Scoring sample", content="hello world", language="ENGLISH",
+            script="LATIN", status=PassageSource.Status.PUBLISHED,
+        )
+        self.publication = publish_source_to_exam(self.source, self.exam)
+
+    def test_character_level_substitution_insertion_and_deletion(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="abcd", typed="abXd", duration_seconds=60, rules={}
+        )
+        self.assertEqual(result["correct_characters"], 3)
+        self.assertEqual(result["substitution_errors"], 1)
+        self.assertEqual(result["character_errors"], 1)
+        self.assertEqual(result["accuracy_percent"], 75.0)
+
+    def test_word_error_mode_counts_a_misspelled_word_once(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="the quick brown fox",
+            typed="the quik brown fox",
+            duration_seconds=60,
+            rules={"error_rules": {"count_word_errors": True}},
+        )
+        self.assertEqual(result["word_errors"], 1)
+        self.assertEqual(result["error_count"], 1)
+        self.assertEqual(result["error_count_method"], "word")
+
+    def test_unverified_exam_never_receives_qualification_claim(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world", typed="hello world", duration_seconds=60,
+            rules={"verification_status": "UNVERIFIED"},
+        )
+        self.assertIsNone(result["qualification"])
+        self.assertIn("not verified", result["qualification_note"])
+
+    def test_completed_session_persists_server_score(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        result = submit_session(
+            session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text
+        )
+        self.assertEqual(result.scoring_version, "tsz-char-word-v1")
+        self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
+        self.assertEqual(result.result_snapshot["character_errors"], 0)

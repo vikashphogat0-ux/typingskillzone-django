@@ -1,0 +1,70 @@
+{% extends "passages/base.html" %}
+{% block title %}Typing Test · {{ attempt.rules_snapshot.exam_name }} | TypingSkillZone{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</div>
+  <h1>Typing test</h1>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0;">
+    <div class="item"><strong id="countdown">--:--</strong><div class="muted">Time remaining</div></div>
+    <div class="item"><strong id="live-wpm">0</strong><div class="muted">Live WPM (estimate)</div></div>
+    <div class="item"><strong id="live-accuracy">100%</strong><div class="muted">Live accuracy (estimate)</div></div>
+  </div>
+  {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="muted">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
+  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">{{ attempt.reference_text }}</article>
+  <form id="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
+    {% csrf_token %}
+    <label for="typed-text"><strong>Type the passage below</strong></label>
+    <textarea id="typed-text" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:.75rem;font:16px/1.6 monospace;" autofocus></textarea>
+    <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;"><button id="finish-button" type="submit" class="button">Finish test</button><span class="muted">The server validates the deadline and calculates the final score.</span></div>
+  </form>
+</section>
+{{ attempt.rules_snapshot|json_script:"typing-rules" }}
+<script>
+(() => {
+  const rules = JSON.parse(document.getElementById("typing-rules").textContent);
+  const input = document.getElementById("typed-text");
+  const form = document.getElementById("typing-form");
+  const reference = document.getElementById("reference").innerText;
+  const countdown = document.getElementById("countdown");
+  const startedAt = Date.now();
+  const deadline = new Date("{{ attempt.deadline_at|date:'c' }}").getTime();
+  let submitting = false;
+  const allowBackspace = rules.allow_backspace !== false;
+  const allowArrows = rules.allow_arrow_navigation !== false;
+  const layout = rules.passage_layout || "UNCONFIGURED";
+  const allowEnter = ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
+  const allowTab = layout === "PARA_TAB" || rules.passage_preserve_tabs === true;
+  input.addEventListener("keydown", event => {
+    if (!allowBackspace && event.key === "Backspace") event.preventDefault();
+    if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
+    if (!allowEnter && event.key === "Enter") event.preventDefault();
+    if (event.key === "Tab") {
+      event.preventDefault();
+      if (allowTab) {
+        const start=input.selectionStart, end=input.selectionEnd;
+        const tab=rules.passage_preserve_tabs ? "\t" : " ".repeat(Math.max(1,Number(rules.passage_tab_size||4)));
+        input.setRangeText(tab,start,end,"end");
+        input.dispatchEvent(new Event("input",{bubbles:true}));
+      }
+    }
+  });
+  function updateStats() {
+    const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
+    document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
+    let correct=0;
+    for(let i=0;i<Math.min(typed.length,reference.length);i++) if(typed[i]===reference[i]) correct++;
+    document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/typed.length*100):100)+"%";
+  }
+  input.addEventListener("input",updateStats);
+  function tick() {
+    if(submitting)return;
+    if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
+    const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+    countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
+    if(remaining<=0){submitting=true;input.readOnly=true;form.submit();}
+  }
+  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("finish-button").disabled=true;});
+  tick(); window.setInterval(tick,250); input.focus();
+})();
+</script>
+{% endblock %}
