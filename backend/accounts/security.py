@@ -1,8 +1,4 @@
-"""Small cache-backed throttling helpers for public authentication endpoints.
-
-Production deployments with multiple workers should configure a shared Django cache.
-The default local-memory cache is suitable for development and single-process deployments only.
-"""
+"""Cache-backed, atomic throttling for public authentication endpoints."""
 import hashlib
 
 from django.core.cache import cache
@@ -20,19 +16,19 @@ def rate_limit_key(scope, request, identity=""):
 
 
 def is_rate_limited(scope, request, *, identity="", limit=5, window=900):
+    """Atomically count attempts; fail closed if the shared cache is unavailable."""
     key = rate_limit_key(scope, request, identity)
     try:
-        count = cache.get(key)
-        if count is None:
-            cache.add(key, 1, timeout=window)
+        if cache.add(key, 1, timeout=window):
             return False
-        if count >= limit:
-            return True
         try:
-            cache.incr(key)
+            count = cache.incr(key)
         except ValueError:
-            cache.set(key, count + 1, timeout=window)
-        return False
+            # The key expired between add() and incr(). Recreate it safely.
+            if cache.add(key, 1, timeout=window):
+                return False
+            count = cache.incr(key)
+        return count > limit
     except Exception:
         # Fail closed for authentication abuse controls if cache is unavailable.
         return True
