@@ -10,14 +10,25 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created = updated = 0
         used_codes = set()
-        for index, name in enumerate(EXAM_NAMES, start=1):
-            base = slugify(name)[:165].strip("-") or f"exam-{index}"
+        seen_names = set()
+        display_order = 0
+
+        for name in EXAM_NAMES:
+            # The source catalogue contains a few repeated labels. Keep the
+            # first occurrence so reruns never change an existing exam code.
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            display_order += 1
+
+            base = slugify(name)[:165].strip("-") or f"exam-{display_order}"
             code = base
             suffix = 2
             while code in used_codes:
                 code = f"{base[:170-len(str(suffix))]}-{suffix}"
                 suffix += 1
             used_codes.add(code)
+
             category, language, script, interface = infer_metadata(name)
             _, was_created = ExamConfiguration.objects.update_or_create(
                 name=name,
@@ -27,9 +38,15 @@ class Command(BaseCommand):
                     "language": language,
                     "script": script,
                     "interface_type": interface,
-                    "display_order": index,
+                    "display_order": display_order,
                 },
             )
             created += int(was_created)
             updated += int(not was_created)
-        self.stdout.write(self.style.SUCCESS(f"Exam catalogue ready: {created} created, {updated} refreshed, {len(EXAM_NAMES)} listed."))
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Exam catalogue ready: {created} created, {updated} refreshed, "
+                f"{len(seen_names)} unique exams processed."
+            )
+        )
