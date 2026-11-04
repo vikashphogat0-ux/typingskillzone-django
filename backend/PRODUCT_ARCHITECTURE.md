@@ -53,7 +53,7 @@ The institute portal is not the whole product. Public visitors and independent l
 | `learners` | Learner profile, goals, onboarding and individual learning preferences |
 | `institutes` | Institute tenant, owner/staff/student memberships, institute subscription and seats |
 | `exams` | Central exam catalogue, rule versions, source provenance and verification |
-| `passages` (planned) | Passage content, language/script variants, IDs, assignment and publication |
+| `passages` | Central source passage management, exam-specific publications, independent simulator serials and passage browsing |
 
 ### Central passage publishing and simulator distribution
 
