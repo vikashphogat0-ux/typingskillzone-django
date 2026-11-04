@@ -5,15 +5,17 @@ from .models import ExamConfiguration
 
 @admin.register(ExamConfiguration)
 class ExamConfigurationAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("name", "code", "category", "language", "script", "duration_seconds", "verification_status", "is_active")
-    list_filter = ("category", "language", "script", "verification_status", "is_active", "passage_format")
-    search_fields = ("name", "code", "official_source_url", "source_title")
+    list_display = ("name", "code", "category", "language", "script", "passage_layout", "presentation_reference_status", "verification_status", "is_active")
+    list_filter = ("category", "language", "script", "verification_status", "presentation_reference_status", "passage_layout", "is_active")
+    search_fields = ("name", "code", "official_source_url", "source_title", "presentation_reference_title", "presentation_reference_url")
     ordering = ("category", "display_order", "name")
-    list_editable = ("verification_status", "is_active")
+    list_editable = ("presentation_reference_status", "verification_status", "is_active")
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         ("Identity", {"fields": ("name", "code", "category", "display_order", "is_active")}),
         ("Typing interface", {"fields": ("language", "script", "interface_type", "duration_seconds", "passage_format", "passage_word_limit")}),
+        ("Exam-specific passage presentation", {"fields": ("passage_layout", "passage_font_family", "passage_font_size_pt", "passage_line_height", "passage_paragraph_spacing_pt", "passage_alignment", "passage_first_line_indent_em", "passage_preserve_tabs", "passage_tab_size")}),
+        ("Presentation reference (separate from official exam rules)", {"fields": ("presentation_reference_status", "presentation_reference_url", "presentation_reference_title", "presentation_reference_checked_at", "presentation_notes")}),
         ("Input and scoring rules", {"fields": ("allow_backspace", "allow_arrow_navigation", "error_rules", "scoring_rules", "qualification_rules")}),
         ("Official rule verification", {"fields": ("verification_status", "official_source_url", "source_title", "source_checked_at", "rule_notes")}),
         ("System timestamps", {"fields": ("created_at", "updated_at")}),

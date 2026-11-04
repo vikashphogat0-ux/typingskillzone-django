@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TypingSkillZone{% endblock %}</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1020;--panel:rgba(23,32,55,.82);--line:#263653;--text:#edf4ff;--muted:#9eafc8;--blue:#60a5fa;--cyan:#67e8f9}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172b4a 0,#0b1020 55%);color:var(--text);font:15px/1.6 Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+    .wrap{max-width:1050px;margin:0 auto;padding:34px 20px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px}.brand{font-weight:800;letter-spacing:.3px}.brand span{color:var(--cyan)}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0005;backdrop-filter:blur(14px)}
+    h1{font-size:clamp(25px,4vw,36px);line-height:1.2;margin:0 0 8px}p{color:var(--muted)}.eyebrow{color:var(--cyan);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}.item{display:block;border:1px solid var(--line);border-radius:14px;padding:18px;background:#111b30}.id{font-size:25px;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums}.item strong{display:block;margin:4px 0}.muted{color:var(--muted);font-size:13px}.passage{white-space:pre-wrap;font-size:17px;line-height:1.9;color:#e5edf9}.back{display:inline-block;margin-bottom:18px}
+    @media(max-width:600px){.wrap{padding:20px 14px}.panel{padding:18px}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="top"><div class="brand">Typing<span>SkillZone</span></div><a href="/admin/">Admin Studio</a></header>
+  {% block content %}{% endblock %}
+</main></body>
+</html>
