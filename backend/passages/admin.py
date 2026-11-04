@@ -66,6 +66,15 @@ class SimulatorPassageAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ("exam", "source", "serial_number", "status", "published_at", "created_at")
     ordering = ("exam", "serial_number")
 
+    actions = ("archive_publications",)
+
+    @admin.action(description="Archive selected simulator publications (IDs are retained)")
+    def archive_publications(self, request, queryset):
+        updated = queryset.exclude(status=SimulatorPassage.Status.ARCHIVED).update(
+            status=SimulatorPassage.Status.ARCHIVED
+        )
+        self.message_user(request, f"Archived {updated} publication(s). Their IDs will never be reused.", messages.SUCCESS)
+
     def has_add_permission(self, request):
         return False
 
