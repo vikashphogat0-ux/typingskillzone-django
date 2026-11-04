@@ -38,8 +38,8 @@ class Command(BaseCommand):
             passed("PostgreSQL database is configured.")
 
         cache_backend = settings.CACHES["default"]["BACKEND"]
-        if "locmem" in cache_backend.lower():
-            failed("Local-memory cache is not shared across workers.")
+        if "django_redis" not in cache_backend.lower():
+            failed("Production throttling requires the Redis cache backend with atomic INCR support.")
         else:
             try:
                 key = "production-readiness:" + uuid.uuid4().hex
