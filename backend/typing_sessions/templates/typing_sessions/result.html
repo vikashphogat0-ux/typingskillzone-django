@@ -1,0 +1,27 @@
+{% extends "passages/base.html" %}
+{% block title %}Typing Result | TypingSkillZone{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</div>
+  <h1>Test result</h1>
+  <p class="muted">Status: {{ attempt.get_state_display }} · Completed: {{ attempt.completed_at|date:"d M Y, H:i:s" }}</p>
+  {% if attempt.result_snapshot %}
+    <div class="grid">
+      <div class="item"><strong>{{ attempt.result_snapshot.net_wpm }}</strong><div class="muted">Net WPM</div></div>
+      <div class="item"><strong>{{ attempt.result_snapshot.gross_wpm }}</strong><div class="muted">Gross WPM</div></div>
+      <div class="item"><strong>{{ attempt.result_snapshot.accuracy_percent }}%</strong><div class="muted">Accuracy</div></div>
+      <div class="item"><strong>{{ attempt.result_snapshot.error_count }}</strong><div class="muted">{{ attempt.result_snapshot.error_count_method|title }} errors</div></div>
+    </div>
+    <h2>Detailed analysis</h2>
+    <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
+    <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
+    <p>Word errors: {{ attempt.result_snapshot.word_errors }} · Duration: {{ attempt.result_snapshot.duration_seconds }} seconds</p>
+    <p class="muted">{{ attempt.result_snapshot.qualification_note }}</p>
+  {% else %}
+    <p>The attempt ended without a score being generated.</p>
+  {% endif %}
+  <h2>Your submitted text</h2>
+  <pre style="white-space:pre-wrap;overflow-wrap:anywhere;">{{ attempt.submitted_text }}</pre>
+  <a class="back" href="{% url 'passages:simulator-list' attempt.publication.exam.code %}">Back to simulator passages</a>
+</section>
+{% endblock %}
