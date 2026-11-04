@@ -53,3 +53,25 @@ class ExamCatalogueTests(TestCase):
         exam = ExamConfiguration(name="Test", code="test", verification_status="VERIFIED")
         with self.assertRaises(ValidationError):
             exam.full_clean()
+
+
+    def test_seed_command_preserves_existing_admin_configured_rules(self):
+        from django.core.management import call_command
+
+        call_command("seed_exam_catalogue")
+        exam = ExamConfiguration.objects.get(name="BSF Head Constable (HCM)")
+        exam.passage_layout = ExamConfiguration.PassageLayout.CONTINUOUS
+        exam.duration_seconds = 600
+        exam.allow_backspace = False
+        exam.error_rules = {"count_word_errors": True, "penalty_wpm_per_error": 1}
+        exam.presentation_notes = "Manually reviewed configuration."
+        exam.save()
+
+        call_command("seed_exam_catalogue")
+        exam.refresh_from_db()
+
+        self.assertEqual(exam.passage_layout, ExamConfiguration.PassageLayout.CONTINUOUS)
+        self.assertEqual(exam.duration_seconds, 600)
+        self.assertFalse(exam.allow_backspace)
+        self.assertEqual(exam.error_rules, {"count_word_errors": True, "penalty_wpm_per_error": 1})
+        self.assertEqual(exam.presentation_notes, "Manually reviewed configuration.")
