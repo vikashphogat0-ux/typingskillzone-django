@@ -10,7 +10,7 @@ from exams.models import ExamConfiguration
 from passages.models import SimulatorPassage
 
 from .models import TypingSession
-from .services import start_session, submit_session
+from .services import expire_session, start_session, submit_session
 
 
 @login_required
@@ -42,6 +42,9 @@ def typing_session(request, session_id):
         learner=request.user,
     )
     if attempt.state != TypingSession.State.ACTIVE:
+        return render(request, "typing_sessions/result.html", {"attempt": attempt})
+    if attempt.has_expired:
+        attempt = expire_session(session_id=attempt.pk, learner=request.user)
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
     return render(request, "typing_sessions/live.html", {"attempt": attempt})
 
