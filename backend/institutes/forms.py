@@ -48,7 +48,8 @@ class InstituteRegistrationForm(forms.ModelForm):
             first_name=self.cleaned_data["owner_name"],
             phone=self.cleaned_data["owner_phone"],
             role=User.Roles.INSTITUTE_OWNER,
-            is_active=True,
+            is_active=False,
+            is_email_verified=False,
         )
         institute = super().save(commit=False)
         institute.owner = owner

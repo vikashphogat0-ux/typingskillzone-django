@@ -101,8 +101,15 @@ class InstituteSubscriptionAdmin(SuperAdminOnlyModelAdmin):
 
     @admin.action(description="Activate selected subscriptions")
     def activate_subscriptions(self, request, queryset):
-        updated = queryset.update(status=InstituteSubscription.Status.ACTIVE)
-        self.message_user(request, f"{updated} subscription(s) activated.", level=messages.SUCCESS)
+        now = timezone.now()
+        eligible = queryset.filter(starts_at__lte=now, ends_at__gt=now)
+        updated = eligible.update(status=InstituteSubscription.Status.ACTIVE)
+        skipped = queryset.count() - updated
+        self.message_user(
+            request,
+            f"{updated} subscription(s) activated. {skipped} future or expired subscription(s) were left unchanged.",
+            level=messages.SUCCESS if updated else messages.WARNING,
+        )
 
     @admin.action(description="Suspend selected subscriptions")
     def suspend_subscriptions(self, request, queryset):

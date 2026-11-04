@@ -55,9 +55,15 @@
         <div class="code">{{ institute.registration_code }}</div>
 
         <p>
-            Please keep this registration code for future reference.
-            You will be able to access the institute dashboard after approval.
+            Please verify the owner email address using the link sent to your inbox.
+            Super Admin approval is still required after email verification.
         </p>
+        <form method="post" action="{% url 'institutes:resend_owner_verification' %}">
+            {% csrf_token %}
+            <input type="hidden" name="email" value="{{ institute.owner.email }}">
+            <button type="submit">Resend verification email</button>
+        </form>
+        <p>Please keep this registration code for future reference.</p>
     </main>
 </body>
 </html>
