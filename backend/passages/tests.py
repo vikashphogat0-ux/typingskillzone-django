@@ -8,40 +8,6 @@ from .services import publish_source_to_exam, publish_source_to_selected_exams
 
 User = get_user_model()
 
-    def test_simulator_specific_layout_profiles_render_independently(self):
-        source = self.make_source(content="  First line.\\nSecond line.\\n\\n\\tIndented item.  ")
-        continuous = self.make_exam("layout-continuous", "Continuous", passage_format="CONTINUOUS")
-        continuous.passage_layout = ExamConfiguration.PassageLayout.CONTINUOUS
-        continuous.save()
-        para_tab = self.make_exam("layout-para-tab", "Para Tab")
-        para_tab.passage_layout = ExamConfiguration.PassageLayout.PARA_TAB
-        para_tab.passage_preserve_tabs = True
-        para_tab.passage_tab_size = 6
-        para_tab.save()
-        first = publish_source_to_exam(source, continuous)
-        second = publish_source_to_exam(source, para_tab)
-        self.assertEqual(first.rendered_content, "First line. Second line. Indented item.")
-        self.assertIn("\\tIndented item.", second.rendered_content)
-        self.assertEqual(second.exam.passage_tab_size, 6)
-        source.refresh_from_db()
-        self.assertEqual(source.content, "  First line.\\nSecond line.\\n\\n\\tIndented item.  ")
-
-    def test_unconfigured_layout_preserves_original_text(self):
-        source = self.make_source(content="Line one.\\n\\n    Line two.")
-        exam = self.make_exam("layout-pending", "Pending Format")
-        exam.passage_layout = ExamConfiguration.PassageLayout.UNCONFIGURED
-        exam.save()
-        publication = publish_source_to_exam(source, exam)
-        self.assertEqual(publication.rendered_content, "Line one.\\n\\n    Line two.")
-
-    def test_paragraph_blocks_are_available_for_spacing_aware_template(self):
-        source = self.make_source(content="First paragraph.\\n\\nSecond paragraph.")
-        exam = self.make_exam("layout-paragraphs", "Paragraph Layout")
-        exam.passage_layout = ExamConfiguration.PassageLayout.PARAGRAPHS
-        exam.save()
-        publication = publish_source_to_exam(source, exam)
-        self.assertEqual(publication.rendered_paragraphs, ["First paragraph.", "Second paragraph."])
-
 
 class CentralPassagePublishingTests(TestCase):
     def make_exam(self, code, name, language="ENGLISH", passage_format="PARAGRAPHS", script="LATIN"):
@@ -142,3 +108,38 @@ class CentralPassagePublishingTests(TestCase):
         self.assertContains(response, "01")
         self.assertContains(response, "Central source")
 
+
+
+    def test_simulator_specific_layout_profiles_render_independently(self):
+        source = self.make_source(content="  First line.\nSecond line.\n\n\tIndented item.  ")
+        continuous = self.make_exam("layout-continuous", "Continuous")
+        continuous.passage_layout = ExamConfiguration.PassageLayout.CONTINUOUS
+        continuous.save()
+        para_tab = self.make_exam("layout-para-tab", "Para Tab")
+        para_tab.passage_layout = ExamConfiguration.PassageLayout.PARA_TAB
+        para_tab.passage_preserve_tabs = True
+        para_tab.passage_tab_size = 6
+        para_tab.save()
+        first = publish_source_to_exam(source, continuous)
+        second = publish_source_to_exam(source, para_tab)
+        self.assertEqual(first.rendered_content, "First line. Second line. Indented item.")
+        self.assertIn("\tIndented item.", second.rendered_content)
+        self.assertEqual(second.exam.passage_tab_size, 6)
+        source.refresh_from_db()
+        self.assertEqual(source.content, "  First line.\nSecond line.\n\n\tIndented item.  ")
+
+    def test_unconfigured_layout_preserves_original_text(self):
+        source = self.make_source(content="Line one.\n\n    Line two.")
+        exam = self.make_exam("layout-pending", "Pending Format")
+        exam.passage_layout = ExamConfiguration.PassageLayout.UNCONFIGURED
+        exam.save()
+        publication = publish_source_to_exam(source, exam)
+        self.assertEqual(publication.rendered_content, "Line one.\n\n    Line two.")
+
+    def test_paragraph_blocks_are_available_for_spacing_aware_template(self):
+        source = self.make_source(content="First paragraph.\n\nSecond paragraph.")
+        exam = self.make_exam("layout-paragraphs", "Paragraph Layout")
+        exam.passage_layout = ExamConfiguration.PassageLayout.PARAGRAPHS
+        exam.save()
+        publication = publish_source_to_exam(source, exam)
+        self.assertEqual(publication.rendered_paragraphs, ["First paragraph.", "Second paragraph."])
