@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.core import mail
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -75,6 +76,67 @@ class InstituteRegistrationViewTests(TestCase):
         response = self.client.get(reverse("institutes:register"))
         self.assertRedirects(response, reverse("admin:index"))
         self.assertEqual(Institute.objects.count(), 0)
+
+
+class InstituteOwnerVerificationTests(TestCase):
+    def registration_data(self):
+        return {
+            "name": "Owner Verification Academy",
+            "email": "academy-verify@example.test",
+            "phone": "9876543210",
+            "address": "Test Road",
+            "city": "Panipat",
+            "state": "Haryana",
+            "postal_code": "132103",
+            "owner_name": "Owner Verify",
+            "owner_email": "owner-verify@example.test",
+            "owner_phone": "9876543211",
+            "password": "A-Strong-Test-Password-2026!",
+            "confirm_password": "A-Strong-Test-Password-2026!",
+        }
+
+    def test_registration_sends_verification_and_owner_is_inactive(self):
+        response = self.client.post(reverse("institutes:register"), self.registration_data())
+        self.assertEqual(response.status_code, 200)
+        owner = User.objects.get(email="owner-verify@example.test")
+        self.assertFalse(owner.is_active)
+        self.assertFalse(owner.is_email_verified)
+        self.assertIsNotNone(owner.email_verification_sent_at)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("/owner/verify/", mail.outbox[0].body)
+
+    def test_owner_verification_requires_post_and_token_cannot_be_replayed(self):
+        self.client.post(reverse("institutes:register"), self.registration_data())
+        owner = User.objects.get(email="owner-verify@example.test")
+        verify_line = next(line for line in mail.outbox[0].body.splitlines() if "/owner/verify/" in line)
+        token = verify_line.rsplit("/owner/verify/", 1)[1].strip().rstrip("/")
+        url = reverse("institutes:verify_owner_email", kwargs={"token": token})
+        preview = self.client.get(url)
+        self.assertEqual(preview.status_code, 200)
+        owner.refresh_from_db()
+        self.assertFalse(owner.is_active)
+        verified = self.client.post(url)
+        self.assertEqual(verified.status_code, 200)
+        owner.refresh_from_db()
+        self.assertTrue(owner.is_active)
+        self.assertTrue(owner.is_email_verified)
+        self.assertIsNone(owner.email_verification_sent_at)
+        self.assertEqual(self.client.post(url).status_code, 400)
+
+    def test_owner_login_rejects_unverified_owner(self):
+        owner = User.objects.create_user(
+            email="unverified-owner@example.test",
+            password="Owner-Strong-Password-2026!",
+            role=User.Roles.INSTITUTE_OWNER,
+            is_active=True,
+            is_email_verified=False,
+        )
+        response = self.client.post(reverse("institutes:owner_login"), {
+            "username": owner.email,
+            "password": "Owner-Strong-Password-2026!",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
 
 
 class SuperAdminDashboardTests(TestCase):
