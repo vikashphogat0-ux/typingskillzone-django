@@ -16,7 +16,7 @@ Production must use PostgreSQL. SQLite remains the local-development default onl
 - DJANGO_DB_PORT=5432
 - DJANGO_DB_CONN_MAX_AGE=60
 
-Install the PostgreSQL driver in the Django environment using: pip install "psycopg[binary]>=3.2,<4".
+Install the PostgreSQL driver and Redis cache backend in the Django environment using: pip install "psycopg[binary]>=3.2,<4" "django-redis>=5.4,<6".
 
 Run normal Django migrations against the dedicated Django database. Do not run createcachetable or migrations against the Next.js/Neon database.
 
@@ -24,9 +24,7 @@ The membership write path locks the parent Institute row with select_for_update(
 
 ## Shared cache and throttling
 
-The production default is Django's database cache, shared across all Django web workers using the same Django database. Create its table once with: python manage.py createcachetable django_cache
-
-Set DJANGO_CACHE_LOCATION to the chosen table name if it differs. Alternatively configure a shared Redis-compatible cache with DJANGO_CACHE_BACKEND and DJANGO_CACHE_LOCATION, and install that backend's Python package. Never use local-memory cache for a multi-worker production deployment. Rate-limit counters use atomic cache increments and fail closed if cache operations fail.
+Production uses Redis through django-redis so rate-limit counters are shared across all web workers and use Redis atomic INCR operations. Install django-redis and set DJANGO_CACHE_BACKEND=django_redis.cache.RedisCache and DJANGO_CACHE_URL=redis://<host>:6379/1 (use the TLS URL and credentials required by your Redis provider). Configure the same cache URL for every Django worker. Never use local-memory cache for multi-worker production. Rate-limit counters fail closed if cache operations fail.
 
 ## HTTPS, hosts, and cookies
 
