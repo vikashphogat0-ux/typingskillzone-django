@@ -975,3 +975,51 @@ class TypingSessionViewTests(TestCase):
         self.assertTrue(all(row["status"] == "UPCOMING" for row in future_rows))
         self.assertEqual(response.context["weekly_plan_summary"]["completed_days"], 0)
         self.assertContains(response, "Weekly practice timetable")
+
+
+    def test_dphcm_dashboard_saves_private_daily_reminder_preference(self):
+        from django.urls import reverse
+        from .models import LearnerPracticeReminder
+
+        self.client.force_login(self.learner)
+        response = self.client.post(
+            reverse("typing_sessions:dphcm_dashboard"),
+            {"form_action": "save_reminder", "reminder_enabled": "on", "reminder_time": "19:30"},
+        )
+        self.assertEqual(response.status_code, 302)
+        reminder = LearnerPracticeReminder.objects.get(learner=self.learner)
+        self.assertTrue(reminder.enabled)
+        self.assertEqual(reminder.reminder_time.strftime("%H:%M"), "19:30")
+        self.assertFalse(LearnerPracticeReminder.objects.filter(learner=self.other).exists())
+
+    def test_dphcm_dashboard_shows_due_reminder_only_after_time_without_attempt(self):
+        from datetime import time
+        from django.urls import reverse
+        from .models import LearnerPracticeReminder
+
+        LearnerPracticeReminder.objects.create(
+            learner=self.learner, enabled=True, reminder_time=time(0, 0)
+        )
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["reminder_due"])
+        self.assertContains(response, "Your scheduled practice time has arrived")
+
+    def test_dphcm_dashboard_does_not_show_due_reminder_after_completed_attempt(self):
+        from datetime import time
+        from django.urls import reverse
+        from .models import LearnerPracticeReminder
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+        LearnerPracticeReminder.objects.create(
+            learner=self.learner, enabled=True, reminder_time=time(0, 0)
+        )
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["reminder_due"])
