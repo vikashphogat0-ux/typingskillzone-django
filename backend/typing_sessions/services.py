@@ -80,7 +80,7 @@ def start_session(*, learner, publication):
 
 
 @transaction.atomic
-def submit_session(*, session_id, learner, typed_text):
+def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None):
     if not learner or not learner.is_authenticated or not learner.is_active:
         raise PermissionDenied("An active account is required.")
     session = TypingSession.objects.select_for_update().select_related("publication").get(
@@ -92,6 +92,13 @@ def submit_session(*, session_id, learner, typed_text):
         raise ValidationError("Typed text must be a string.")
     if len(typed_text) > 100000:
         raise ValidationError("Submission exceeds the allowed size.")
+    if reported_keystrokes is not None and (
+        isinstance(reported_keystrokes, bool)
+        or not isinstance(reported_keystrokes, int)
+        or reported_keystrokes < 0
+        or reported_keystrokes > 1000000
+    ):
+        raise ValidationError("Keystroke count is outside the allowed range.")
 
     now = timezone.now()
     expired = bool(session.deadline_at and now >= session.deadline_at)
@@ -107,6 +114,7 @@ def submit_session(*, session_id, learner, typed_text):
         typed=typed_text,
         duration_seconds=elapsed,
         rules=session.rules_snapshot,
+        reported_keystrokes=reported_keystrokes,
     )
     session.state = TypingSession.State.EXPIRED if expired else TypingSession.State.SUBMITTED
     session.submitted_text = typed_text
