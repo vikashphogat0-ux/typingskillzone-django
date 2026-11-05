@@ -1,10 +1,12 @@
 import json
+from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from exams.models import ExamConfiguration
@@ -162,6 +164,49 @@ def delhi_police_hcm_dashboard(request):
             "marks_status": (report.get("marks_eligibility") or {}).get("status", "PENDING"),
         })
 
+    # Seven-day practice summary is presentation-only and uses saved report metrics.
+    today = timezone.localdate()
+    daily = {}
+    for offset in range(7):
+        day = today - timedelta(days=6 - offset)
+        daily[day] = {"date": day, "attempt_count": 0, "speeds": [], "accuracies": []}
+    for row in rows:
+        stamp = row["attempt"].completed_at or row["attempt"].started_at
+        day = timezone.localtime(stamp).date()
+        if day not in daily:
+            continue
+        bucket = daily[day]
+        bucket["attempt_count"] += 1
+        if isinstance(row["speed"], (int, float)):
+            bucket["speeds"].append(float(row["speed"]))
+        if isinstance(row["accuracy"], (int, float)):
+            bucket["accuracies"].append(float(row["accuracy"]))
+    weekly_daily_rows = []
+    for bucket in daily.values():
+        day_speeds = bucket["speeds"]
+        day_accuracies = bucket["accuracies"]
+        avg_speed = round(sum(day_speeds) / len(day_speeds), 2) if day_speeds else None
+        avg_accuracy = round(sum(day_accuracies) / len(day_accuracies), 2) if day_accuracies else None
+        weekly_daily_rows.append({
+            "date": bucket["date"],
+            "attempt_count": bucket["attempt_count"],
+            "average_net_wpm": avg_speed,
+            "average_accuracy": avg_accuracy,
+            "speed_goal_met": bool(avg_speed is not None and avg_speed >= goal.target_net_wpm),
+            "accuracy_goal_met": bool(avg_accuracy is not None and avg_accuracy >= goal.target_accuracy),
+        })
+    week_attempts = sum(item["attempt_count"] for item in weekly_daily_rows)
+    week_speed_values = [value for item in daily.values() for value in item["speeds"]]
+    week_accuracy_values = [value for item in daily.values() for value in item["accuracies"]]
+    weekly_summary = {
+        "attempt_count": week_attempts,
+        "average_net_wpm": round(sum(week_speed_values) / len(week_speed_values), 2) if week_speed_values else None,
+        "average_accuracy": round(sum(week_accuracy_values) / len(week_accuracy_values), 2) if week_accuracy_values else None,
+        "speed_goal_met": bool(week_speed_values and sum(week_speed_values) / len(week_speed_values) >= goal.target_net_wpm),
+        "accuracy_goal_met": bool(week_accuracy_values and sum(week_accuracy_values) / len(week_accuracy_values) >= goal.target_accuracy),
+        "start_date": today - timedelta(days=6),
+        "end_date": today,
+    }
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -178,6 +223,8 @@ def delhi_police_hcm_dashboard(request):
     return render(request, "typing_sessions/dphcm_dashboard.html", {
         "rows": rows,
         "trend_rows": trend_rows,
+        "weekly_daily_rows": weekly_daily_rows,
+        "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
         "average_accuracy": round(sum(accuracies) / len(accuracies), 2) if accuracies else None,
