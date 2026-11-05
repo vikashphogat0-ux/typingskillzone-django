@@ -846,3 +846,26 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(len(response.context["weekly_daily_rows"]), 7)
         self.assertEqual(response.context["weekly_summary"]["attempt_count"], 0)
         self.assertIsNone(response.context["weekly_summary"]["average_net_wpm"])
+
+
+    def test_dphcm_dashboard_monthly_report_aggregates_saved_attempts(self):
+        from django.urls import reverse
+        from django.utils import timezone
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        monthly_rows = response.context["monthly_rows"]
+        self.assertEqual(len(monthly_rows), 1)
+        self.assertEqual(monthly_rows[0]["month"], timezone.localdate().replace(day=1))
+        self.assertEqual(monthly_rows[0]["attempt_count"], 1)
+        self.assertIsNotNone(monthly_rows[0]["average_net_wpm"])
+        self.assertIsNotNone(monthly_rows[0]["average_accuracy"])
+        self.assertContains(response, "Monthly performance report")
+        self.assertContains(response, "Print / Save as PDF")
