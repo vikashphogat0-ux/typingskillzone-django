@@ -69,3 +69,16 @@ class DomainEvidenceValidationTests(SimpleTestCase):
         self.assertTrue(any("ISO date" in error for error in errors))
         _, malformed = validate_domain_evidence([])
         self.assertTrue(malformed)
+
+    def test_normalized_envelope_is_idempotently_validated(self):
+        payload, errors = validate_domain_evidence({
+            "timing": {"status": "VERIFIED", "references": [self.reference()]},
+        })
+        self.assertEqual(errors, [])
+        normalized_again, second_errors = validate_domain_evidence(payload)
+        self.assertEqual(second_errors, [])
+        self.assertEqual(normalized_again, payload)
+
+    def test_rejects_unsupported_envelope_version(self):
+        _, errors = validate_domain_evidence({"schema_version": 99, "domains": {}})
+        self.assertTrue(any("schema version" in error for error in errors))
