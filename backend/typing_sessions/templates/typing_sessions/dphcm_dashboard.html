@@ -39,6 +39,26 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="weekly-practice-timetable">
+  <h2>Weekly practice timetable</h2>
+  <p class="muted">{{ weekly_plan_summary.start_date|date:"d M Y" }} – {{ weekly_plan_summary.end_date|date:"d M Y" }} · Six practice days and Sunday recovery. Daily passage targets follow your suggested practice plan; this is a flexible coaching schedule, not an official exam requirement.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ weekly_plan_summary.completed_days }}/{{ weekly_plan_summary.eligible_days }}</div><strong>Completed daily targets</strong></div>
+    <div class="item"><div class="id">{{ weekly_plan_summary.completion_percent }}%</div><strong>Weekly target completion</strong></div>
+  </div>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
+    <thead><tr><th style="padding:10px">Day</th><th>Plan</th><th>Passages completed / target</th><th>Status</th></tr></thead>
+    <tbody>{% for day in weekly_timetable_rows %}
+      <tr style="border-top:1px solid var(--line)">
+        <td style="padding:10px">{{ day.date|date:"D, d M" }}</td>
+        <td>{% if day.is_rest_day %}Recovery / rest{% else %}{{ daily_practice_plan.minutes }} min practice{% endif %}</td>
+        <td>{% if day.is_rest_day %}—{% else %}{{ day.completed_passages }} / {{ day.target_passages }}{% endif %}</td>
+        <td>{% if day.status == "COMPLETED" %}Completed{% elif day.status == "IN_PROGRESS" %}In progress{% elif day.status == "NOT_STARTED" %}Not started{% elif day.status == "UPCOMING" %}Upcoming{% else %}Rest day{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <p class="muted">Progress counts saved completed HCM attempts in the selected language/date filters. A practice day is complete once it reaches the daily passage target. Future days are upcoming, not missed.</p>
+</section>
 <section class="panel" style="margin-top:18px" id="daily-practice-plan">
   <h2>Your suggested daily practice plan</h2>
   <p class="muted">Personalized from your saved practice averages over the last 7 days and your personal targets. This is a coaching suggestion, not an official SSC schedule or qualification rule.</p>
