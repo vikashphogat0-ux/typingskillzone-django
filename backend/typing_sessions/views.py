@@ -345,6 +345,46 @@ def delhi_police_hcm_dashboard(request):
         "based_on_days": 7,
     }
 
+    # Weekly timetable: six practice days and Sunday recovery. Passage targets
+    # are derived from the coaching plan; this schedule is not an exam rule.
+    week_start = today - timedelta(days=today.weekday())
+    weekly_timetable_rows = []
+    completed_plan_days = 0
+    eligible_plan_days = 0
+    for day_offset in range(7):
+        plan_day = week_start + timedelta(days=day_offset)
+        is_rest_day = plan_day.weekday() == 6
+        completed_passages = calendar_counts.get(plan_day, 0)
+        target_passages = 0 if is_rest_day else daily_practice_plan["passages"]
+        if is_rest_day:
+            status = "REST"
+        elif plan_day > today:
+            status = "UPCOMING"
+        elif completed_passages >= target_passages:
+            status = "COMPLETED"
+            completed_plan_days += 1
+            eligible_plan_days += 1
+        elif completed_passages > 0:
+            status = "IN_PROGRESS"
+            eligible_plan_days += 1
+        else:
+            status = "NOT_STARTED"
+            eligible_plan_days += 1
+        weekly_timetable_rows.append({
+            "date": plan_day,
+            "is_rest_day": is_rest_day,
+            "target_passages": target_passages,
+            "completed_passages": completed_passages,
+            "status": status,
+        })
+    weekly_plan_summary = {
+        "completed_days": completed_plan_days,
+        "eligible_days": eligible_plan_days,
+        "completion_percent": round(completed_plan_days * 100 / eligible_plan_days, 1) if eligible_plan_days else 0,
+        "start_date": week_start,
+        "end_date": week_start + timedelta(days=6),
+    }
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -367,6 +407,8 @@ def delhi_police_hcm_dashboard(request):
         "calendar_rows": calendar_rows,
         "calendar_summary": calendar_summary,
         "daily_practice_plan": daily_practice_plan,
+        "weekly_timetable_rows": weekly_timetable_rows,
+        "weekly_plan_summary": weekly_plan_summary,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
