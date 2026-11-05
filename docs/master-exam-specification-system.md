@@ -206,3 +206,8 @@ The learner dashboard groups the currently displayed learner-owned HCM attempt r
 ## Delhi Police HCM 30/60/90-day progress analysis
 
 The dashboard compares saved practice metrics in each recent 30-, 60-, and 90-calendar-day window against the immediately preceding window of equal length. It reports attempt counts, average practice net WPM, average accuracy, absolute changes (WPM and percentage points), and current-period personal-goal status. The comparison uses the learner-owned, active date/language-filtered queryset and all matching saved attempts in the 180-day comparison horizon; the separate attempt-history display remains capped at 100. A change is shown only when both periods have a metric value; missing data is not treated as zero. This is descriptive practice analysis, not an official SSC result or prediction.
+
+
+## Delhi Police HCM 90-day practice calendar
+
+The learner dashboard displays a 90-calendar-day activity grid, active practice days, consistency percentage (active days divided by 90), current consecutive-day streak, longest streak in the 90-day window, and completed attempt count. A day is active when at least one matching saved HCM attempt was completed on that local calendar date. It uses the learner-owned queryset and active date/language filters, but is not capped by the 100-row attempt-history display. Streaks are descriptive engagement indicators only; rest days do not affect scores or qualification. Tests cover a recent attempt and the empty calendar state; execution remains pending.
