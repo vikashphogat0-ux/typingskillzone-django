@@ -39,6 +39,24 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="practice-calendar">
+  <h2>90-day practice calendar</h2>
+  <p class="muted">{{ calendar_summary.start_date|date:"d M Y" }} – {{ calendar_summary.end_date|date:"d M Y" }} · A day is counted as active when at least one saved HCM attempt was completed.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ calendar_summary.current_streak }}</div><strong>Current streak (days)</strong></div>
+    <div class="item"><div class="id">{{ calendar_summary.longest_streak }}</div><strong>Longest streak in 90 days</strong></div>
+    <div class="item"><div class="id">{{ calendar_summary.active_days }}/90</div><strong>Active practice days</strong></div>
+    <div class="item"><div class="id">{{ calendar_summary.consistency_percent }}%</div><strong>90-day consistency</strong></div>
+  </div>
+  <p class="muted">{{ calendar_summary.attempt_count }} completed attempts in this 90-day window. Calendar uses all matching learner-owned attempts, not just the latest 100 shown in attempt history. Active date and language filters apply.</p>
+  <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin-top:14px">
+    {% for day in calendar_rows %}
+      <div title="{{ day.date|date:'D, d M Y' }} · {{ day.attempt_count }} attempt(s)" aria-label="{{ day.date|date:'D, d M Y' }}: {{ day.attempt_count }} attempts" style="aspect-ratio:1;border-radius:6px;border:1px solid var(--line);background:{% if day.completed %}var(--cyan){% else %}#263653{% endif %};opacity:{% if day.completed %}1{% else %}.55{% endif %}"></div>
+    {% endfor %}
+  </div>
+  <div class="muted" style="display:flex;gap:16px;align-items:center;margin-top:10px"><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--cyan)"></span> Practice completed</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#263653"></span> No attempt</span></div>
+  <p class="muted">Streaks are based on consecutive calendar days with at least one completed attempt. No penalty or score adjustment is applied for rest days.</p>
+</section>
 <section class="panel" style="margin-top:18px" id="progress-analysis">
   <h2>30 / 60 / 90-day progress analysis</h2>
   <p class="muted">Each recent window is compared with the immediately preceding window of the same length. Values come from saved practice reports and follow the active language/date filters. Change is shown only when both periods have recorded metrics.</p>
