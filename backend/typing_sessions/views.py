@@ -226,6 +226,48 @@ def delhi_police_hcm_dashboard(request):
         avg_accuracy = round(sum(month_accuracies) / len(month_accuracies), 2) if month_accuracies else None
         monthly_rows.append({"month": bucket["month"], "attempt_count": bucket["attempt_count"], "average_net_wpm": avg_speed, "average_accuracy": avg_accuracy, "speed_goal_met": bool(avg_speed is not None and avg_speed >= goal.target_net_wpm), "accuracy_goal_met": bool(avg_accuracy is not None and avg_accuracy >= goal.target_accuracy)})
 
+    # 90-day practice calendar uses the full matching queryset, not the 100-row history cap.
+    calendar_start = today - timedelta(days=89)
+    calendar_attempts = queryset.filter(completed_at__date__gte=calendar_start).only("completed_at", "started_at")
+    calendar_counts = {}
+    for calendar_attempt in calendar_attempts:
+        stamp = calendar_attempt.completed_at or calendar_attempt.started_at
+        local_day = timezone.localtime(stamp).date()
+        if calendar_start <= local_day <= today:
+            calendar_counts[local_day] = calendar_counts.get(local_day, 0) + 1
+    calendar_rows = []
+    for offset in range(90):
+        calendar_day = calendar_start + timedelta(days=offset)
+        calendar_rows.append({
+            "date": calendar_day,
+            "attempt_count": calendar_counts.get(calendar_day, 0),
+            "completed": calendar_counts.get(calendar_day, 0) > 0,
+        })
+    active_days = sum(1 for count in calendar_counts.values() if count > 0)
+    consistency_percent = round(active_days * 100 / 90, 1)
+    current_streak = 0
+    streak_day = today
+    while calendar_counts.get(streak_day, 0) > 0:
+        current_streak += 1
+        streak_day -= timedelta(days=1)
+    longest_streak = 0
+    running_streak = 0
+    for calendar_row in calendar_rows:
+        if calendar_row["completed"]:
+            running_streak += 1
+            longest_streak = max(longest_streak, running_streak)
+        else:
+            running_streak = 0
+    calendar_summary = {
+        "active_days": active_days,
+        "consistency_percent": consistency_percent,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "attempt_count": sum(calendar_counts.values()),
+        "start_date": calendar_start,
+        "end_date": today,
+    }
+
     # Compare each recent window with the immediately preceding window of equal length.
     # This uses all matching saved attempts in the date window, not only the 100-row history display.
     progress_cutoff = today - timedelta(days=180)
@@ -287,7 +329,7 @@ def delhi_police_hcm_dashboard(request):
         "trend_rows": trend_rows,
         "weekly_daily_rows": weekly_daily_rows,
         "monthly_rows": monthly_rows,
-        "progress_comparisons": progress_comparisons,
+        "progress_comparisons": progress_comparisons,\n        "calendar_rows": calendar_rows,\n        "calendar_summary": calendar_summary,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
