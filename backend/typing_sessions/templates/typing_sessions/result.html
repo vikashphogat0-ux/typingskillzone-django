@@ -68,6 +68,18 @@
         <p><a href="{{ attempt.result_snapshot.mistake_classification.rule_source.url }}" target="_blank" rel="noopener noreferrer">Open classification source</a></p>
       {% endif %}
     {% endif %}
+    {% if result_integrity %}
+      <h2>Historical result integrity</h2>
+      <p><strong>{{ result_integrity.status|title }}</strong> · {{ result_integrity.reason }}</p>
+      {% if result_integrity.checks %}
+        <ul>
+          {% for check in result_integrity.checks %}
+            <li>{{ check.name|title|cut:"_" }}: {{ check.status|title }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <p class="muted">This is a read-only audit check. It does not recalculate or modify your historical score.</p>
+    {% endif %}
     <h2>Detailed analysis</h2>
     <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
     <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
