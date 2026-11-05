@@ -2,7 +2,7 @@
 from difflib import SequenceMatcher
 import re
 
-SCORING_VERSION = "tsz-char-word-v2"
+SCORING_VERSION = "tsz-char-word-v3"
 
 
 def _count_character_errors(reference, typed):
@@ -50,6 +50,100 @@ def _count_correct_words(reference, typed):
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
+
+
+
+def _classify_full_half_mistakes(reference, typed, config):
+    """Apply only exact, explicitly configured word-pair classifications.
+
+    Config contract:
+      {"version": 1, "unit": "word", "overrides": [
+        {"reference": "word", "typed": "typed-word", "classification": "FULL"}
+      ]}
+    Empty strings represent an inserted or deleted word. No fuzzy matching,
+    defaults, or inferred classifications are applied.
+    """
+    unresolved = {
+        "status": "UNRESOLVED",
+        "full_mistakes": None,
+        "half_mistakes": None,
+        "ignored_mistakes": None,
+        "weighted_mistakes": None,
+        "classified_error_cases": 0,
+        "unclassified_error_cases": None,
+        "error_cases": [],
+        "reason": "A supported version-1 word classification configuration is required.",
+    }
+    if not isinstance(config, dict) or config.get("version") != 1 or config.get("unit") != "word":
+        return unresolved
+
+    overrides = config.get("overrides")
+    if not isinstance(overrides, list):
+        return unresolved
+
+    lookup = {}
+    for item in overrides:
+        if not isinstance(item, dict):
+            return unresolved
+        if not isinstance(item.get("reference"), str) or not isinstance(item.get("typed"), str):
+            return unresolved
+        classification = item.get("classification")
+        if classification not in {"FULL", "HALF", "IGNORED"}:
+            return unresolved
+        key = (item["reference"], item["typed"])
+        if key in lookup:
+            return unresolved
+        lookup[key] = classification
+
+    reference_words = re.findall(r"\\S+", reference)
+    typed_words = re.findall(r"\\S+", typed)
+    matcher = SequenceMatcher(a=reference_words, b=typed_words, autojunk=False)
+    cases = []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        ref_segment = reference_words[i1:i2]
+        typed_segment = typed_words[j1:j2]
+        pairs = []
+        paired = min(len(ref_segment), len(typed_segment))
+        pairs.extend(zip(ref_segment[:paired], typed_segment[:paired]))
+        pairs.extend((word, "") for word in ref_segment[paired:])
+        pairs.extend(("", word) for word in typed_segment[paired:])
+        cases.extend(pairs)
+
+    counts = {"FULL": 0, "HALF": 0, "IGNORED": 0}
+    classified_cases = []
+    for reference_word, typed_word in cases:
+        classification = lookup.get((reference_word, typed_word))
+        if classification is None:
+            result = dict(unresolved)
+            result["unclassified_error_cases"] = len(cases) - len(classified_cases)
+            result["classified_error_cases"] = len(classified_cases)
+            result["error_cases"] = classified_cases + [{
+                "reference": reference_word,
+                "typed": typed_word,
+                "classification": "UNCLASSIFIED",
+            }]
+            result["reason"] = "At least one error case has no exact configured classification."
+            return result
+        counts[classification] += 1
+        classified_cases.append({
+            "reference": reference_word,
+            "typed": typed_word,
+            "classification": classification,
+        })
+
+    return {
+        "status": "CLASSIFIED",
+        "full_mistakes": counts["FULL"],
+        "half_mistakes": counts["HALF"],
+        "ignored_mistakes": counts["IGNORED"],
+        "weighted_mistakes": round(counts["FULL"] + counts["HALF"] * 0.5, 2),
+        "classified_error_cases": len(classified_cases),
+        "unclassified_error_cases": 0,
+        "error_cases": classified_cases,
+        "reason": "All word-level error cases matched exact configured classifications.",
+    }
 
 def calculate_result(*, reference, typed, duration_seconds, rules, reported_keystrokes=None):
     """Calculate metrics exclusively from persisted source text and submitted text."""
@@ -197,7 +291,15 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         if not bands and score is None:
             qualification_note = "Custom scoring data is stored, but no executable score formula is configured."
     elif scoring_mode == "FULL_HALF_MISTAKES":
-        qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
+        classification = _classify_full_half_mistakes(
+            reference, typed, scoring_rules.get("mistake_classification")
+        )
+        qualification_note = (
+            "Mistake categories were classified from exact configured word pairs; "
+            "an official score formula and qualification rule are not configured."
+            if classification["status"] == "CLASSIFIED"
+            else "Full/half mistake result remains pending: " + classification["reason"]
+        )
 
     return {
         "scoring_version": SCORING_VERSION,
@@ -216,6 +318,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "correct_words": correct_words,
         "gross_words": gross_words,
         "scoring_mode": scoring_mode,
+        "mistake_classification": classification if scoring_mode == "FULL_HALF_MISTAKES" else None,
         "score": score,
         "error_percent": error_percent,
         "error_percentage_unit": (
