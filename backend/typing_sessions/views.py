@@ -399,6 +399,24 @@ def delhi_police_hcm_dashboard(request):
         "end_date": week_start + timedelta(days=6),
     }
 
+    # Achievements are derived from saved learner-owned HCM reports and
+    # personal targets. They are display-only and never affect official scores.
+    total_hcm_attempts = queryset.count()
+    achievement_definitions = [
+        ("FIRST_ATTEMPT", "First Steps", "Complete your first HCM practice attempt", total_hcm_attempts >= 1),
+        ("TEN_ATTEMPTS", "Getting Consistent", "Complete 10 HCM practice attempts", total_hcm_attempts >= 10),
+        ("TWENTY_FIVE_ATTEMPTS", "Practice Builder", "Complete 25 HCM practice attempts", total_hcm_attempts >= 25),
+        ("THREE_DAY_STREAK", "Three-Day Streak", "Practise on 3 consecutive days", current_streak >= 3),
+        ("SEVEN_DAY_STREAK", "Seven-Day Streak", "Practise on 7 consecutive days", current_streak >= 7),
+        ("SPEED_GOAL", "Speed Target", "Meet your personal net WPM target in the recent 7-day average", bool(weekly_summary["average_net_wpm"] is not None and weekly_summary["average_net_wpm"] >= goal.target_net_wpm)),
+        ("ACCURACY_GOAL", "Accuracy Target", "Meet your personal accuracy target in the recent 7-day average", bool(weekly_summary["average_accuracy"] is not None and weekly_summary["average_accuracy"] >= goal.target_accuracy)),
+    ]
+    achievement_rows = [
+        {"code": code, "name": name, "description": description, "unlocked": unlocked}
+        for code, name, description, unlocked in achievement_definitions
+    ]
+    unlocked_achievement_count = sum(1 for item in achievement_rows if item["unlocked"])
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -423,6 +441,9 @@ def delhi_police_hcm_dashboard(request):
         "daily_practice_plan": daily_practice_plan,
         "weekly_timetable_rows": weekly_timetable_rows,
         "weekly_plan_summary": weekly_plan_summary,
+        "achievement_rows": achievement_rows,
+        "unlocked_achievement_count": unlocked_achievement_count,
+        "total_hcm_attempts": total_hcm_attempts,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
