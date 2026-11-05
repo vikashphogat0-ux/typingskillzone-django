@@ -45,11 +45,19 @@
   let submitting = false;
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
-  const backspacePolicy = rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED");
-  const allowArrows = rules.allow_arrow_navigation !== false;
+  // Canonical policy is preferred; top-level legacy keys remain a compatibility fallback.
+  const policy = rules.input_policy || {
+    backspace: { policy: rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED") },
+    delete: rules.allow_delete, arrow_navigation: rules.allow_arrow_navigation,
+    paste: rules.allow_paste, copy: rules.allow_copy, cut: rules.allow_cut,
+    enter_behavior: rules.enter_behavior, space_behavior: rules.space_behavior,
+    tab_behavior: rules.tab_behavior,
+  };
+  const backspacePolicy = (policy.backspace && policy.backspace.policy) || "NOT_SPECIFIED";
+  const allowArrows = policy.arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
-  const allowEnter = rules.enter_behavior === "DISABLED" ? false : ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
-  const tabBehavior = rules.tab_behavior || "UNSPECIFIED";
+  const allowEnter = policy.enter_behavior === "DISABLED" ? false : ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
+  const tabBehavior = policy.tab_behavior || "UNSPECIFIED";
   let committedBoundary = 0;
   let pendingCommit = null;
   function selectionTouchesLockedText() {
@@ -63,7 +71,7 @@
   }
   function blockDeletion(event, backward) {
     if (backward && backspacePolicy === "DISABLED") { event.preventDefault(); return; }
-    if (!backward && rules.allow_delete === false) { event.preventDefault(); return; }
+    if (!backward && policy.delete === false) { event.preventDefault(); return; }
     if (backspacePolicy === "WORD_ONLY" || backspacePolicy === "PROVISIONAL_WORD_ONLY") {
       const wordStart = currentWordStart(input.selectionEnd);
       if (input.selectionStart < wordStart ||
@@ -79,16 +87,16 @@
     }
     if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
     if (!allowEnter && event.key === "Enter") event.preventDefault();
-    if (event.key === " " && rules.space_behavior === "DISABLED") event.preventDefault();
+    if (event.key === " " && policy.space_behavior === "DISABLED") event.preventDefault();
     if (event.key === "Backspace") blockDeletion(event,true);
     if (event.key === "Delete") blockDeletion(event,false);
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && rules.allow_paste === false) event.preventDefault();
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && rules.allow_copy === false) event.preventDefault();
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && rules.allow_cut === false) event.preventDefault();
-    if (event.key === " " && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.space_behavior === "COMMIT_WORD")) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && policy.paste === false) event.preventDefault();
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && policy.copy === false) event.preventDefault();
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && policy.cut === false) event.preventDefault();
+    if (event.key === " " && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || policy.space_behavior === "COMMIT_WORD")) {
       pendingCommit = input.selectionStart + 1;
     }
-    if (event.key === "Enter" && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.enter_behavior === "COMMIT_WORD")) {
+    if (event.key === "Enter" && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || policy.enter_behavior === "COMMIT_WORD")) {
       pendingCommit = input.selectionStart + 1;
     }
     if (event.key === "Tab") {
@@ -105,12 +113,12 @@
   input.addEventListener("beforeinput", event => {
     if (event.inputType === "deleteContentBackward") blockDeletion(event,true);
     if (event.inputType === "deleteContentForward") blockDeletion(event,false);
-    if (event.inputType === "insertFromPaste" && rules.allow_paste === false) event.preventDefault();
+    if (event.inputType === "insertFromPaste" && policy.paste === false) event.preventDefault();
     if (event.inputType === "insertReplacementText" && backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   });
-  input.addEventListener("paste", event => { if (rules.allow_paste === false) event.preventDefault(); });
-  input.addEventListener("copy", event => { if (rules.allow_copy === false) event.preventDefault(); });
-  input.addEventListener("cut", event => { if (rules.allow_cut === false) event.preventDefault(); });
+  input.addEventListener("paste", event => { if (policy.paste === false) event.preventDefault(); });
+  input.addEventListener("copy", event => { if (policy.copy === false) event.preventDefault(); });
+  input.addEventListener("cut", event => { if (policy.cut === false) event.preventDefault(); });
   input.addEventListener("input", () => {
     if (pendingCommit !== null) {
       committedBoundary = Math.max(committedBoundary, Math.min(pendingCommit,input.selectionStart));
