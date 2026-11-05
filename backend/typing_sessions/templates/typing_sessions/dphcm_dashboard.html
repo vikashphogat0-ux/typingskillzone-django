@@ -39,6 +39,21 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="monthly-report">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <h2>Monthly performance report</h2>
+    <button type="button" onclick="window.print()" style="padding:10px 16px;border:0;border-radius:8px;background:var(--blue);color:#07111f;font-weight:700">Print / Save as PDF</button>
+  </div>
+  <p class="muted">Month-wise averages from your saved HCM practice reports. Uses active date/language filters and the latest 100 matching attempts. Choose “Save as PDF” in the browser print dialog. Personal goals are not official SSC marks criteria.</p>
+  {% if monthly_rows %}
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
+    <thead><tr><th style="padding:10px">Month</th><th>Attempts</th><th>Average net WPM</th><th>Average accuracy</th><th>Speed goal</th><th>Accuracy goal</th></tr></thead>
+    <tbody>{% for month in monthly_rows %}
+      <tr style="border-top:1px solid var(--line)"><td style="padding:10px">{{ month.month|date:"F Y" }}</td><td>{{ month.attempt_count }}</td><td>{% if month.average_net_wpm != None %}{{ month.average_net_wpm }}{% else %}—{% endif %}</td><td>{% if month.average_accuracy != None %}{{ month.average_accuracy }}%{% else %}—{% endif %}</td><td>{% if month.average_net_wpm == None %}—{% elif month.speed_goal_met %}Met{% else %}Not met{% endif %}</td><td>{% if month.average_accuracy == None %}—{% elif month.accuracy_goal_met %}Met{% else %}Not met{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No monthly attempt data is available for the selected filters.</p>{% endif %}
+</section>
 <section class="panel" style="margin-top:18px">
   <h2>Last 7 days practice report</h2>
   <p class="muted">{{ weekly_summary.start_date|date:"d M Y" }} – {{ weekly_summary.end_date|date:"d M Y" }} · Uses saved practice reports and the active date/language filters.</p>
