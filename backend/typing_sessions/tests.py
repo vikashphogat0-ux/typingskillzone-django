@@ -456,3 +456,35 @@ class TypingSessionViewTests(TestCase):
         attempt.refresh_from_db()
         self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
         self.assertEqual(attempt.result_snapshot, {})
+
+    def test_result_page_displays_full_half_classification_and_pending_state(self):
+        from django.urls import reverse
+
+        self.source.content = "sample text"
+        self.source.save()
+        self.exam.scoring_mode = ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES
+        self.exam.scoring_rules = {
+            "mistake_classification": {
+                "version": 1,
+                "unit": "word",
+                "overrides": [
+                    {"reference": "sample", "typed": "sampl", "classification": "HALF"},
+                ],
+            }
+        }
+        self.exam.save()
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text="sampl text",
+        )
+        self.client.force_login(self.learner)
+        response = self.client.get(
+            reverse("typing_sessions:session", kwargs={"session_id": attempt.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Full / half mistake classification")
+        self.assertContains(response, "Classification pending")
+        self.assertContains(response, "Unclassified")
