@@ -144,8 +144,11 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             deduction_words = max(0, int(deduction_words))
         except (TypeError, ValueError):
             deduction_words = 0
-        net_words = max(0, gross_words - excess_error_count * deduction_words)
-        if deduction_words:
+        net_words = (
+            max(0, gross_words - excess_error_count * deduction_words)
+            if excess_error_count is not None else None
+        )
+        if deduction_words and net_words is not None:
             net_wpm = round(net_words / minutes, 2)
         try:
             minimum_wpm = float(rules.get("minimum_wpm"))
@@ -156,9 +159,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             checks.append(error_percent <= allowance)
         if minimum_wpm is not None:
             checks.append(net_wpm >= minimum_wpm)
-        if rules.get("verification_status") == "VERIFIED" and checks:
+        allowance_unresolved = allowance is not None and error_percent is None
+        if rules.get("verification_status") == "VERIFIED" and checks and not allowance_unresolved:
             qualification = all(checks)
             qualification_note = "Qualification calculated from the configured speed and error thresholds."
+        elif allowance_unresolved:
+            qualification_note = "Qualification remains pending: the configured error allowance cannot be evaluated because its error unit is unresolved."
         else:
             qualification_note = "Qualification remains pending: verified source and at least one configured threshold are required."
     elif scoring_mode == "CUSTOM":
