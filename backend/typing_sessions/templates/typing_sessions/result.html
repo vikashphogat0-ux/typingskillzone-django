@@ -53,6 +53,18 @@
         {% endfor %}
       </ul>
     {% endif %}
+    {% if attempt.result_snapshot.scoring_specification %}
+      <h2>Registered scoring formula</h2>
+      <p>Formula: <strong>{{ attempt.result_snapshot.scoring_specification.formula_id|default:"Not registered" }}</strong> · Status: {{ attempt.result_snapshot.scoring_specification.status|title }}</p>
+      <p class="muted">Qualification eligible under captured configuration: {{ attempt.result_snapshot.scoring_specification.qualification_eligible|yesno:"Yes,No" }}</p>
+      {% if attempt.result_snapshot.scoring_specification.unresolved %}
+        <p>Unresolved scoring requirements:</p>
+        <ul>{% for item in attempt.result_snapshot.scoring_specification.unresolved %}<li>{{ item.field }} — {{ item.reason }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if attempt.result_snapshot.scoring_specification.provenance %}
+        <p class="muted">Scoring evidence: {{ attempt.result_snapshot.scoring_specification.provenance.scoring|title }} · Qualification evidence: {{ attempt.result_snapshot.scoring_specification.provenance.qualification|title }}</p>
+      {% endif %}
+    {% endif %}
     {% if attempt.result_snapshot.scoring_audit %}
       <h2>Scoring audit trail</h2>
       <p>Scoring engine: {{ attempt.result_snapshot.scoring_audit.engine_version }} · Rule configuration version: {{ attempt.result_snapshot.scoring_audit.rule_config_version|default:"Not specified" }}</p>
