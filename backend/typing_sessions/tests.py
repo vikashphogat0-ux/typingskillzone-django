@@ -457,7 +457,7 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
         self.assertEqual(attempt.result_snapshot, {})
 
-    def test_result_page_displays_full_half_classification_and_pending_state(self):
+    def test_result_page_displays_classified_full_half_mistakes(self):
         from django.urls import reverse
 
         self.source.content = "sample text"
@@ -486,5 +486,6 @@ class TypingSessionViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Full / half mistake classification")
-        self.assertContains(response, "Classification pending")
-        self.assertContains(response, "Unclassified")
+        self.assertContains(response, "Half mistakes")
+        self.assertContains(response, "Weighted mistakes")
+        self.assertContains(response, "not itself an official score")
