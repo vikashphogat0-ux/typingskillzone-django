@@ -2,7 +2,7 @@
 from difflib import SequenceMatcher
 import re
 
-SCORING_VERSION = "tsz-char-word-v1"
+SCORING_VERSION = "tsz-char-word-v2"
 
 
 def _count_character_errors(reference, typed):
@@ -123,9 +123,22 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             allowance = float(rules.get("error_allowance_percent"))
         except (TypeError, ValueError):
             allowance = None
-        error_percent = round(error_count * 100 / max(1, gross_words), 2)
-        permitted_error_count = max(0, int(gross_words * allowance / 100)) if allowance is not None else None
-        excess_error_count = max(0, error_count - permitted_error_count) if permitted_error_count is not None else 0
+        # A word-based allowance must use word-based errors. Character
+        # errors divided by a word count mixes units and can produce invalid
+        # qualification decisions, so legacy ambiguous configurations remain
+        # pending until their error unit is explicitly configured.
+        error_percent = (
+            round(word_errors * 100 / max(1, gross_words), 2)
+            if count_word_errors else None
+        )
+        permitted_error_count = (
+            max(0, int(gross_words * allowance / 100))
+            if allowance is not None and count_word_errors else None
+        )
+        excess_error_count = (
+            max(0, error_count - permitted_error_count)
+            if permitted_error_count is not None else None
+        )
         deduction_words = scoring_rules.get("excess_mistake_deduction_words", 0)
         try:
             deduction_words = max(0, int(deduction_words))
@@ -139,7 +152,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         except (TypeError, ValueError):
             minimum_wpm = None
         checks = []
-        if allowance is not None:
+        if allowance is not None and error_percent is not None:
             checks.append(error_percent <= allowance)
         if minimum_wpm is not None:
             checks.append(net_wpm >= minimum_wpm)
@@ -187,6 +200,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
         "required_keystrokes": required_keystrokes,
         "required_keystrokes_met": required_keystrokes_met,
+        "keystroke_verification": (
+            "UNVERIFIED_CLIENT_TELEMETRY" if reported_keystrokes is not None else "NOT_REPORTED"
+        ),
         "reference_characters": len(reference),
         **chars,
         "word_errors": word_errors,
@@ -194,6 +210,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "gross_words": gross_words,
         "scoring_mode": scoring_mode,
         "score": score,
+        "error_percent": error_percent,
+        "error_percentage_unit": "WORDS" if error_percent is not None else "UNRESOLVED",
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
         "net_words": net_words,
