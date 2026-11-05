@@ -26,6 +26,52 @@ class ExamConfiguration(models.Model):
         TCS = "TCS", "TCS-style interface"
         CUSTOM = "CUSTOM", "Custom / exam-specific"
 
+    class BackspacePolicy(models.TextChoices):
+        FULL = "FULL", "Unrestricted Backspace"
+        DISABLED = "DISABLED", "Backspace disabled"
+        WORD_ONLY = "WORD_ONLY", "Current word only"
+        WORD_LOCK_AFTER_SEPARATOR = "WORD_LOCK_AFTER_SEPARATOR", "Lock word after Space/Enter"
+        NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified (practice default: unrestricted)"
+        PROVISIONAL_WORD_ONLY = "PROVISIONAL_WORD_ONLY", "Provisional current-word restriction"
+
+    class ScoringMode(models.TextChoices):
+        GENERIC = "GENERIC", "Generic character/word metrics"
+        CORRECT_WORDS = "CORRECT_WORDS", "Correct words only"
+        NET_WPM = "NET_WPM", "Net WPM / key-depression formula"
+        ERROR_PERCENTAGE = "ERROR_PERCENTAGE", "Error percentage allowance"
+        STROKE_PENALTY = "STROKE_PENALTY", "Stroke-based mistake penalty"
+        FULL_HALF_MISTAKES = "FULL_HALF_MISTAKES", "Full and half mistakes"
+        CORRECT_WORD_MARKS = "CORRECT_WORD_MARKS", "Marks per correct word"
+        QUALIFYING_ONLY = "QUALIFYING_ONLY", "Qualifying only"
+        CUSTOM = "CUSTOM", "Custom JSON scoring rules"
+
+    class PassageSourceMode(models.TextChoices):
+        SCREEN = "SCREEN", "On-screen passage"
+        PRINTED = "PRINTED", "Printed passage reference"
+        MANUSCRIPT = "MANUSCRIPT", "Hard-copy manuscript"
+        CONTINUOUS = "CONTINUOUS", "Continuous text"
+        KEY_DEPRESSION = "KEY_DEPRESSION", "Key-depression test"
+        TRANSCRIPTION = "TRANSCRIPTION", "Audio/shorthand transcription"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class EnterBehavior(models.TextChoices):
+        NEW_LINE = "NEW_LINE", "Insert new line"
+        COMMIT_WORD = "COMMIT_WORD", "Commit current word"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class SpaceBehavior(models.TextChoices):
+        NORMAL = "NORMAL", "Normal space"
+        COMMIT_WORD = "COMMIT_WORD", "Commit/lock current word"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class TabBehavior(models.TextChoices):
+        INSERT_TAB = "INSERT_TAB", "Insert tab"
+        INSERT_SPACES = "INSERT_SPACES", "Insert configured spaces"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
     class PassageLayout(models.TextChoices):
         UNCONFIGURED = "UNCONFIGURED", "Pending format verification"
         CONTINUOUS = "CONTINUOUS", "Continuous text"
@@ -68,6 +114,29 @@ class ExamConfiguration(models.Model):
     presentation_notes = models.TextField(blank=True)
     passage_word_limit = models.PositiveIntegerField(null=True, blank=True)
     allow_backspace = models.BooleanField(default=True)
+    backspace_policy = models.CharField(max_length=32, choices=BackspacePolicy.choices, default=BackspacePolicy.NOT_SPECIFIED)
+    allow_delete = models.BooleanField(default=True)
+    allow_paste = models.BooleanField(default=True)
+    allow_copy = models.BooleanField(default=True)
+    allow_cut = models.BooleanField(default=True)
+    enter_behavior = models.CharField(max_length=16, choices=EnterBehavior.choices, default=EnterBehavior.UNSPECIFIED)
+    space_behavior = models.CharField(max_length=16, choices=SpaceBehavior.choices, default=SpaceBehavior.UNSPECIFIED)
+    tab_behavior = models.CharField(max_length=16, choices=TabBehavior.choices, default=TabBehavior.UNSPECIFIED)
+    keyboard_layout = models.CharField(max_length=80, blank=True)
+    text_encoding = models.CharField(max_length=24, blank=True)
+    passage_source_mode = models.CharField(max_length=20, choices=PassageSourceMode.choices, default=PassageSourceMode.UNSPECIFIED)
+    minimum_wpm = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    required_keystrokes = models.PositiveIntegerField(null=True, blank=True)
+    strokes_per_word = models.PositiveSmallIntegerField(null=True, blank=True)
+    error_allowance_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    mistake_penalty_strokes = models.PositiveIntegerField(null=True, blank=True)
+    trial_seconds = models.PositiveIntegerField(null=True, blank=True)
+    review_seconds = models.PositiveIntegerField(null=True, blank=True)
+    correction_seconds = models.PositiveIntegerField(null=True, blank=True)
+    transcription_seconds = models.PositiveIntegerField(null=True, blank=True)
+    allow_passage_repeat = models.BooleanField(default=False)
+    scoring_mode = models.CharField(max_length=24, choices=ScoringMode.choices, default=ScoringMode.GENERIC)
+    rule_config_version = models.PositiveSmallIntegerField(default=1)
     allow_arrow_navigation = models.BooleanField(default=True)
     error_rules = models.JSONField(default=dict, blank=True)
     scoring_rules = models.JSONField(default=dict, blank=True)
@@ -92,6 +161,18 @@ class ExamConfiguration(models.Model):
 
     def clean(self):
         super().clean()
+        if self.backspace_policy == self.BackspacePolicy.DISABLED:
+            self.allow_backspace = False
+        elif self.backspace_policy in {
+            self.BackspacePolicy.FULL, self.BackspacePolicy.WORD_ONLY,
+            self.BackspacePolicy.WORD_LOCK_AFTER_SEPARATOR,
+            self.BackspacePolicy.PROVISIONAL_WORD_ONLY,
+        }:
+            self.allow_backspace = True
+        if self.minimum_wpm is not None and self.minimum_wpm < 0:
+            raise ValidationError({"minimum_wpm": "Minimum WPM cannot be negative."})
+        if self.error_allowance_percent is not None and self.error_allowance_percent > 100:
+            raise ValidationError({"error_allowance_percent": "Error allowance cannot exceed 100%."})
         if self.passage_font_size_pt < 8 or self.passage_font_size_pt > 32:
             raise ValidationError({"passage_font_size_pt": "Passage font size must be between 8 and 32 pt."})
         if self.passage_line_height < 1 or self.passage_line_height > 3:
