@@ -504,3 +504,62 @@ class TypingSessionViewTests(TestCase):
         self.assertContains(response, "Half mistakes")
         self.assertContains(response, "Weighted mistakes")
         self.assertContains(response, "not itself an official score")
+
+    def test_result_integrity_checker_validates_without_recalculating_or_mutating(self):
+        from copy import deepcopy
+        from .result_integrity import verify_result_integrity
+
+        rules_snapshot = {
+            "rule_config_version": 3,
+            "scoring_rules": {"mistake_classification": {"version": 1, "overrides": []}},
+        }
+        result_snapshot = {
+            "scoring_version": "tsz-char-word-v3",
+            "score": 12.5,
+            "scoring_audit": {
+                "engine_version": "tsz-char-word-v3",
+                "rule_config_version": 3,
+                "scoring_rules_sha256": "PLACEHOLDER",
+            },
+        }
+        from .result_integrity import scoring_rules_fingerprint
+        result_snapshot["scoring_audit"]["scoring_rules_sha256"] = scoring_rules_fingerprint(
+            rules_snapshot["scoring_rules"]
+        )
+        original_result = deepcopy(result_snapshot)
+        integrity = verify_result_integrity(
+            rules_snapshot=rules_snapshot,
+            result_snapshot=result_snapshot,
+        )
+        self.assertEqual(integrity["status"], "VALID")
+        self.assertEqual(result_snapshot, original_result)
+        self.assertEqual(result_snapshot["score"], 12.5)
+
+    def test_result_integrity_checker_detects_tampered_snapshot_metadata(self):
+        from .result_integrity import verify_result_integrity
+
+        integrity = verify_result_integrity(
+            rules_snapshot={
+                "rule_config_version": 3,
+                "scoring_rules": {"threshold": 10},
+            },
+            result_snapshot={
+                "scoring_version": "tsz-char-word-v3",
+                "scoring_audit": {
+                    "engine_version": "tsz-char-word-v3",
+                    "rule_config_version": 3,
+                    "scoring_rules_sha256": "0" * 64,
+                },
+            },
+        )
+        self.assertEqual(integrity["status"], "MISMATCH")
+        self.assertIn("MISMATCH", [item["status"] for item in integrity["checks"]])
+
+    def test_result_integrity_checker_marks_legacy_results_uncheckable(self):
+        from .result_integrity import verify_result_integrity
+
+        integrity = verify_result_integrity(
+            rules_snapshot={"scoring_rules": {}},
+            result_snapshot={"scoring_version": "legacy"},
+        )
+        self.assertEqual(integrity["status"], "LEGACY_UNCHECKABLE")
