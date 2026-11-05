@@ -106,6 +106,31 @@ Source: https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice
 
 This case remains subject to implementation-level validation of fractional-speed band boundaries and the precise official mistake-classification instructions. Do not infer a rounding rule that the notice does not state.
 
+## Delhi Police HCM 2025 source-grounded reference profile
+
+backend/exams/reference_profiles/delhi_police_hcm_2025.py records the SSC 2025 notice rules from paragraph 24.1 and 24.2 (printed pages 22-23). The profile is a reference/evaluation module only; it does not modify any existing ExamConfiguration row or automatically certify a live profile.
+
+Confirmed by the notice:
+- Typing test duration: 10 minutes.
+- Minimum qualifying speed: English 30 WPM; Hindi 25 WPM.
+- Printed passage minimum: English 400 words or 2,000 strokes; Hindi 350 words or 1,750 strokes.
+- Tentative speed: total strokes divided by five and then by test time in minutes.
+- Actual speed: tentative speed minus one word per mistake.
+- Mistake descriptions: omission, substitution, added punctuation, wrong capitalization, gap within a word, excess gap between words, and failure to make paragraph(s).
+- Marks bands: English 30=10, 31-35=12, 36-40=15, 41-45=18, 46-50=21, above 50=25; Hindi 25=10, 26-30=12, 31-35=15, 36-40=18, 41-45=21, above 45=25.
+- Backspace, Delete, paste, copy, cut and arrow-navigation restrictions are not specified in these typing-test paragraphs.
+
+Implementation safeguards:
+- The evaluator accepts an integer stroke count and a mistake count; it never guesses strokes by counting Unicode characters in submitted text.
+- It only evaluates the specified 600-second test.
+- It does not round fractional actual speeds. Because the notice's bands leave fractional values between integer ranges unstated, such outcomes return BAND_UNRESOLVED rather than an invented mark.
+- Hindi stroke counting remains blocked until a source-backed, tested Unicode stroke counter is available.
+- The current general simulator's client-reported keystrokes are not trusted input and must not be substituted for a verified stroke count.
+- This reference module is not wired to production exam records and does not claim every profile is verified.
+
+Source: SSC, Notice: Head Constable (Ministerial) in Delhi Police Examination, 2025, paragraphs 24.1-24.2, printed pages 22-23:
+https://ssc.gov.in/api/attachment/uploads/masterData/Notice_of_DPHCM_2025.pdf?mode=light
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
