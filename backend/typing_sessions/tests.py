@@ -421,7 +421,7 @@ class TypingScoringTests(TestCase):
         result = submit_session(
             session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text
         )
-        self.assertEqual(result.scoring_version, "tsz-char-word-v2")
+        self.assertEqual(result.scoring_version, "tsz-char-word-v3")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
 
