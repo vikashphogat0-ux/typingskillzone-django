@@ -51,7 +51,7 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
-def calculate_result(*, reference, typed, duration_seconds, rules):
+def calculate_result(*, reference, typed, duration_seconds, rules, reported_keystrokes=None):
     """Calculate metrics exclusively from persisted source text and submitted text."""
     duration = max(1, int(duration_seconds))
     minutes = duration / 60
@@ -71,6 +71,18 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
         penalty_per_error = 0
     net_wpm = round(max(0, correct_wpm - error_count * penalty_per_error), 2)
 
+    required_keystrokes = rules.get("required_keystrokes")
+    try:
+        required_keystrokes = int(required_keystrokes) if required_keystrokes is not None else None
+    except (TypeError, ValueError):
+        required_keystrokes = None
+    if reported_keystrokes is not None:
+        reported_keystrokes = max(0, min(1000000, int(reported_keystrokes)))
+    required_keystrokes_met = (
+        reported_keystrokes >= required_keystrokes
+        if reported_keystrokes is not None and required_keystrokes is not None
+        else None
+    )
     scoring_mode = rules.get("scoring_mode", "GENERIC")
     scoring_rules = rules.get("scoring_rules") or {}
     correct_words = _count_correct_words(reference, typed)
@@ -171,6 +183,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules):
         "scoring_version": SCORING_VERSION,
         "duration_seconds": duration,
         "typed_characters": len(typed),
+        "reported_keystrokes": reported_keystrokes,
+        "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
+        "required_keystrokes": required_keystrokes,
+        "required_keystrokes_met": required_keystrokes_met,
         "reference_characters": len(reference),
         **chars,
         "word_errors": word_errors,
