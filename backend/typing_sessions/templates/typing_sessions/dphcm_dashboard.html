@@ -54,6 +54,24 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="practice-achievements">
+  <h2>Practice achievements</h2>
+  <p class="muted">Earn badges by completing practice milestones and meeting your personal goals. These achievements are calculated from your saved HCM practice reports and active filters; they are motivational indicators, not official exam marks or qualifications.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ unlocked_achievement_count }}/{{ achievement_rows|length }}</div><strong>Achievements unlocked</strong></div>
+    <div class="item"><div class="id">{{ total_hcm_attempts }}</div><strong>Matching HCM attempts</strong></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px">
+    {% for achievement in achievement_rows %}
+      <div class="item" style="border:1px solid var(--line);opacity:{% if achievement.unlocked %}1{% else %}.65{% endif %}">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;color:{% if achievement.unlocked %}var(--blue){% else %}var(--muted){% endif %}">{% if achievement.unlocked %}UNLOCKED{% else %}LOCKED{% endif %}</div>
+        <strong style="display:block;margin-top:6px">{{ achievement.name }}</strong>
+        <div class="muted" style="margin-top:6px">{{ achievement.description }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="panel" style="margin-top:18px" id="weekly-practice-timetable">
   <h2>Weekly practice timetable</h2>
   <p class="muted">{{ weekly_plan_summary.start_date|date:"d M Y" }} – {{ weekly_plan_summary.end_date|date:"d M Y" }} · Six practice days and Sunday recovery. Daily passage targets follow your suggested practice plan; this is a flexible coaching schedule, not an official exam requirement.</p>
