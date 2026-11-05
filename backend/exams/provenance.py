@@ -52,6 +52,14 @@ def validate_domain_evidence(evidence):
     if not isinstance(evidence, dict):
         return {}, ["Evidence must be an object keyed by specification domain."]
 
+    # Accept the normalized persisted envelope as well as the compact admin form.
+    if "domains" in evidence:
+        if evidence.get("schema_version") != DOMAIN_EVIDENCE_SCHEMA_VERSION:
+            errors.append("Unsupported domain evidence schema version.")
+        evidence = evidence.get("domains")
+        if not isinstance(evidence, dict):
+            return {}, errors + ["The domains value must be an object."]
+
     unknown = sorted(set(evidence) - set(SPECIFICATION_DOMAINS))
     if unknown:
         errors.append("Unknown specification domains: " + ", ".join(unknown))
