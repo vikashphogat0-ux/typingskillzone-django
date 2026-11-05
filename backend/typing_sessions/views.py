@@ -311,6 +311,40 @@ def delhi_police_hcm_dashboard(request):
             "accuracy_goal_met": bool(current_accuracy is not None and current_accuracy >= goal.target_accuracy),
         })
 
+    # A transparent practice suggestion based on the rolling seven-day saved metrics.
+    # These are coaching defaults, not official exam requirements.
+    recent_speed = weekly_summary["average_net_wpm"]
+    recent_accuracy = weekly_summary["average_accuracy"]
+    if recent_speed is None:
+        suggested_minutes, suggested_passages = 20, 2
+        planner_focus = "Build a consistent baseline with short, careful practice."
+    else:
+        speed_gap = max(0, goal.target_net_wpm - recent_speed)
+        if speed_gap >= goal.target_net_wpm * 0.20:
+            suggested_minutes, suggested_passages = 35, 4
+            planner_focus = "Prioritize controlled speed-building while maintaining accuracy."
+        elif speed_gap > 0:
+            suggested_minutes, suggested_passages = 30, 3
+            planner_focus = "Work toward your speed target with timed passage practice."
+        else:
+            suggested_minutes, suggested_passages = 20, 2
+            planner_focus = "Maintain your speed and focus on consistent accuracy."
+        if recent_accuracy is not None and recent_accuracy < goal.target_accuracy - 5:
+            suggested_minutes = min(45, suggested_minutes + 10)
+            suggested_passages = min(5, suggested_passages + 1)
+            planner_focus = "Prioritize accuracy: slow down, review errors, then complete timed passages."
+    daily_practice_plan = {
+        "minutes": suggested_minutes,
+        "passages": suggested_passages,
+        "warmup_minutes": 5,
+        "review_minutes": 5,
+        "timed_minutes": max(10, suggested_minutes - 10),
+        "recent_speed": recent_speed,
+        "recent_accuracy": recent_accuracy,
+        "focus": planner_focus,
+        "based_on_days": 7,
+    }
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -331,7 +365,7 @@ def delhi_police_hcm_dashboard(request):
         "monthly_rows": monthly_rows,
         "progress_comparisons": progress_comparisons,
         "calendar_rows": calendar_rows,
-        "calendar_summary": calendar_summary,
+        "calendar_summary": calendar_summary,\n        "daily_practice_plan": daily_practice_plan,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
