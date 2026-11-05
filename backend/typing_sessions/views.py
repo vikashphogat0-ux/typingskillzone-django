@@ -123,8 +123,24 @@ def delhi_police_hcm_dashboard(request):
             "unresolved_count": unresolved,
             "marks_status": (report.get("marks_eligibility") or {}).get("status", "PENDING"),
         })
+    # Build chronological, presentation-only trend series from saved snapshots.
+    # Widths are normalized independently and are not scoring or qualification inputs.
+    max_speed = max(speeds, default=0)
+    trend_rows = []
+    for row in reversed(rows):
+        speed = row["speed"]
+        accuracy = row["accuracy"]
+        trend_rows.append({
+            "date": row["attempt"].completed_at or row["attempt"].started_at,
+            "passage_id": row["attempt"].rules_snapshot.get("passage_id"),
+            "speed": speed,
+            "speed_width": min(100, round(float(speed) * 100 / max_speed, 1)) if isinstance(speed, (int, float)) and max_speed else 0,
+            "accuracy": accuracy,
+            "accuracy_width": min(100, max(0, round(float(accuracy), 1))) if isinstance(accuracy, (int, float)) else 0,
+        })
     return render(request, "typing_sessions/dphcm_dashboard.html", {
         "rows": rows,
+        "trend_rows": trend_rows,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
         "average_accuracy": round(sum(accuracies) / len(accuracies), 2) if accuracies else None,
