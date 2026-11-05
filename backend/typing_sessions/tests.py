@@ -156,7 +156,7 @@ class TypingSessionTests(TestCase):
         self.exam.save()
         attempt = start_session(learner=self.learner, publication=self.publication)
         result = submit_session(
-            session_id=attempt.pk, learner=self.learner, typed_text="One.\nTwo.\\t"
+            session_id=attempt.pk, learner=self.learner, typed_text="One.\nTwo.\t"
         )
 
         audit = result.result_snapshot["input_policy_audit"]
