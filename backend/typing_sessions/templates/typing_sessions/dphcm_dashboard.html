@@ -1,0 +1,52 @@
+{% extends "passages/base.html" %}
+{% block title %}Delhi Police HCM Practice Dashboard | TypingSkillZone{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="eyebrow">Personal performance</div>
+  <h1>Delhi Police HCM practice dashboard</h1>
+  <p class="muted">This dashboard reads your saved attempt reports. It does not recalculate historical results or present practice metrics as official SSC marks.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ attempt_count }}</div><strong>Recorded attempts</strong></div>
+    <div class="item"><div class="id">{% if average_net_wpm != None %}{{ average_net_wpm }}{% else %}—{% endif %}</div><strong>Average net practice WPM</strong></div>
+    <div class="item"><div class="id">{% if average_accuracy != None %}{{ average_accuracy }}%{% else %}—{% endif %}</div><strong>Average accuracy</strong></div>
+    <div class="item"><div class="id">{{ unresolved_total }}</div><strong>Unresolved text cases</strong></div>
+  </div>
+</section>
+<section class="panel" style="margin-top:18px">
+  <h2>Mistake-category progress</h2>
+  {% if category_totals %}
+    <div class="grid">
+      {% for category, count in category_totals %}
+        <div class="item"><div class="id">{{ count }}</div><strong>{{ category|title|cut:"_" }}</strong><div class="muted">Candidate detections across saved attempts</div></div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No categorized mistake candidates have been recorded yet.</p>
+  {% endif %}
+</section>
+<section class="panel" style="margin-top:18px">
+  <h2>Attempt history</h2>
+  {% if rows %}
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;text-align:left">
+        <thead><tr><th style="padding:10px">Date</th><th>Passage</th><th>Net WPM</th><th>Accuracy</th><th>Candidate errors</th><th>Unresolved</th><th>Marks</th><th></th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr style="border-top:1px solid var(--line)">
+            <td style="padding:10px">{{ row.attempt.completed_at|date:"d M Y, H:i" }}</td>
+            <td>{{ row.attempt.rules_snapshot.passage_id|default:"—" }}</td>
+            <td>{{ row.speed|default:"—" }}</td><td>{{ row.accuracy|default:"—" }}{% if row.accuracy != None %}%{% endif %}</td>
+            <td>{{ row.candidate_count|default:"—" }}</td><td>{{ row.unresolved_count }}</td>
+            <td>{{ row.marks_status|title|cut:"_" }}</td>
+            <td><a href="{% url 'typing_sessions:session' row.attempt.pk %}">View report</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No Delhi Police HCM attempt reports are available yet. Complete an HCM practice test to populate this dashboard.</p>
+  {% endif %}
+</section>
+<p style="margin-top:18px"><a href="/">← Back to TypingSkillZone</a></p>
+{% endblock %}
