@@ -30,7 +30,8 @@ class ExamConfigurationAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
             "scoring_mode", "error_allowance_percent", "mistake_penalty_strokes",
             "error_rules", "scoring_rules", "qualification_rules", "rule_config_version",
         )}),
-        ("Official rule verification", {"fields": ("verification_status", "official_source_url", "source_title", "source_checked_at", "rule_notes")}),
+        ("Official rule verification (legacy profile-wide status)", {"fields": ("verification_status", "official_source_url", "source_title", "source_checked_at", "rule_notes")}),
+        ("Independent domain evidence", {"description": "Use JSON format. Each domain has status and references. Each reference needs url, title, locator, checked_at (YYYY-MM-DD), and claims. Missing domains remain UNVERIFIED.", "fields": ("domain_evidence",)}),
         ("System timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
