@@ -201,3 +201,8 @@ This is descriptive practice reporting only. It does not recalculate attempts, c
 ## Delhi Police HCM monthly practice report
 
 The learner dashboard groups the currently displayed learner-owned HCM attempt reports by local calendar month. Each month shows attempt count, average saved practice net WPM, average saved accuracy, and whether those monthly averages meet the learner's personal goals. It uses the same active date/language filters and latest-100 matching-attempt cap as the dashboard; months without attempts are omitted. The report is descriptive practice analysis, not an official SSC marks or qualification statement. The dashboard Print / Save as PDF action uses the browser print dialog; the learner can choose Save as PDF without adding a server-side PDF dependency.
+
+
+## Delhi Police HCM 30/60/90-day progress analysis
+
+The dashboard compares saved practice metrics in each recent 30-, 60-, and 90-calendar-day window against the immediately preceding window of equal length. It reports attempt counts, average practice net WPM, average accuracy, absolute changes (WPM and percentage points), and current-period personal-goal status. The comparison uses the learner-owned, active date/language-filtered queryset and all matching saved attempts in the 180-day comparison horizon; the separate attempt-history display remains capped at 100. A change is shown only when both periods have a metric value; missing data is not treated as zero. This is descriptive practice analysis, not an official SSC result or prediction.
