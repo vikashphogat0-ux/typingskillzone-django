@@ -104,8 +104,17 @@ def analyze_dphcm_text_errors(*, reference, typed):
                 "reason": "Whitespace-only difference requires examiner-specific interpretation.",
             })
 
+    internal_gap_only = _single_internal_gap_difference(reference, typed)
+    if internal_gap_only:
+        candidates.append({
+            "category": "GAP_INSIDE_WORD",
+            "reference": reference,
+            "typed": typed,
+            "basis": "Removing the internal whitespace restores the reference text.",
+        })
+
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    for tag, i1, i2, j1, j2 in ([] if internal_gap_only else matcher.get_opcodes()):
         if tag == "equal":
             continue
         ref_segment = ref_words[i1:i2]
