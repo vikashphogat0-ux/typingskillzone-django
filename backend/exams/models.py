@@ -26,6 +26,52 @@ class ExamConfiguration(models.Model):
         TCS = "TCS", "TCS-style interface"
         CUSTOM = "CUSTOM", "Custom / exam-specific"
 
+    class BackspacePolicy(models.TextChoices):
+        FULL = "FULL", "Unrestricted Backspace"
+        DISABLED = "DISABLED", "Backspace disabled"
+        WORD_ONLY = "WORD_ONLY", "Current word only"
+        WORD_LOCK_AFTER_SEPARATOR = "WORD_LOCK_AFTER_SEPARATOR", "Lock word after Space/Enter"
+        NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified (practice default: unrestricted)"
+        PROVISIONAL_WORD_ONLY = "PROVISIONAL_WORD_ONLY", "Provisional current-word restriction"
+
+    class ScoringMode(models.TextChoices):
+        GENERIC = "GENERIC", "Generic character/word metrics"
+        CORRECT_WORDS = "CORRECT_WORDS", "Correct words only"
+        NET_WPM = "NET_WPM", "Net WPM / key-depression formula"
+        ERROR_PERCENTAGE = "ERROR_PERCENTAGE", "Error percentage allowance"
+        STROKE_PENALTY = "STROKE_PENALTY", "Stroke-based mistake penalty"
+        FULL_HALF_MISTAKES = "FULL_HALF_MISTAKES", "Full and half mistakes"
+        CORRECT_WORD_MARKS = "CORRECT_WORD_MARKS", "Marks per correct word"
+        QUALIFYING_ONLY = "QUALIFYING_ONLY", "Qualifying only"
+        CUSTOM = "CUSTOM", "Custom JSON scoring rules"
+
+    class PassageSourceMode(models.TextChoices):
+        SCREEN = "SCREEN", "On-screen passage"
+        PRINTED = "PRINTED", "Printed passage reference"
+        MANUSCRIPT = "MANUSCRIPT", "Hard-copy manuscript"
+        CONTINUOUS = "CONTINUOUS", "Continuous text"
+        KEY_DEPRESSION = "KEY_DEPRESSION", "Key-depression test"
+        TRANSCRIPTION = "TRANSCRIPTION", "Audio/shorthand transcription"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class EnterBehavior(models.TextChoices):
+        NEW_LINE = "NEW_LINE", "Insert new line"
+        COMMIT_WORD = "COMMIT_WORD", "Commit current word"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class SpaceBehavior(models.TextChoices):
+        NORMAL = "NORMAL", "Normal space"
+        COMMIT_WORD = "COMMIT_WORD", "Commit/lock current word"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
+    class TabBehavior(models.TextChoices):
+        INSERT_TAB = "INSERT_TAB", "Insert tab"
+        INSERT_SPACES = "INSERT_SPACES", "Insert configured spaces"
+        DISABLED = "DISABLED", "Disabled"
+        UNSPECIFIED = "UNSPECIFIED", "Not specified"
+
     class PassageLayout(models.TextChoices):
         UNCONFIGURED = "UNCONFIGURED", "Pending format verification"
         CONTINUOUS = "CONTINUOUS", "Continuous text"
@@ -92,6 +138,18 @@ class ExamConfiguration(models.Model):
 
     def clean(self):
         super().clean()
+        if self.backspace_policy == self.BackspacePolicy.DISABLED:
+            self.allow_backspace = False
+        elif self.backspace_policy in {
+            self.BackspacePolicy.FULL, self.BackspacePolicy.WORD_ONLY,
+            self.BackspacePolicy.WORD_LOCK_AFTER_SEPARATOR,
+            self.BackspacePolicy.PROVISIONAL_WORD_ONLY,
+        }:
+            self.allow_backspace = True
+        if self.minimum_wpm is not None and self.minimum_wpm < 0:
+            raise ValidationError({"minimum_wpm": "Minimum WPM cannot be negative."})
+        if self.error_allowance_percent is not None and self.error_allowance_percent > 100:
+            raise ValidationError({"error_allowance_percent": "Error allowance cannot exceed 100%."})
         if self.passage_font_size_pt < 8 or self.passage_font_size_pt > 32:
             raise ValidationError({"passage_font_size_pt": "Passage font size must be between 8 and 32 pt."})
         if self.passage_line_height < 1 or self.passage_line_height > 3:
