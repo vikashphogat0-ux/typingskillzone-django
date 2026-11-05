@@ -221,3 +221,8 @@ The learner dashboard now provides a coaching plan based on saved practice avera
 ## Delhi Police HCM weekly practice timetable
 
 The learner dashboard now displays a Monday-to-Sunday coaching timetable with six practice days and Sunday recovery. Daily passage targets and practice duration are derived from the suggested daily plan. The weekly tracker counts saved completed HCM attempts, shows completed/in-progress/not-started/upcoming/rest states, and reports completed daily targets as a percentage of elapsed eligible practice days. Future dates are upcoming, not missed. The schedule is a flexible coaching default, not an official SSC requirement; it does not change scoring or attempt history. Tests are added; execution remains pending.
+
+
+## Delhi Police HCM daily dashboard reminder
+
+Learners can enable/disable a private daily reminder and choose a local dashboard reminder time. Once that time has passed, the dashboard displays a reminder if the learner has not completed an HCM attempt on the current local date. Completing an attempt suppresses the reminder for that date. The preference is stored in a separate one-to-one learner settings table (`LearnerPracticeReminder`) and migration `0003_learnerpracticereminder`; it does not alter attempt history. This implementation is dashboard-only: it does not send email, SMS, browser push or background notifications and requires the learner to open or refresh the dashboard. Tests cover saving the preference, reminder due state and suppression after practice; execution remains pending.
