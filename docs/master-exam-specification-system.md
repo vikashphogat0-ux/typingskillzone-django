@@ -216,3 +216,8 @@ The learner dashboard displays a 90-calendar-day activity grid, active practice 
 ## Delhi Police HCM suggested daily practice planner
 
 The learner dashboard now provides a coaching plan based on saved practice averages from the rolling seven-day report and the learner's personal speed/accuracy targets. It suggests daily minutes, passage count, warm-up and review time, timed-practice time, and a focus area. With no recent metrics it uses a conservative 20-minute/two-passage baseline. Larger speed gaps increase practice volume; an accuracy gap greater than five percentage points adds focused review time and one passage, subject to a 45-minute/five-passage cap. These are transparent coaching defaults, not official SSC rules. The planner does not change scoring or attempt records. Tests are added; execution remains pending.
+
+
+## Delhi Police HCM weekly practice timetable
+
+The learner dashboard now displays a Monday-to-Sunday coaching timetable with six practice days and Sunday recovery. Daily passage targets and practice duration are derived from the suggested daily plan. The weekly tracker counts saved completed HCM attempts, shows completed/in-progress/not-started/upcoming/rest states, and reports completed daily targets as a percentage of elapsed eligible practice days. Future dates are upcoming, not missed. The schedule is a flexible coaching default, not an official SSC requirement; it does not change scoring or attempt history. Tests are added; execution remains pending.
