@@ -40,6 +40,33 @@
   </div>
 </section>
 <section class="panel" style="margin-top:18px">
+  <h2>Last 7 days practice report</h2>
+  <p class="muted">{{ weekly_summary.start_date|date:"d M Y" }} – {{ weekly_summary.end_date|date:"d M Y" }} · Uses saved practice reports and the active date/language filters.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ weekly_summary.attempt_count }}</div><strong>Attempts this week</strong></div>
+    <div class="item"><div class="id">{% if weekly_summary.average_net_wpm != None %}{{ weekly_summary.average_net_wpm }}{% else %}—{% endif %}</div><strong>Average net practice WPM</strong><div class="muted">{% if weekly_summary.speed_goal_met %}Speed goal achieved{% else %}Speed goal not yet achieved{% endif %}</div></div>
+    <div class="item"><div class="id">{% if weekly_summary.average_accuracy != None %}{{ weekly_summary.average_accuracy }}%{% else %}—{% endif %}</div><strong>Average accuracy</strong><div class="muted">{% if weekly_summary.accuracy_goal_met %}Accuracy goal achieved{% else %}Accuracy goal not yet achieved{% endif %}</div></div>
+  </div>
+  <h3 style="margin-top:18px">Daily breakdown</h3>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;text-align:left">
+      <thead><tr><th style="padding:10px">Day</th><th>Attempts</th><th>Average net WPM</th><th>Average accuracy</th><th>Speed goal</th><th>Accuracy goal</th></tr></thead>
+      <tbody>
+      {% for day in weekly_daily_rows %}
+        <tr style="border-top:1px solid var(--line)">
+          <td style="padding:10px">{{ day.date|date:"D, d M" }}</td>
+          <td>{{ day.attempt_count }}</td>
+          <td>{{ day.average_net_wpm|default:"—" }}</td>
+          <td>{% if day.average_accuracy != None %}{{ day.average_accuracy }}%{% else %}—{% endif %}</td>
+          <td>{% if day.average_net_wpm == None %}—{% elif day.speed_goal_met %}Met{% else %}Not met{% endif %}</td>
+          <td>{% if day.average_accuracy == None %}—{% elif day.accuracy_goal_met %}Met{% else %}Not met{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="panel" style="margin-top:18px">
   <h2>Attempt-by-attempt performance trends</h2>
   <p class="muted">Chronological history, oldest to newest. Speed bars are scaled against your highest displayed practice net WPM; accuracy bars use a 0–100% scale. These are descriptive practice metrics only.</p>
   {% if trend_rows %}
