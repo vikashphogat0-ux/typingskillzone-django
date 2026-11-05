@@ -81,17 +81,17 @@ class SimulatorPassage(models.Model):
                 layout = self.exam.PassageLayout.TCS
 
         if layout == self.exam.PassageLayout.CONTINUOUS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return " ".join(parts)
         if layout == self.exam.PassageLayout.PARAGRAPHS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
         if layout == self.exam.PassageLayout.PARA_TAB:
             typography = passage["typography"]
             tab_size = typography["tab_size"] or 4
             return raw if typography["preserve_tabs"] else raw.replace("\t", " " * tab_size)
         if layout == self.exam.PassageLayout.TCS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
         return raw
 
@@ -124,16 +124,16 @@ class SimulatorPassage(models.Model):
                 layout = self.exam.PassageLayout.TCS
 
         if layout == self.exam.PassageLayout.CONTINUOUS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return " ".join(parts)
         if layout == self.exam.PassageLayout.PARAGRAPHS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
         if layout == self.exam.PassageLayout.PARA_TAB:
             typography = passage["typography"]
             return raw if typography["preserve_tabs"] else raw.replace("\t", " " * (typography["tab_size"] or 4))
         if layout == self.exam.PassageLayout.TCS:
-            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
         return raw
 
