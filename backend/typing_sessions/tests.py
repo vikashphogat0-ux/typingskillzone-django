@@ -814,3 +814,35 @@ class TypingSessionViewTests(TestCase):
         )
         self.assertNotEqual(own.pk, other.pk)
         self.assertEqual(LearnerPracticeGoal.objects.filter(learner=self.learner).count(), 1)
+
+    def test_dphcm_dashboard_seven_day_report_includes_recent_attempt(self):
+        from django.urls import reverse
+        from django.utils import timezone
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["weekly_daily_rows"]), 7)
+        self.assertEqual(response.context["weekly_summary"]["attempt_count"], 1)
+        today_row = next(
+            row for row in response.context["weekly_daily_rows"]
+            if row["date"] == timezone.localdate()
+        )
+        self.assertEqual(today_row["attempt_count"], 1)
+        self.assertIsNotNone(today_row["average_net_wpm"])
+
+    def test_dphcm_dashboard_seven_day_report_is_empty_without_recent_attempts(self):
+        from django.urls import reverse
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["weekly_daily_rows"]), 7)
+        self.assertEqual(response.context["weekly_summary"]["attempt_count"], 0)
+        self.assertIsNone(response.context["weekly_summary"]["average_net_wpm"])
