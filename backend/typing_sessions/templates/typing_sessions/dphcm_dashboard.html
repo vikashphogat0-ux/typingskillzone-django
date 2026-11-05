@@ -39,6 +39,25 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="progress-analysis">
+  <h2>30 / 60 / 90-day progress analysis</h2>
+  <p class="muted">Each recent window is compared with the immediately preceding window of the same length. Values come from saved practice reports and follow the active language/date filters. Change is shown only when both periods have recorded metrics.</p>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
+    <thead><tr><th style="padding:10px">Window</th><th>Attempts (current / prior)</th><th>Average WPM (current / prior)</th><th>WPM change</th><th>Accuracy (current / prior)</th><th>Accuracy change</th><th>Current goals</th></tr></thead>
+    <tbody>{% for item in progress_comparisons %}
+      <tr style="border-top:1px solid var(--line)">
+        <td style="padding:10px">{{ item.window_days }} days</td>
+        <td>{{ item.current_attempts }} / {{ item.previous_attempts }}</td>
+        <td>{% if item.current_speed != None %}{{ item.current_speed }}{% else %}—{% endif %} / {% if item.previous_speed != None %}{{ item.previous_speed }}{% else %}—{% endif %}</td>
+        <td>{% if item.speed_change != None %}{% if item.speed_change > 0 %}+{% endif %}{{ item.speed_change }} WPM{% else %}Insufficient data{% endif %}</td>
+        <td>{% if item.current_accuracy != None %}{{ item.current_accuracy }}%{% else %}—{% endif %} / {% if item.previous_accuracy != None %}{{ item.previous_accuracy }}%{% else %}—{% endif %}</td>
+        <td>{% if item.accuracy_change != None %}{% if item.accuracy_change > 0 %}+{% endif %}{{ item.accuracy_change }} percentage points{% else %}Insufficient data{% endif %}</td>
+        <td>{% if item.speed_goal_met %}Speed met{% else %}Speed pending{% endif %}; {% if item.accuracy_goal_met %}accuracy met{% else %}accuracy pending{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <p class="muted">A missing prior-period value means there is not enough recorded data to calculate a change; it is not treated as zero. This is practice analysis, not an official exam outcome.</p>
+</section>
 <section class="panel" style="margin-top:18px" id="monthly-report">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <h2>Monthly performance report</h2>
