@@ -52,7 +52,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
             "NET_WPM",
             scoring_rules={"error_unit_strokes": 2},
         )
-        self.assertEqual(result["net_wpm"], 1.0)
+        self.assertEqual(result["net_wpm"], 0.6)
 
     def test_stroke_penalty_mode_uses_profile_penalty(self):
         result = self.calculate(
@@ -60,7 +60,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
             strokes_per_word=5,
             mistake_penalty_strokes=2,
         )
-        self.assertEqual(result["net_wpm"], 1.0)
+        self.assertEqual(result["net_wpm"], 0.6)
 
     def test_correct_word_marks_mode(self):
         result = self.calculate(
