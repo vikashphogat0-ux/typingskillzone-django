@@ -504,6 +504,9 @@ class TypingSessionViewTests(TestCase):
         self.assertContains(response, "Half mistakes")
         self.assertContains(response, "Weighted mistakes")
         self.assertContains(response, "not itself an official score")
+        self.assertContains(response, "Historical result integrity")
+        self.assertContains(response, "Valid")
+        self.assertContains(response, "does not recalculate or modify your historical score")
 
     def test_result_integrity_checker_validates_without_recalculating_or_mutating(self):
         from copy import deepcopy
