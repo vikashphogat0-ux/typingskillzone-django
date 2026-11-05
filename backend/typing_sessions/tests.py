@@ -282,15 +282,18 @@ class TypingScoringTests(TestCase):
                 "verification_status": "VERIFIED",
                 "scoring_mode": "ERROR_PERCENTAGE",
                 "error_allowance_percent": "10",
-                "minimum_wpm": None,
+                "minimum_wpm": "0",
                 "error_rules": {"count_word_errors": False},
+                "scoring_rules": {"excess_mistake_deduction_words": 1},
             },
         )
         self.assertEqual(result["error_count_method"], "character")
         self.assertIsNone(result["error_percent"])
         self.assertEqual(result["error_percentage_unit"], "UNRESOLVED")
         self.assertIsNone(result["permitted_error_count"])
+        self.assertIsNone(result["net_words"])
         self.assertIsNone(result["qualification"])
+        self.assertIn("error unit is unresolved", result["qualification_note"])
 
     def test_word_error_percentage_uses_word_units_consistently(self):
         from .scoring import calculate_result
