@@ -55,6 +55,55 @@ class ExamCatalogueTests(TestCase):
             exam.full_clean()
 
 
+    def test_full_half_scoring_accepts_supported_versioned_classification_config(self):
+        exam = ExamConfiguration(
+            name="Full Half Test",
+            code="full-half-test",
+            scoring_mode=ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES,
+            scoring_rules={
+                "mistake_classification": {
+                    "version": 1,
+                    "unit": "word",
+                    "overrides": [
+                        {"reference": "colour", "typed": "color", "classification": "HALF"},
+                        {"reference": "because", "typed": "becuse", "classification": "FULL"},
+                    ],
+                }
+            },
+        )
+        exam.full_clean()
+
+    def test_full_half_scoring_rejects_duplicate_or_invalid_classification_pairs(self):
+        exam = ExamConfiguration(
+            name="Invalid Full Half Test",
+            code="invalid-full-half-test",
+            scoring_mode=ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES,
+            scoring_rules={
+                "mistake_classification": {
+                    "version": 1,
+                    "unit": "word",
+                    "overrides": [
+                        {"reference": "colour", "typed": "color", "classification": "HALF"},
+                        {"reference": "colour", "typed": "color", "classification": "FULL"},
+                        {"reference": "center", "typed": "centre", "classification": "SOMETIMES"},
+                    ],
+                }
+            },
+        )
+        with self.assertRaises(ValidationError) as raised:
+            exam.full_clean()
+        self.assertIn("scoring_rules", raised.exception.message_dict)
+
+    def test_full_half_scoring_keeps_legacy_unstructured_rules_compatible(self):
+        exam = ExamConfiguration(
+            name="Legacy Full Half Test",
+            code="legacy-full-half-test",
+            scoring_mode=ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES,
+            scoring_rules={"legacy_note": "Retain existing data"},
+        )
+        exam.full_clean()
+        self.assertEqual(exam.scoring_rules["legacy_note"], "Retain existing data")
+
     def test_seed_command_preserves_existing_admin_configured_rules(self):
         from django.core.management import call_command
 
