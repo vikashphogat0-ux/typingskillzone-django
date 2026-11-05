@@ -10,7 +10,7 @@ from django.utils.dateparse import parse_date
 from exams.models import ExamConfiguration
 from passages.models import SimulatorPassage
 
-from .models import TypingSession
+from .models import LearnerPracticeGoal, TypingSession
 from .services import expire_session, start_session, submit_session
 from .result_integrity import verify_result_integrity
 
@@ -89,7 +89,21 @@ def submit_typing_session(request, session_id):
 
 @login_required
 def delhi_police_hcm_dashboard(request):
-    """Learner-owned HCM practice history with optional date/language filters."""
+    """Learner-owned HCM history, filters, and personal practice targets."""
+    goal, _ = LearnerPracticeGoal.objects.get_or_create(learner=request.user)
+    goal_error = ""
+    if request.method == "POST":
+        try:
+            target_wpm = int(request.POST.get("target_net_wpm", ""))
+            target_accuracy = int(request.POST.get("target_accuracy", ""))
+            if not 1 <= target_wpm <= 200 or not 1 <= target_accuracy <= 100:
+                raise ValueError
+            goal.target_net_wpm = target_wpm
+            goal.target_accuracy = target_accuracy
+            goal.save(update_fields=("target_net_wpm", "target_accuracy", "updated_at"))
+            return redirect("typing_sessions:dphcm_dashboard")
+        except (TypeError, ValueError):
+            goal_error = "Enter speed from 1–200 WPM and accuracy from 1–100%."
     start_raw = request.GET.get("start_date", "").strip()
     end_raw = request.GET.get("end_date", "").strip()
     language = request.GET.get("language", "").strip().upper()
@@ -173,4 +187,10 @@ def delhi_police_hcm_dashboard(request):
         "end_date": end_raw,
         "selected_language": language,
         "filter_error": filter_error,
+        "goal": goal,
+        "goal_error": goal_error,
+        "goal_speed_progress": min(100, round((sum(speeds) / len(speeds)) * 100 / goal.target_net_wpm)) if speeds else 0,
+        "goal_accuracy_progress": min(100, round((sum(accuracies) / len(accuracies)) * 100 / goal.target_accuracy)) if accuracies else 0,
+        "goal_speed_met": bool(speeds and sum(speeds) / len(speeds) >= goal.target_net_wpm),
+        "goal_accuracy_met": bool(accuracies and sum(accuracies) / len(accuracies) >= goal.target_accuracy),
     })
