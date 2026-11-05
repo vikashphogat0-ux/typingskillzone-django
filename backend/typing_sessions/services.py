@@ -22,13 +22,16 @@ def start_session(*, learner, publication):
         raise ValidationError("This passage is not available for a new attempt.")
 
     exam = publication.exam
-    duration = exam.duration_seconds
     now = timezone.now()
     snapshot = build_exam_specification_snapshot(
         exam=exam,
         publication=publication,
         captured_at=now,
     )
+    # The persisted canonical timing section is the session's source of truth.
+    # Auxiliary phase durations remain metadata until their runtime semantics
+    # are explicitly specified and implemented.
+    duration = snapshot["timing"]["duration_seconds"]
     return TypingSession.objects.create(
         learner=learner,
         publication=publication,
