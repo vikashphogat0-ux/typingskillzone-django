@@ -26,7 +26,7 @@ class ExamConfigurationAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
             "review_seconds", "correction_seconds", "transcription_seconds",
             "allow_passage_repeat", "passage_source_mode",
         )}),
-        ("Scoring and qualification rules", {"description": "For FULL_HALF_MISTAKES, configure scoring_rules JSON with mistake_classification: version 1, unit word, and overrides containing exact reference/typed word pairs classified FULL, HALF or IGNORED. Use only categories supported by documented exam rules. Every error pair must be covered; incomplete or duplicate rules are rejected. Classification alone does not define marks or qualification.", "fields": (
+        ("Scoring and qualification rules", {"description": "For FULL_HALF_MISTAKES, configure scoring_rules JSON with mistake_classification: version 1, unit word, and overrides containing exact reference/typed word pairs classified FULL, HALF or IGNORED. Use only categories supported by documented exam rules. Every error pair must be covered; incomplete or duplicate rules are rejected. Classification alone does not define marks or qualification. Add source_reference with url, title, locator and checked_at (YYYY-MM-DD) to preserve the classification rule citation; without all four fields its source status remains PENDING.", "fields": (
             "scoring_mode", "error_allowance_percent", "mistake_penalty_strokes",
             "error_rules", "scoring_rules", "qualification_rules", "rule_config_version",
         )}),
