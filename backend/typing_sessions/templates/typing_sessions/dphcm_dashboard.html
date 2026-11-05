@@ -39,6 +39,18 @@
     <div class="item"><strong>Average accuracy goal progress</strong><div class="id">{{ goal_accuracy_progress }}%</div><div class="muted">Target {{ goal.target_accuracy }}% · {% if goal_accuracy_met %}achieved{% else %}in progress{% endif %}</div></div>
   </div>
 </section>
+<section class="panel" style="margin-top:18px" id="daily-practice-plan">
+  <h2>Your suggested daily practice plan</h2>
+  <p class="muted">Personalized from your saved practice averages over the last 7 days and your personal targets. This is a coaching suggestion, not an official SSC schedule or qualification rule.</p>
+  <div class="grid">
+    <div class="item"><div class="id">{{ daily_practice_plan.minutes }} min</div><strong>Suggested daily time</strong></div>
+    <div class="item"><div class="id">{{ daily_practice_plan.passages }}</div><strong>Suggested passages</strong></div>
+    <div class="item"><div class="id">{{ daily_practice_plan.warmup_minutes }} min</div><strong>Warm-up</strong></div>
+    <div class="item"><div class="id">{{ daily_practice_plan.review_minutes }} min</div><strong>Error review</strong></div>
+  </div>
+  <p><strong>Today's focus:</strong> {{ daily_practice_plan.focus }}</p>
+  <p class="muted">Suggested timed practice: {{ daily_practice_plan.timed_minutes }} minutes. Recent 7-day average: {% if daily_practice_plan.recent_speed != None %}{{ daily_practice_plan.recent_speed }} net WPM{% else %}not available{% endif %}; {% if daily_practice_plan.recent_accuracy != None %}{{ daily_practice_plan.recent_accuracy }}% accuracy{% else %}accuracy not available{% endif %}. Targets: {{ goal.target_net_wpm }} net WPM and {{ goal.target_accuracy }}% accuracy.</p>
+</section>
 <section class="panel" style="margin-top:18px" id="practice-calendar">
   <h2>90-day practice calendar</h2>
   <p class="muted">{{ calendar_summary.start_date|date:"d M Y" }} – {{ calendar_summary.end_date|date:"d M Y" }} · A day is counted as active when at least one saved HCM attempt was completed.</p>
