@@ -142,6 +142,7 @@ class ExamConfiguration(models.Model):
     scoring_rules = models.JSONField(default=dict, blank=True)
     qualification_rules = models.JSONField(default=dict, blank=True)
     verification_status = models.CharField(max_length=12, choices=Verification.choices, default=Verification.UNVERIFIED, db_index=True)
+    domain_evidence = models.JSONField(default=dict, blank=True, help_text="Independent evidence by specification domain. VERIFIED requires source, exact locator, checked date, and supported claims.")
     official_source_url = models.URLField(blank=True)
     source_title = models.CharField(max_length=240, blank=True)
     source_checked_at = models.DateField(null=True, blank=True)
@@ -161,6 +162,11 @@ class ExamConfiguration(models.Model):
 
     def clean(self):
         super().clean()
+        from .provenance import validate_domain_evidence
+        normalized_evidence, evidence_errors = validate_domain_evidence(self.domain_evidence or {})
+        if evidence_errors:
+            raise ValidationError({"domain_evidence": evidence_errors})
+        self.domain_evidence = normalized_evidence
         if self.backspace_policy == self.BackspacePolicy.DISABLED:
             self.allow_backspace = False
         elif self.backspace_policy in {
