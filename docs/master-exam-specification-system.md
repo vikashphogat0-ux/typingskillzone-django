@@ -150,6 +150,12 @@ The analyzer deliberately distinguishes candidate categories from an official mi
 
 Tests are added for the listed candidate categories, unresolved additions, exact text and invalid input. These tests have not yet been executed in CI or locally.
 
+## Delhi Police HCM unified attempt report
+
+`backend/typing_sessions/dphcm_attempt_report.py` composes practice speed/accuracy metrics, conservative mistake-analysis candidates, unresolved text cases, and marks eligibility into a versioned report. `submit_session` attaches this report only to exam codes beginning `delhi-police-hcm-2025`; other exam attempts retain their existing result structure. The result template displays the report and its limitations.
+
+The report deliberately labels speed metrics PRACTICE_ONLY and keeps marks pending until both a verified physical stroke count and an officially adjudicated mistake count are available. It does not call the HCM marks evaluator, change the general score, or rewrite prior attempts. Tests cover HCM report attachment and non-HCM isolation; execution remains pending.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
