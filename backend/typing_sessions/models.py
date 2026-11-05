@@ -34,6 +34,15 @@ class TypingSession(models.Model):
         indexes = [models.Index(fields=("learner", "state", "started_at"), name="typing_user_state_idx")]
 
     @property
+    def reference_paragraphs(self):
+        """Paragraph blocks from the immutable passage text captured at session start."""
+        return [
+            paragraph.strip()
+            for paragraph in self.reference_text.split("\n\n")
+            if paragraph.strip()
+        ]
+
+    @property
     def has_expired(self):
         return bool(self.deadline_at and timezone.now() >= self.deadline_at)
 
