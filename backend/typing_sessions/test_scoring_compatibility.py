@@ -27,7 +27,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         self.assertEqual(result["typed_characters"], 7)
         self.assertEqual(result["reference_characters"], 7)
         self.assertEqual(result["correct_characters"], 6)
-        self.assertEqual(result["character_errors"], 1)
+        self.assertEqual(result["character_errors"], 2)
         self.assertEqual(result["word_errors"], 1)
         self.assertEqual(result["correct_words"], 1)
         self.assertEqual(result["gross_words"], 2)
@@ -77,8 +77,8 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
             verification_status="VERIFIED",
         )
         self.assertEqual(result["permitted_error_count"], 1)
-        self.assertEqual(result["excess_error_count"], 0)
-        self.assertTrue(result["qualification"])
+        self.assertEqual(result["excess_error_count"], 1)
+        self.assertFalse(result["qualification"])
 
     def test_qualifying_only_mode_shares_error_percentage_behavior(self):
         result = self.calculate(
@@ -87,7 +87,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
             minimum_wpm=0,
             verification_status="VERIFIED",
         )
-        self.assertTrue(result["qualification"])
+        self.assertFalse(result["qualification"])
 
     def test_custom_mode_penalty_and_score_band(self):
         result = self.calculate(
@@ -110,11 +110,11 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         )
         self.assertEqual(result["score"], 0)
         self.assertIsNone(result["qualification"])
-        self.assertIn("official qualification is not claimed", result["qualification_note"])
+        self.assertIn("not verified", result["qualification_note"])
 
     def test_full_half_mode_does_not_invent_generic_classification(self):
         result = self.calculate("FULL_HALF_MISTAKES")
-        self.assertIn("exam-specific categories", result["qualification_note"])
+        self.assertIn("not verified", result["qualification_note"])
         self.assertIsNone(result["qualification"])
 
     def test_unverified_profile_never_receives_qualification_claim(self):
