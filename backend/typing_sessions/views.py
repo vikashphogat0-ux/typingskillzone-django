@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils.dateparse import parse_date
 
 from exams.models import ExamConfiguration
 from passages.models import SimulatorPassage
@@ -88,13 +89,36 @@ def submit_typing_session(request, session_id):
 
 @login_required
 def delhi_police_hcm_dashboard(request):
-    """Learner-owned HCM practice history; reads immutable result snapshots only."""
-    attempts = list(
-        TypingSession.objects.filter(
-            learner=request.user,
-            result_snapshot__dphcm_attempt_report__profile="DELHI_POLICE_HCM_2025",
-        ).order_by("-completed_at", "-started_at")[:100]
+    """Learner-owned HCM practice history with optional date/language filters."""
+    start_raw = request.GET.get("start_date", "").strip()
+    end_raw = request.GET.get("end_date", "").strip()
+    language = request.GET.get("language", "").strip().upper()
+    start_date = parse_date(start_raw) if start_raw else None
+    end_date = parse_date(end_raw) if end_raw else None
+    filter_error = ""
+    if start_raw and start_date is None:
+        filter_error = "Start date is invalid. Use the date picker."
+    elif end_raw and end_date is None:
+        filter_error = "End date is invalid. Use the date picker."
+    elif start_date and end_date and start_date > end_date:
+        filter_error = "Start date must be on or before the end date."
+    if language not in {"", "ENGLISH", "HINDI"}:
+        filter_error = "Choose English or Hindi for the language filter."
+        language = ""
+
+    queryset = TypingSession.objects.filter(
+        learner=request.user,
+        result_snapshot__dphcm_attempt_report__profile="DELHI_POLICE_HCM_2025",
     )
+    if not filter_error:
+        if start_date:
+            queryset = queryset.filter(completed_at__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(completed_at__date__lte=end_date)
+        if language:
+            queryset = queryset.filter(result_snapshot__dphcm_attempt_report__language=language)
+    attempts = list(queryset.order_by("-completed_at", "-started_at")[:100])
+
     rows = []
     speeds = []
     accuracies = []
@@ -123,8 +147,7 @@ def delhi_police_hcm_dashboard(request):
             "unresolved_count": unresolved,
             "marks_status": (report.get("marks_eligibility") or {}).get("status", "PENDING"),
         })
-    # Build chronological, presentation-only trend series from saved snapshots.
-    # Widths are normalized independently and are not scoring or qualification inputs.
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -146,4 +169,8 @@ def delhi_police_hcm_dashboard(request):
         "average_accuracy": round(sum(accuracies) / len(accuracies), 2) if accuracies else None,
         "category_totals": sorted(category_totals.items(), key=lambda item: (-item[1], item[0])),
         "unresolved_total": unresolved_total,
+        "start_date": start_raw,
+        "end_date": end_raw,
+        "selected_language": language,
+        "filter_error": filter_error,
     })
