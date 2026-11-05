@@ -1,0 +1,126 @@
+{% extends "passages/base.html" %}
+{% block title %}Typing Test · {{ attempt.rules_snapshot.exam_name }} | TypingSkillZone{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</div>
+  <h1>Typing test</h1>
+  <div class="item" style="margin:.75rem 0;display:flex;gap:.6rem;flex-wrap:wrap;">
+    {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard:</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
+    {% if attempt.rules_snapshot.text_encoding %}<span><strong>Encoding:</strong> {{ attempt.rules_snapshot.text_encoding }}</span>{% endif %}
+    {% if attempt.rules_snapshot.minimum_wpm %}<span><strong>Target:</strong> {{ attempt.rules_snapshot.minimum_wpm }} WPM</span>{% endif %}
+    {% if attempt.rules_snapshot.required_keystrokes %}<span><strong>Required strokes:</strong> {{ attempt.rules_snapshot.required_keystrokes }}</span>{% endif %}
+    <span><strong>Backspace:</strong> {{ attempt.rules_snapshot.backspace_policy|default:"NOT_SPECIFIED" }}</span>
+  </div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0;">
+    <div class="item"><strong id="countdown">--:--</strong><div class="muted">Time remaining</div></div>
+    <div class="item"><strong id="live-wpm">0</strong><div class="muted">Live WPM (estimate)</div></div>
+    <div class="item"><strong id="live-accuracy">100%</strong><div class="muted">Live accuracy (estimate)</div></div>
+  </div>
+  {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="muted">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
+  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">{{ attempt.reference_text }}</article>
+  <form id="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
+    {% csrf_token %}
+    <label for="typed-text"><strong>Type the passage below</strong></label>
+    <textarea id="typed-text" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:.75rem;font:16px/1.6 monospace;" autofocus></textarea>
+    <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;"><button id="finish-button" type="submit" class="button">Finish test</button><span class="muted">The server validates the deadline and calculates the final score.</span></div>
+  </form>
+</section>
+{{ attempt.rules_snapshot|json_script:"typing-rules" }}
+<script>
+(() => {
+  const rules = JSON.parse(document.getElementById("typing-rules").textContent);
+  const input = document.getElementById("typed-text");
+  const form = document.getElementById("typing-form");
+  const reference = document.getElementById("reference").innerText;
+  const countdown = document.getElementById("countdown");
+  const startedAt = Date.now();
+  const deadline = new Date("{{ attempt.deadline_at|date:'c' }}").getTime();
+  let submitting = false;
+  const backspacePolicy = rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED");
+  const allowArrows = rules.allow_arrow_navigation !== false;
+  const layout = rules.passage_layout || "UNCONFIGURED";
+  const allowEnter = rules.enter_behavior === "DISABLED" ? false : ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
+  const tabBehavior = rules.tab_behavior || "UNSPECIFIED";
+  let committedBoundary = 0;
+  let pendingCommit = null;
+  function selectionTouchesLockedText() {
+    const start=input.selectionStart, end=input.selectionEnd;
+    return start < committedBoundary || (start === end && start <= committedBoundary);
+  }
+  function currentWordStart(position) {
+    const before=input.value.slice(0,position);
+    const match=before.match(/\S*$/);
+    return position-(match ? match[0].length : 0);
+  }
+  function blockDeletion(event, backward) {
+    if (backward && backspacePolicy === "DISABLED") { event.preventDefault(); return; }
+    if (!backward && rules.allow_delete === false) { event.preventDefault(); return; }
+    if (backspacePolicy === "WORD_ONLY" || backspacePolicy === "PROVISIONAL_WORD_ONLY") {
+      const wordStart = currentWordStart(input.selectionEnd);
+      if (input.selectionStart < wordStart ||
+          (backward && input.selectionStart === input.selectionEnd &&
+           input.selectionStart <= wordStart)) event.preventDefault();
+    }
+    if (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
+  }
+  input.addEventListener("keydown", event => {
+    if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
+    if (!allowEnter && event.key === "Enter") event.preventDefault();
+    if (event.key === " " && rules.space_behavior === "DISABLED") event.preventDefault();
+    if (event.key === "Backspace") blockDeletion(event,true);
+    if (event.key === "Delete") blockDeletion(event,false);
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && rules.allow_paste === false) event.preventDefault();
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && rules.allow_copy === false) event.preventDefault();
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && rules.allow_cut === false) event.preventDefault();
+    if (event.key === " " && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.space_behavior === "COMMIT_WORD")) {
+      pendingCommit = input.selectionStart + 1;
+    }
+    if (event.key === "Enter" && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.enter_behavior === "COMMIT_WORD")) {
+      pendingCommit = input.selectionStart + 1;
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      if (tabBehavior === "INSERT_TAB" || tabBehavior === "INSERT_SPACES" ||
+          (tabBehavior === "UNSPECIFIED" && (layout === "PARA_TAB" || rules.passage_preserve_tabs === true))) {
+        const start=input.selectionStart, end=input.selectionEnd;
+        const tab=tabBehavior === "INSERT_TAB" || rules.passage_preserve_tabs ? "\t" : " ".repeat(Math.max(1,Number(rules.passage_tab_size||4)));
+        input.setRangeText(tab,start,end,"end");
+        input.dispatchEvent(new Event("input",{bubbles:true}));
+      }
+    }
+  });
+  input.addEventListener("beforeinput", event => {
+    if (event.inputType === "deleteContentBackward") blockDeletion(event,true);
+    if (event.inputType === "deleteContentForward") blockDeletion(event,false);
+    if (event.inputType === "insertFromPaste" && rules.allow_paste === false) event.preventDefault();
+    if (event.inputType === "insertReplacementText" && backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
+  });
+  input.addEventListener("paste", event => { if (rules.allow_paste === false) event.preventDefault(); });
+  input.addEventListener("copy", event => { if (rules.allow_copy === false) event.preventDefault(); });
+  input.addEventListener("cut", event => { if (rules.allow_cut === false) event.preventDefault(); });
+  input.addEventListener("input", () => {
+    if (pendingCommit !== null) {
+      committedBoundary = Math.max(committedBoundary, Math.min(pendingCommit,input.selectionStart));
+      pendingCommit = null;
+    }
+  });
+  function updateStats() {
+    const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
+    document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
+    let correct=0;
+    for(let i=0;i<Math.min(typed.length,reference.length);i++) if(typed[i]===reference[i]) correct++;
+    document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/typed.length*100):100)+"%";
+  }
+  input.addEventListener("input",updateStats);
+  function tick() {
+    if(submitting)return;
+    if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
+    const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+    countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
+    if(remaining<=0){submitting=true;input.readOnly=true;form.submit();}
+  }
+  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("finish-button").disabled=true;});
+  tick(); window.setInterval(tick,250); input.focus();
+})();
+</script>
+{% endblock %}
