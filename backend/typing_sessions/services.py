@@ -7,6 +7,7 @@ from django.utils import timezone
 from passages.models import SimulatorPassage, PassageSource
 
 from .models import TypingSession
+from .input_policy import audit_submitted_text
 from .scoring import SCORING_VERSION, calculate_result
 from .specification_snapshots import build_exam_specification_snapshot
 
@@ -64,6 +65,13 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
     ):
         raise ValidationError("Keystroke count is outside the allowed range.")
 
+    # Validate only constraints that can be proven from the submitted text.
+    # Keyboard-event restrictions cannot be authenticated by this endpoint.
+    input_policy_audit = audit_submitted_text(
+        typed_text=typed_text,
+        rules=session.rules_snapshot,
+    )
+
     now = timezone.now()
     expired = bool(session.deadline_at and now >= session.deadline_at)
     effective_end = min(now, session.deadline_at) if session.deadline_at else now
@@ -80,6 +88,7 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
         rules=session.rules_snapshot,
         reported_keystrokes=reported_keystrokes,
     )
+    result["input_policy_audit"] = input_policy_audit
     session.state = TypingSession.State.EXPIRED if expired else TypingSession.State.SUBMITTED
     session.submitted_text = typed_text
     session.completed_at = now
