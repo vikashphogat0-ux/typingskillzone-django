@@ -89,6 +89,18 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
         reported_keystrokes=reported_keystrokes,
     )
     result["input_policy_audit"] = input_policy_audit
+
+    # Delhi Police HCM 2025 receives an additional explanatory report.
+    # It does not replace generic metrics or claim official marks.
+    exam_code = str(session.rules_snapshot.get("exam_code") or "").lower()
+    if exam_code.startswith("delhi-police-hcm-2025"):
+        from .dphcm_attempt_report import build_dphcm_attempt_report
+        result["dphcm_attempt_report"] = build_dphcm_attempt_report(
+            reference=session.reference_text,
+            typed=typed_text,
+            practice_metrics=result,
+            language=session.rules_snapshot.get("language"),
+        )
     session.state = TypingSession.State.EXPIRED if expired else TypingSession.State.SUBMITTED
     session.submitted_text = typed_text
     session.completed_at = now
