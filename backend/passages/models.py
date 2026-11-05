@@ -103,4 +103,36 @@ class SimulatorPassage(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.exam.name} — Passage {self.passage_id}"
+        return f"{self.exam.name} — Passage {self.passage_id}"    @property
+    def rendered_content(self):
+        """Render using the canonical passage domain, preserving legacy layout fallback."""
+        import re
+        from exams.specifications import resolve_exam_specification
+
+        passage = resolve_exam_specification(self.exam)["passage"]
+        raw = self.source.content.replace("\r\n", "\n").replace("\r", "\n").strip()
+        layout = passage["layout"]
+        if layout == self.exam.PassageLayout.UNCONFIGURED:
+            legacy_format = passage["format"]
+            if legacy_format == self.exam.PassageFormat.CONTINUOUS:
+                layout = self.exam.PassageLayout.CONTINUOUS
+            elif legacy_format == self.exam.PassageFormat.PARAGRAPHS:
+                layout = self.exam.PassageLayout.PARAGRAPHS
+            elif legacy_format == self.exam.PassageFormat.TCS:
+                layout = self.exam.PassageLayout.TCS
+
+        if layout == self.exam.PassageLayout.CONTINUOUS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            return " ".join(parts)
+        if layout == self.exam.PassageLayout.PARAGRAPHS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            return "\n\n".join(parts)
+        if layout == self.exam.PassageLayout.PARA_TAB:
+            typography = passage["typography"]
+            return raw if typography["preserve_tabs"] else raw.replace("\t", " " * (typography["tab_size"] or 4))
+        if layout == self.exam.PassageLayout.TCS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+            return "\n\n".join(parts)
+        return raw
+
+
