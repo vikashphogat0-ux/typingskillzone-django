@@ -53,11 +53,17 @@ def typing_session(request, session_id):
 @require_POST
 def submit_typing_session(request, session_id):
     typed_text = request.POST.get("typed_text", "")
+    raw_keystrokes = request.POST.get("keystroke_count", "")
+    try:
+        reported_keystrokes = int(raw_keystrokes) if raw_keystrokes else None
+    except (TypeError, ValueError):
+        reported_keystrokes = None
     try:
         attempt = submit_session(
             session_id=session_id,
             learner=request.user,
             typed_text=typed_text,
+            reported_keystrokes=reported_keystrokes,
         )
     except TypingSession.DoesNotExist:
         return JsonResponse({"error": "Session not found."}, status=404)
