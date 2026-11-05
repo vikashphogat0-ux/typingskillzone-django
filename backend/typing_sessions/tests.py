@@ -956,3 +956,22 @@ class TypingSessionViewTests(TestCase):
         self.assertGreaterEqual(plan["minutes"], 20)
         self.assertGreaterEqual(plan["passages"], 2)
         self.assertIn(plan["minutes"], (20, 30, 35, 40, 45))
+
+
+    def test_dphcm_dashboard_weekly_timetable_has_sunday_recovery_and_future_days(self):
+        from django.urls import reverse
+        from django.utils import timezone
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        rows = response.context["weekly_timetable_rows"]
+        self.assertEqual(len(rows), 7)
+        self.assertEqual(rows[0]["date"].weekday(), 0)
+        self.assertEqual(rows[-1]["date"].weekday(), 6)
+        self.assertEqual(rows[-1]["status"], "REST")
+        today = timezone.localdate()
+        future_rows = [row for row in rows if row["date"] > today and not row["is_rest_day"]]
+        self.assertTrue(all(row["status"] == "UPCOMING" for row in future_rows))
+        self.assertEqual(response.context["weekly_plan_summary"]["completed_days"], 0)
+        self.assertContains(response, "Weekly practice timetable")
