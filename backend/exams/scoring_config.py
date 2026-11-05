@@ -10,6 +10,21 @@ def validate_mistake_classification_config(config):
         errors.append("Mistake classification version must be 1.")
     if config.get("unit") != "word":
         errors.append("Mistake classification unit must be 'word'.")
+    source_reference = config.get("source_reference")
+    if source_reference is not None:
+        if not isinstance(source_reference, dict):
+            errors.append("Source reference must be an object.")
+        else:
+            for key in ("url", "title", "locator", "checked_at"):
+                if key in source_reference and not isinstance(source_reference[key], str):
+                    errors.append(f"Source reference {key} must be text.")
+            if source_reference.get("checked_at"):
+                from datetime import date
+                try:
+                    date.fromisoformat(source_reference["checked_at"])
+                except ValueError:
+                    errors.append("Source reference checked_at must use YYYY-MM-DD.")
+
     overrides = config.get("overrides")
     if not isinstance(overrides, list):
         errors.append("Mistake classification overrides must be a list.")
