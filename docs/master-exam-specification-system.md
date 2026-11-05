@@ -196,3 +196,8 @@ This is descriptive practice reporting only. It does not recalculate attempts, c
 - All legacy and new tests pass; every verified formula has threshold and edge-case tests.
 - Existing users, subscriptions, institute workflows, results, and production data remain intact.
 - A pull request documents migration impact, compatibility behavior, test evidence, and unresolved rules.
+
+
+## Delhi Police HCM monthly practice report
+
+The learner dashboard groups the currently displayed learner-owned HCM attempt reports by local calendar month. Each month shows attempt count, average saved practice net WPM, average saved accuracy, and whether those monthly averages meet the learner's personal goals. It uses the same active date/language filters and latest-100 matching-attempt cap as the dashboard; months without attempts are omitted. The report is descriptive practice analysis, not an official SSC marks or qualification statement. The dashboard Print / Save as PDF action uses the browser print dialog; the learner can choose Save as PDF without adding a server-side PDF dependency.
