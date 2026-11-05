@@ -20,6 +20,7 @@
   <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">{{ attempt.reference_text }}</article>
   <form id="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
+    <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
     <label for="typed-text"><strong>Type the passage below</strong></label>
     <textarea id="typed-text" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:.75rem;font:16px/1.6 monospace;" autofocus></textarea>
     <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;"><button id="finish-button" type="submit" class="button">Finish test</button><span class="muted">The server validates the deadline and calculates the final score.</span></div>
@@ -36,6 +37,8 @@
   const startedAt = Date.now();
   const deadline = new Date("{{ attempt.deadline_at|date:'c' }}").getTime();
   let submitting = false;
+  let keyDepressionCount = 0;
+  const keystrokeField = document.getElementById("keystroke-count");
   const backspacePolicy = rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED");
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
@@ -64,6 +67,10 @@
     if (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   }
   input.addEventListener("keydown", event => {
+    if (!["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(event.key)) {
+      keyDepressionCount = Math.min(1000000, keyDepressionCount + 1);
+      keystrokeField.value = String(keyDepressionCount);
+    }
     if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
     if (!allowEnter && event.key === "Enter") event.preventDefault();
     if (event.key === " " && rules.space_behavior === "DISABLED") event.preventDefault();
