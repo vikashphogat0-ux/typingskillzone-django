@@ -94,6 +94,28 @@ class ExamCatalogueTests(TestCase):
             exam.full_clean()
         self.assertIn("scoring_rules", raised.exception.message_dict)
 
+    def test_full_half_source_reference_requires_valid_date_and_text_fields(self):
+        exam = ExamConfiguration(
+            name="Invalid Source Reference",
+            code="invalid-source-reference",
+            scoring_mode=ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES,
+            scoring_rules={
+                "mistake_classification": {
+                    "version": 1,
+                    "unit": "word",
+                    "source_reference": {
+                        "url": "https://example.gov/rules",
+                        "title": "Official rules",
+                        "locator": "Section 2",
+                        "checked_at": "not-a-date",
+                    },
+                    "overrides": [],
+                }
+            },
+        )
+        with self.assertRaises(ValidationError):
+            exam.full_clean()
+
     def test_full_half_scoring_keeps_legacy_unstructured_rules_compatible(self):
         exam = ExamConfiguration(
             name="Legacy Full Half Test",
