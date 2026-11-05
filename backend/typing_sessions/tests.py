@@ -258,10 +258,19 @@ class TypingScoringTests(TestCase):
             duration_seconds=60,
             rules={
                 "scoring_mode": "FULL_HALF_MISTAKES",
+                "rule_config_version": 3,
+                "verification_status": "VERIFIED",
+                "official_source_url": "https://example.gov/exam",
                 "scoring_rules": {
                     "mistake_classification": {
                         "version": 1,
                         "unit": "word",
+                        "source_reference": {
+                            "url": "https://example.gov/rules",
+                            "title": "Official typing rules",
+                            "locator": "Section 4.2",
+                            "checked_at": "2026-11-05",
+                        },
                         "overrides": [
                             {"reference": "alpha", "typed": "alfa", "classification": "FULL"},
                             {"reference": "gamma", "typed": "gmma", "classification": "HALF"},
@@ -276,6 +285,12 @@ class TypingScoringTests(TestCase):
         self.assertEqual(classification["half_mistakes"], 1)
         self.assertEqual(classification["ignored_mistakes"], 0)
         self.assertEqual(classification["weighted_mistakes"], 1.5)
+        self.assertEqual(classification["rule_source"]["status"], "VERIFIED")
+        self.assertEqual(classification["rule_source"]["locator"], "Section 4.2")
+        self.assertEqual(classification["error_cases"][0]["rule_source"]["title"], "Official typing rules")
+        self.assertEqual(result["scoring_audit"]["rule_config_version"], 3)
+        self.assertEqual(result["scoring_audit"]["verification_status"], "VERIFIED")
+        self.assertEqual(len(result["scoring_audit"]["scoring_rules_sha256"]), 64)
         self.assertIsNone(result["score"])
         self.assertIsNone(result["qualification"])
 
