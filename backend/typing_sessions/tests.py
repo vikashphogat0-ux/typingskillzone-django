@@ -261,6 +261,58 @@ class TypingScoringTests(TestCase):
         self.assertTrue(result["required_keystrokes_met"])
         self.assertIsNone(result["qualification"])
 
+    def test_client_reported_keystrokes_are_never_marked_server_verified(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world", typed="hello world", duration_seconds=60,
+            rules={"required_keystrokes": 10}, reported_keystrokes=20,
+        )
+        self.assertTrue(result["required_keystrokes_met"])
+        self.assertEqual(result["keystroke_verification"], "UNVERIFIED_CLIENT_TELEMETRY")
+
+    def test_error_percentage_does_not_mix_character_errors_with_word_denominator(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="the quick brown fox",
+            typed="the quik brown fox",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "scoring_mode": "ERROR_PERCENTAGE",
+                "error_allowance_percent": "10",
+                "minimum_wpm": None,
+                "error_rules": {"count_word_errors": False},
+            },
+        )
+        self.assertEqual(result["error_count_method"], "character")
+        self.assertIsNone(result["error_percent"])
+        self.assertEqual(result["error_percentage_unit"], "UNRESOLVED")
+        self.assertIsNone(result["permitted_error_count"])
+        self.assertIsNone(result["qualification"])
+
+    def test_word_error_percentage_uses_word_units_consistently(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="the quick brown fox",
+            typed="the quik brown fox",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "scoring_mode": "ERROR_PERCENTAGE",
+                "error_allowance_percent": "30",
+                "error_rules": {"count_word_errors": True},
+            },
+        )
+        self.assertEqual(result["error_count_method"], "word")
+        self.assertEqual(result["error_percent"], 25.0)
+        self.assertEqual(result["error_percentage_unit"], "WORDS")
+        self.assertEqual(result["permitted_error_count"], 1)
+        self.assertEqual(result["excess_error_count"], 0)
+        self.assertTrue(result["qualification"])
+
     def test_reported_keystrokes_are_saved_with_session_result(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         result = submit_session(
@@ -285,7 +337,7 @@ class TypingScoringTests(TestCase):
         result = submit_session(
             session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text
         )
-        self.assertEqual(result.scoring_version, "tsz-char-word-v1")
+        self.assertEqual(result.scoring_version, "tsz-char-word-v2")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
 
