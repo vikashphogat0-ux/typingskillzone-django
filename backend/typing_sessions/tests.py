@@ -33,8 +33,33 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
         self.assertEqual(attempt.rules_snapshot["allow_backspace"], False)
+        canonical = attempt.rules_snapshot["canonical_specification"]
+        self.assertEqual(canonical["identity"]["code"], self.exam.code)
+        self.assertEqual(canonical["identity"]["name"], self.exam.name)
+        self.assertEqual(canonical["specification_schema_version"], 1)
+        self.assertEqual(attempt.rules_snapshot["snapshot_metadata"]["format_version"], 1)
+        self.assertEqual(attempt.rules_snapshot["snapshot_metadata"]["publication_id"], str(self.publication.pk))
         self.assertEqual(attempt.duration_seconds, 600)
         self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
+
+    def test_exam_configuration_edits_do_not_change_started_specification_snapshot(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        original_snapshot = attempt.rules_snapshot
+
+        self.exam.name = "Changed after session start"
+        self.exam.minimum_wpm = "35.00"
+        self.exam.passage_layout = ExamConfiguration.PassageLayout.CONTINUOUS
+        self.exam.save()
+
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.rules_snapshot, original_snapshot)
+        self.assertEqual(
+            attempt.rules_snapshot["canonical_specification"]["identity"]["name"],
+            "Sample Exam",
+        )
+        self.assertIsNone(
+            attempt.rules_snapshot["canonical_specification"]["scoring"]["minimum_wpm"]
+        )
 
     def test_source_edits_do_not_change_started_attempt(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
