@@ -48,3 +48,7 @@ class TypingSession(models.Model):
 
     def __str__(self):
         return f"{self.learner_id}: {self.publication_id} ({self.state})"
+
+
+# Register learner-owned practice goal model with Django's app registry.
+from .practice_goals import LearnerPracticeGoal  # noqa: F401
