@@ -577,6 +577,39 @@ class TypingSessionViewTests(TestCase):
         self.assertContains(response, "Valid")
         self.assertContains(response, "does not recalculate or modify your historical score")
 
+    def test_result_page_displays_attempt_time_domain_evidence(self):
+        from django.urls import reverse
+
+        self.exam.domain_evidence = {
+            "timing": {
+                "status": "VERIFIED",
+                "references": [{
+                    "url": "https://ssc.gov.in/notice.pdf",
+                    "title": "Official timing notice",
+                    "locator": "Clause 7",
+                    "checked_at": "2026-11-05",
+                    "claims": ["timing.duration_seconds"],
+                }],
+            },
+        }
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text=attempt.reference_text,
+        )
+        self.client.force_login(self.learner)
+        response = self.client.get(
+            reverse("typing_sessions:session", kwargs={"session_id": attempt.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Exam rule evidence captured at attempt start")
+        self.assertContains(response, "Official timing notice")
+        self.assertContains(response, "Clause 7")
+        self.assertContains(response, "Captured")
+        self.assertContains(response, "not an independent guarantee")
+
     def test_result_integrity_checker_validates_without_recalculating_or_mutating(self):
         from copy import deepcopy
         from .result_integrity import verify_result_integrity
