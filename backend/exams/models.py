@@ -175,6 +175,13 @@ class ExamConfiguration(models.Model):
             self.BackspacePolicy.PROVISIONAL_WORD_ONLY,
         }:
             self.allow_backspace = True
+        if self.scoring_mode == self.ScoringMode.FULL_HALF_MISTAKES:
+            from .scoring_config import validate_mistake_classification_config
+            classification_config = (self.scoring_rules or {}).get("mistake_classification")
+            if classification_config is not None:
+                errors = validate_mistake_classification_config(classification_config)
+                if errors:
+                    raise ValidationError({"scoring_rules": errors})
         if self.minimum_wpm is not None and self.minimum_wpm < 0:
             raise ValidationError({"minimum_wpm": "Minimum WPM cannot be negative."})
         if self.error_allowance_percent is not None and self.error_allowance_percent > 100:
