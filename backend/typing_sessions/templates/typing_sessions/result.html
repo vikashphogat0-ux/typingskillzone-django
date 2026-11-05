@@ -14,7 +14,9 @@
     </div>
     {% if attempt.result_snapshot.reported_keystrokes != None %}<p>Reported key depressions: {{ attempt.result_snapshot.reported_keystrokes }} <span class="muted">(browser-reported practice telemetry; not tamper-proof)</span></p>{% endif %}
     {% if attempt.result_snapshot.required_keystrokes != None %}<p>Required key depressions: {{ attempt.result_snapshot.required_keystrokes }} · Browser-reported target: {{ attempt.result_snapshot.required_keystrokes_met|yesno:"Yes,No,Not measured" }} <span class="muted">({{ attempt.result_snapshot.keystroke_verification|lower|cut:"_" }})</span></p>{% endif %}
-    {% if attempt.result_snapshot.error_percent != None %}<p>Error percentage: {{ attempt.result_snapshot.error_percent }}% ({{ attempt.result_snapshot.error_percentage_unit|lower }})</p>{% else %}<p class="muted">Error percentage: unresolved because the configured error unit is not compatible with the available denominator.</p>{% endif %}
+    {% if attempt.result_snapshot.scoring_mode == "ERROR_PERCENTAGE" or attempt.result_snapshot.scoring_mode == "QUALIFYING_ONLY" %}
+      {% if attempt.result_snapshot.error_percent != None %}<p>Error percentage: {{ attempt.result_snapshot.error_percent }}% ({{ attempt.result_snapshot.error_percentage_unit|lower }})</p>{% else %}<p class="muted">Error percentage: unresolved because the configured error unit is not compatible with the available denominator.</p>{% endif %}
+    {% endif %}
     {% if attempt.result_snapshot.input_policy_audit %}
       <h2>Input policy audit</h2>
       <p>Submitted-text validation: <strong>{{ attempt.result_snapshot.input_policy_audit.status|title }}</strong></p>
