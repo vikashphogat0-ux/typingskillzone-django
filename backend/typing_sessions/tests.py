@@ -125,6 +125,49 @@ class TypingSessionTests(TestCase):
         attempt.refresh_from_db()
         self.assertEqual(attempt.reference_text, original)
 
+    def test_server_rejects_newlines_when_enter_is_disabled(self):
+        self.exam.enter_behavior = ExamConfiguration.EnterBehavior.DISABLED
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+
+        with self.assertRaises(ValidationError):
+            submit_session(
+                session_id=attempt.pk, learner=self.learner, typed_text="One.\\nTwo."
+            )
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
+        self.assertEqual(attempt.submitted_text, "")
+
+    def test_server_rejects_tabs_when_tab_is_disabled(self):
+        self.exam.tab_behavior = ExamConfiguration.TabBehavior.DISABLED
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+
+        with self.assertRaises(ValidationError):
+            submit_session(
+                session_id=attempt.pk, learner=self.learner, typed_text="One.\\tTwo."
+            )
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
+
+    def test_server_records_text_validation_and_unverifiable_keyboard_controls(self):
+        self.exam.enter_behavior = ExamConfiguration.EnterBehavior.NEW_LINE
+        self.exam.tab_behavior = ExamConfiguration.TabBehavior.INSERT_TAB
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        result = submit_session(
+            session_id=attempt.pk, learner=self.learner, typed_text="One.\\nTwo.\\t"
+        )
+
+        audit = result.result_snapshot["input_policy_audit"]
+        self.assertEqual(audit["status"], "TEXT_POLICY_VALIDATED")
+        self.assertEqual(audit["checks"]["newline"], "PASSED")
+        self.assertEqual(audit["checks"]["tab"], "PASSED")
+        self.assertEqual(
+            audit["client_controls"]["backspace"], "CLIENT_ENFORCED_UNVERIFIED"
+        )
+        self.assertEqual(audit["server_verification_scope"], "SUBMITTED_TEXT_ONLY")
+
     def test_submission_is_single_use(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         result = submit_session(session_id=attempt.pk, learner=self.learner, typed_text="One.")
