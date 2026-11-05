@@ -739,3 +739,37 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(trend[1]["speed_width"], 100)
         self.assertGreaterEqual(trend[0]["accuracy_width"], 0)
         self.assertLessEqual(trend[0]["accuracy_width"], 100)
+
+    def test_dphcm_dashboard_filters_attempts_by_captured_language(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        english = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=english.pk, learner=self.learner, typed_text=english.reference_text)
+
+        self.exam.language = "HINDI"
+        self.exam.save()
+        hindi = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=hindi.pk, learner=self.learner, typed_text=hindi.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(
+            reverse("typing_sessions:dphcm_dashboard"), {"language": "ENGLISH"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["attempt_count"], 1)
+        self.assertEqual(response.context["selected_language"], "ENGLISH")
+
+    def test_dphcm_dashboard_rejects_reversed_date_range_without_querying_filtered_results(self):
+        from django.urls import reverse
+
+        self.client.force_login(self.learner)
+        response = self.client.get(
+            reverse("typing_sessions:dphcm_dashboard"),
+            {"start_date": "2026-11-10", "end_date": "2026-11-01"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Start date must be on or before the end date.", response.context["filter_error"])
+        self.assertEqual(response.context["attempt_count"], 0)
