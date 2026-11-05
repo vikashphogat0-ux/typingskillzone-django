@@ -17,6 +17,32 @@
     {% if attempt.result_snapshot.scoring_mode == "ERROR_PERCENTAGE" or attempt.result_snapshot.scoring_mode == "QUALIFYING_ONLY" %}
       {% if attempt.result_snapshot.error_percent != None %}<p>Error percentage: {{ attempt.result_snapshot.error_percent }}% ({{ attempt.result_snapshot.error_percentage_unit|lower }})</p>{% else %}<p class="muted">Error percentage: unresolved because the configured error unit is not compatible with the available denominator.</p>{% endif %}
     {% endif %}
+    {% if attempt.result_snapshot.mistake_classification %}
+      <h2>Full / half mistake classification</h2>
+      {% with classification=attempt.result_snapshot.mistake_classification %}
+        {% if classification.status == "CLASSIFIED" %}
+          <div class="grid">
+            <div class="item"><strong>{{ classification.full_mistakes }}</strong><div class="muted">Full mistakes</div></div>
+            <div class="item"><strong>{{ classification.half_mistakes }}</strong><div class="muted">Half mistakes</div></div>
+            <div class="item"><strong>{{ classification.ignored_mistakes }}</strong><div class="muted">Ignored mistakes</div></div>
+            <div class="item"><strong>{{ classification.weighted_mistakes }}</strong><div class="muted">Weighted mistakes</div></div>
+          </div>
+          <p class="muted">Every displayed category matched an exact configured word pair. This classification is not itself an official score or qualification decision.</p>
+        {% else %}
+          <p><strong>Classification pending</strong></p>
+          <p class="muted">{{ classification.reason }}</p>
+          {% if classification.classified_error_cases != None %}<p>Classified cases: {{ classification.classified_error_cases }} · Unclassified cases: {{ classification.unclassified_error_cases }}</p>{% endif %}
+        {% endif %}
+        {% if classification.error_cases %}
+          <h3>Classified error cases</h3>
+          <ul>
+            {% for error in classification.error_cases %}
+              <li>Reference: “{{ error.reference }}” · Typed: “{{ error.typed }}” · {{ error.classification|title }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+    {% endif %}
     {% if attempt.result_snapshot.input_policy_audit %}
       <h2>Input policy audit</h2>
       <p>Submitted-text validation: <strong>{{ attempt.result_snapshot.input_policy_audit.status|title }}</strong></p>
