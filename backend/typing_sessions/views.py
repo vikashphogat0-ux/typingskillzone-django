@@ -285,7 +285,8 @@ def delhi_police_hcm_dashboard(request):
     return render(request, "typing_sessions/dphcm_dashboard.html", {
         "rows": rows,
         "trend_rows": trend_rows,
-        "weekly_daily_rows": weekly_daily_rows,\n        "monthly_rows": monthly_rows,\n        "progress_comparisons": progress_comparisons,
+        "weekly_daily_rows": weekly_daily_rows,
+        "monthly_rows": monthly_rows,\n        "progress_comparisons": progress_comparisons,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
