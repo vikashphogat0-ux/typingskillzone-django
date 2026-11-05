@@ -115,3 +115,31 @@ class ExamSpecificationResolverTests(SimpleTestCase):
         self.assertEqual(resolved["scoring"]["error_rules"], {})
         self.assertEqual(resolved["scoring"]["scoring_rules"], {})
         self.assertEqual(resolved["scoring"]["qualification_rules"], {})
+
+
+class DomainEvidenceProjectionTests(SimpleTestCase):
+    def test_domain_evidence_is_projected_without_promoting_legacy_status(self):
+        evidence = {
+            "schema_version": 1,
+            "domains": {
+                "timing": {
+                    "status": "VERIFIED",
+                    "references": [{
+                        "url": "https://ssc.gov.in/notice.pdf",
+                        "title": "Official notice",
+                        "locator": "Page 14, clause 7.3",
+                        "checked_at": "2026-11-05",
+                        "claims": ["timing.duration_seconds"],
+                    }],
+                }
+            },
+        }
+        exam = ExamConfiguration(
+            code="domain-evidence-sample",
+            name="Domain Evidence Sample",
+            verification_status="UNVERIFIED",
+            domain_evidence=evidence,
+        )
+        resolved = resolve_exam_specification(exam)
+        self.assertEqual(resolved["provenance"]["verification_status"], "UNVERIFIED")
+        self.assertEqual(resolved["provenance"]["domain_evidence"], evidence)
