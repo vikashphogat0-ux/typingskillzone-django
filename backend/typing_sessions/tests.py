@@ -249,6 +249,87 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["error_count"], 1)
         self.assertEqual(result["error_count_method"], "word")
 
+    def test_full_half_mistakes_use_only_exact_versioned_word_pair_rules(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta gamma",
+            typed="alfa beta gmma",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "FULL_HALF_MISTAKES",
+                "scoring_rules": {
+                    "mistake_classification": {
+                        "version": 1,
+                        "unit": "word",
+                        "overrides": [
+                            {"reference": "alpha", "typed": "alfa", "classification": "FULL"},
+                            {"reference": "gamma", "typed": "gmma", "classification": "HALF"},
+                        ],
+                    }
+                },
+            },
+        )
+        classification = result["mistake_classification"]
+        self.assertEqual(classification["status"], "CLASSIFIED")
+        self.assertEqual(classification["full_mistakes"], 1)
+        self.assertEqual(classification["half_mistakes"], 1)
+        self.assertEqual(classification["ignored_mistakes"], 0)
+        self.assertEqual(classification["weighted_mistakes"], 1.5)
+        self.assertIsNone(result["score"])
+        self.assertIsNone(result["qualification"])
+
+    def test_full_half_mistakes_remain_unresolved_when_any_error_pair_is_unconfigured(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta",
+            typed="alfa bta",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "FULL_HALF_MISTAKES",
+                "scoring_rules": {
+                    "mistake_classification": {
+                        "version": 1,
+                        "unit": "word",
+                        "overrides": [
+                            {"reference": "alpha", "typed": "alfa", "classification": "FULL"},
+                        ],
+                    }
+                },
+            },
+        )
+        classification = result["mistake_classification"]
+        self.assertEqual(classification["status"], "UNRESOLVED")
+        self.assertEqual(classification["classified_error_cases"], 1)
+        self.assertEqual(classification["unclassified_error_cases"], 1)
+        self.assertIsNone(classification["weighted_mistakes"])
+        self.assertIsNone(result["qualification"])
+
+    def test_full_half_mistakes_reject_ambiguous_or_duplicate_configuration(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha",
+            typed="alfa",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "FULL_HALF_MISTAKES",
+                "scoring_rules": {
+                    "mistake_classification": {
+                        "version": 1,
+                        "unit": "word",
+                        "overrides": [
+                            {"reference": "alpha", "typed": "alfa", "classification": "FULL"},
+                            {"reference": "alpha", "typed": "alfa", "classification": "HALF"},
+                        ],
+                    }
+                },
+            },
+        )
+        self.assertEqual(result["mistake_classification"]["status"], "UNRESOLVED")
+        self.assertIsNone(result["mistake_classification"]["weighted_mistakes"])
+
     def test_reported_keystrokes_are_measured_without_claiming_trusted_input(self):
         from .scoring import calculate_result
 
