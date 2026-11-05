@@ -1023,3 +1023,38 @@ class TypingSessionViewTests(TestCase):
         response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["reminder_due"])
+
+
+    def test_dphcm_dashboard_unlocks_first_attempt_achievement(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        achievements = {item["code"]: item for item in response.context["achievement_rows"]}
+        self.assertTrue(achievements["FIRST_ATTEMPT"]["unlocked"])
+        self.assertFalse(achievements["TEN_ATTEMPTS"]["unlocked"])
+        self.assertEqual(response.context["unlocked_achievement_count"], 1)
+        self.assertContains(response, "Practice achievements")
+
+    def test_dphcm_dashboard_achievements_are_scoped_to_current_learner(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        other_attempt = start_session(learner=self.other, publication=self.publication)
+        submit_session(session_id=other_attempt.pk, learner=self.other, typed_text=other_attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        achievements = {item["code"]: item for item in response.context["achievement_rows"]}
+        self.assertFalse(achievements["FIRST_ATTEMPT"]["unlocked"])
+        self.assertEqual(response.context["total_hcm_attempts"], 0)
