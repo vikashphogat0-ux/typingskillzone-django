@@ -64,5 +64,6 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
             "passage_source_id": str(publication.source_id),
         },
         "canonical_specification": resolve_exam_specification(exam),
+        "input_policy": resolve_exam_specification(exam)["input_policy"],
     }
     return snapshot
