@@ -713,3 +713,29 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(response.context["attempt_count"], 1)
         self.assertContains(response, "Delhi Police HCM practice dashboard")
         self.assertContains(response, "Average net practice WPM")
+
+    def test_dphcm_dashboard_trends_are_chronological_and_scaled(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        first = start_session(learner=self.learner, publication=self.publication)
+        first_result = submit_session(
+            session_id=first.pk, learner=self.learner, typed_text=first.reference_text
+        )
+        second = start_session(learner=self.learner, publication=self.publication)
+        second_result = submit_session(
+            session_id=second.pk, learner=self.learner, typed_text=second.reference_text
+        )
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        trend = response.context["trend_rows"]
+        self.assertEqual(len(trend), 2)
+        self.assertLessEqual(trend[0]["date"], trend[1]["date"])
+        self.assertEqual(trend[0]["speed_width"], 100)
+        self.assertEqual(trend[1]["speed_width"], 100)
+        self.assertGreaterEqual(trend[0]["accuracy_width"], 0)
+        self.assertLessEqual(trend[0]["accuracy_width"], 100)
