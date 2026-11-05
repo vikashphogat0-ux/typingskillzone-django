@@ -207,6 +207,25 @@ def delhi_police_hcm_dashboard(request):
         "start_date": today - timedelta(days=6),
         "end_date": today,
     }
+    # Month-wise summary is derived from the same filtered, learner-owned saved reports.
+    monthly = {}
+    for row in rows:
+        stamp = row["attempt"].completed_at or row["attempt"].started_at
+        local_stamp = timezone.localtime(stamp)
+        month_key = local_stamp.strftime("%Y-%m")
+        bucket = monthly.setdefault(month_key, {"month": local_stamp.date().replace(day=1), "attempt_count": 0, "speeds": [], "accuracies": []})
+        bucket["attempt_count"] += 1
+        if isinstance(row["speed"], (int, float)):
+            bucket["speeds"].append(float(row["speed"]))
+        if isinstance(row["accuracy"], (int, float)):
+            bucket["accuracies"].append(float(row["accuracy"]))
+    monthly_rows = []
+    for bucket in sorted(monthly.values(), key=lambda item: item["month"], reverse=True):
+        month_speeds, month_accuracies = bucket["speeds"], bucket["accuracies"]
+        avg_speed = round(sum(month_speeds) / len(month_speeds), 2) if month_speeds else None
+        avg_accuracy = round(sum(month_accuracies) / len(month_accuracies), 2) if month_accuracies else None
+        monthly_rows.append({"month": bucket["month"], "attempt_count": bucket["attempt_count"], "average_net_wpm": avg_speed, "average_accuracy": avg_accuracy, "speed_goal_met": bool(avg_speed is not None and avg_speed >= goal.target_net_wpm), "accuracy_goal_met": bool(avg_accuracy is not None and avg_accuracy >= goal.target_accuracy)})
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -223,7 +242,7 @@ def delhi_police_hcm_dashboard(request):
     return render(request, "typing_sessions/dphcm_dashboard.html", {
         "rows": rows,
         "trend_rows": trend_rows,
-        "weekly_daily_rows": weekly_daily_rows,
+        "weekly_daily_rows": weekly_daily_rows,\n        "monthly_rows": monthly_rows,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
