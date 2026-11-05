@@ -695,3 +695,21 @@ class TypingSessionViewTests(TestCase):
             typed_text="One. Two.",
         )
         self.assertNotIn("dphcm_attempt_report", result.result_snapshot)
+
+    def test_dphcm_dashboard_shows_only_learner_attempt_reports(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        own = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=own.pk, learner=self.learner, typed_text=own.reference_text)
+        other = start_session(learner=self.other, publication=self.publication)
+        submit_session(session_id=other.pk, learner=self.other, typed_text=other.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["attempt_count"], 1)
+        self.assertContains(response, "Delhi Police HCM practice dashboard")
+        self.assertContains(response, "Average net practice WPM")
