@@ -890,3 +890,38 @@ class TypingSessionViewTests(TestCase):
         self.assertIsNone(comparisons[0]["speed_change"])
         self.assertIsNone(comparisons[0]["accuracy_change"])
         self.assertContains(response, "30 / 60 / 90-day progress analysis")
+
+
+    def test_dphcm_dashboard_practice_calendar_counts_active_days_and_streak(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["calendar_rows"]), 90)
+        summary = response.context["calendar_summary"]
+        self.assertEqual(summary["active_days"], 1)
+        self.assertEqual(summary["current_streak"], 1)
+        self.assertEqual(summary["longest_streak"], 1)
+        self.assertEqual(summary["consistency_percent"], round(100 / 90, 1))
+        self.assertEqual(summary["attempt_count"], 1)
+        self.assertContains(response, "90-day practice calendar")
+
+    def test_dphcm_dashboard_practice_calendar_is_empty_without_attempts(self):
+        from django.urls import reverse
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        summary = response.context["calendar_summary"]
+        self.assertEqual(len(response.context["calendar_rows"]), 90)
+        self.assertEqual(summary["active_days"], 0)
+        self.assertEqual(summary["current_streak"], 0)
+        self.assertEqual(summary["longest_streak"], 0)
+        self.assertEqual(summary["consistency_percent"], 0)
