@@ -4,6 +4,7 @@ The legacy top-level keys are intentionally retained because the current
 scoring engine consumes them. The canonical resolver output is additive.
 """
 from exams.specifications import resolve_exam_specification
+from exams.provenance import validate_domain_evidence
 
 
 SESSION_SNAPSHOT_FORMAT_VERSION = 1
@@ -11,6 +12,18 @@ SESSION_SNAPSHOT_FORMAT_VERSION = 1
 
 def build_exam_specification_snapshot(*, exam, publication, captured_at):
     """Build the persisted rules snapshot without changing scoring semantics."""
+    canonical = resolve_exam_specification(exam)
+    raw_evidence = canonical["provenance"].get("domain_evidence") or {}
+    normalized_evidence, evidence_errors = validate_domain_evidence(raw_evidence)
+    evidence_snapshot = {
+        "schema_version": normalized_evidence.get("schema_version", 1),
+        "capture_status": "VALID" if not evidence_errors else "INVALID",
+        "captured_at": captured_at.isoformat(),
+        "domains": normalized_evidence.get("domains", {}),
+        "validation_errors": evidence_errors,
+    }
+    canonical["provenance"]["domain_evidence"] = evidence_snapshot
+
     snapshot = {
         "exam_code": exam.code,
         "exam_name": exam.name,
@@ -63,9 +76,10 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
             "publication_id": str(publication.pk),
             "passage_source_id": str(publication.source_id),
         },
-        "canonical_specification": resolve_exam_specification(exam),
-        "input_policy": resolve_exam_specification(exam)["input_policy"],
-        "timing": resolve_exam_specification(exam)["timing"],
+        "canonical_specification": canonical,
+        "domain_evidence_snapshot": evidence_snapshot,
+        "input_policy": canonical["input_policy"],
+        "timing": canonical["timing"],
         "timing_execution": {
             "overall_duration": "SERVER_DEADLINE" if exam.duration_seconds else "UNLIMITED",
             "separate_phase_execution": "NOT_IMPLEMENTED",
