@@ -13,6 +13,32 @@
   </div>
 </section>
 <section class="panel" style="margin-top:18px">
+  <h2>Attempt-by-attempt performance trends</h2>
+  <p class="muted">Chronological history, oldest to newest. Speed bars are scaled against your highest displayed practice net WPM; accuracy bars use a 0–100% scale. These are descriptive practice metrics only.</p>
+  {% if trend_rows %}
+    <div style="display:grid;gap:16px">
+      {% for point in trend_rows %}
+        <div class="item">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <strong>{{ point.date|date:"d M Y, H:i" }} · Passage {{ point.passage_id|default:"—" }}</strong>
+            <span class="muted">Net practice speed: {{ point.speed|default:"—" }} WPM · Accuracy: {{ point.accuracy|default:"—" }}{% if point.accuracy != None %}%{% endif %}</span>
+          </div>
+          <div class="muted" style="margin-top:10px">Net WPM trend</div>
+          <div role="img" aria-label="Net practice speed {{ point.speed }} WPM" style="height:10px;background:#263653;border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:{{ point.speed_width }}%;background:var(--cyan);border-radius:99px"></div>
+          </div>
+          <div class="muted" style="margin-top:8px">Accuracy trend</div>
+          <div role="img" aria-label="Accuracy {{ point.accuracy }} percent" style="height:10px;background:#263653;border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:{{ point.accuracy_width }}%;background:var(--blue);border-radius:99px"></div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Complete a Delhi Police HCM attempt to begin building your performance trends.</p>
+  {% endif %}
+</section>
+<section class="panel" style="margin-top:18px">
   <h2>Mistake-category progress</h2>
   {% if category_totals %}
     <div class="grid">
