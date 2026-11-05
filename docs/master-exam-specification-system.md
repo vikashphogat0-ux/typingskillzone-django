@@ -181,6 +181,13 @@ Each learner can save one personal goal for the Delhi Police HCM profile. The de
 
 These goals are learner preferences only. They are not official SSC qualifying standards, do not determine eligibility or marks, and are not copied into attempt snapshots. The new `LearnerPracticeGoal` table is separate from historical attempt records. Migration `0002_learnerpracticegoal` creates this table without altering existing attempts.
 
+
+## Delhi Police HCM seven-day practice report
+
+The learner dashboard now shows a rolling seven-calendar-day summary (today and the preceding six local dates), including daily attempt count, average saved practice net WPM, average saved accuracy, and whether each daily average meets the learner's personal goals. A seven-day aggregate is shown above the daily rows. It uses the same learner-owned, date/language-filtered, latest-100 attempt set as the dashboard. Days without attempts remain visible with zero attempts and no metric value.
+
+This is descriptive practice reporting only. It does not recalculate attempts, change historical snapshots, or determine official SSC marks or qualification. Tests cover a recent attempt and the empty seven-day state; execution remains pending.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
