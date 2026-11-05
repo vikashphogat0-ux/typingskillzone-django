@@ -64,33 +64,35 @@ class SimulatorPassage(models.Model):
 
     @property
     def rendered_content(self):
-        """Format the shared original using this simulator's independently configured layout."""
+        """Render through the canonical passage domain, retaining legacy fallback."""
         import re
+        from exams.specifications import resolve_exam_specification
 
+        passage = resolve_exam_specification(self.exam)["passage"]
         raw = self.source.content.replace("\r\n", "\n").replace("\r", "\n").strip()
-        exam = self.exam
-        layout = exam.passage_layout
-        # Backward compatibility for records configured before presentation profiles existed.
-        if layout == exam.PassageLayout.UNCONFIGURED:
-            if exam.passage_format == exam.PassageFormat.CONTINUOUS:
-                layout = exam.PassageLayout.CONTINUOUS
-            elif exam.passage_format == exam.PassageFormat.PARAGRAPHS:
-                layout = exam.PassageLayout.PARAGRAPHS
-            elif exam.passage_format == exam.PassageFormat.TCS:
-                layout = exam.PassageLayout.TCS
-        if layout == exam.PassageLayout.CONTINUOUS:
-            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+        layout = passage["layout"]
+        if layout == self.exam.PassageLayout.UNCONFIGURED:
+            legacy_format = passage["format"]
+            if legacy_format == self.exam.PassageFormat.CONTINUOUS:
+                layout = self.exam.PassageLayout.CONTINUOUS
+            elif legacy_format == self.exam.PassageFormat.PARAGRAPHS:
+                layout = self.exam.PassageLayout.PARAGRAPHS
+            elif legacy_format == self.exam.PassageFormat.TCS:
+                layout = self.exam.PassageLayout.TCS
+
+        if layout == self.exam.PassageLayout.CONTINUOUS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return " ".join(parts)
-        if layout == exam.PassageLayout.PARAGRAPHS:
-            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+        if layout == self.exam.PassageLayout.PARAGRAPHS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
-        if layout == exam.PassageLayout.PARA_TAB:
-            # Preserve source tabs and line boundaries; browser tab-size is configured in the template.
-            return raw.replace("\t", " " * exam.passage_tab_size) if not exam.passage_preserve_tabs else raw
-        if layout == exam.PassageLayout.TCS:
-            parts = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+        if layout == self.exam.PassageLayout.PARA_TAB:
+            typography = passage["typography"]
+            tab_size = typography["tab_size"] or 4
+            return raw if typography["preserve_tabs"] else raw.replace("\t", " " * tab_size)
+        if layout == self.exam.PassageLayout.TCS:
+            parts = [re.sub(r"\\s+", " ", p).strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
             return "\n\n".join(parts)
-        # Unconfigured/custom layouts never silently impose a guessed transformation.
         return raw
 
     @property
