@@ -83,3 +83,51 @@ def submit_typing_session(request, session_id):
     except (PermissionDenied, ValidationError) as error:
         return JsonResponse({"error": str(error)}, status=403)
     return render(request, "typing_sessions/result.html", _result_context(attempt))
+
+
+
+@login_required
+def delhi_police_hcm_dashboard(request):
+    """Learner-owned HCM practice history; reads immutable result snapshots only."""
+    attempts = list(
+        TypingSession.objects.filter(
+            learner=request.user,
+            result_snapshot__dphcm_attempt_report__profile="DELHI_POLICE_HCM_2025",
+        ).order_by("-completed_at", "-started_at")[:100]
+    )
+    rows = []
+    speeds = []
+    accuracies = []
+    category_totals = {}
+    unresolved_total = 0
+    for attempt in attempts:
+        report = attempt.result_snapshot.get("dphcm_attempt_report") or {}
+        metrics = report.get("practice_metrics") or {}
+        analysis = report.get("mistake_analysis") or {}
+        speed = metrics.get("net_wpm")
+        accuracy = metrics.get("accuracy_percent")
+        if isinstance(speed, (int, float)):
+            speeds.append(float(speed))
+        if isinstance(accuracy, (int, float)):
+            accuracies.append(float(accuracy))
+        for item in analysis.get("candidate_errors") or []:
+            category = item.get("category", "UNSPECIFIED")
+            category_totals[category] = category_totals.get(category, 0) + 1
+        unresolved = len(analysis.get("unresolved_cases") or [])
+        unresolved_total += unresolved
+        rows.append({
+            "attempt": attempt,
+            "speed": speed,
+            "accuracy": accuracy,
+            "candidate_count": analysis.get("candidate_error_count"),
+            "unresolved_count": unresolved,
+            "marks_status": (report.get("marks_eligibility") or {}).get("status", "PENDING"),
+        })
+    return render(request, "typing_sessions/dphcm_dashboard.html", {
+        "rows": rows,
+        "attempt_count": len(rows),
+        "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
+        "average_accuracy": round(sum(accuracies) / len(accuracies), 2) if accuracies else None,
+        "category_totals": sorted(category_totals.items(), key=lambda item: (-item[1], item[0])),
+        "unresolved_total": unresolved_total,
+    })
