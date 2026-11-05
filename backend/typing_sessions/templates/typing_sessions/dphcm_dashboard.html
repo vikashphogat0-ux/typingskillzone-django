@@ -5,6 +5,18 @@
   <div class="eyebrow">Personal performance</div>
   <h1>Delhi Police HCM practice dashboard</h1>
   <p class="muted">This dashboard reads your saved attempt reports. It does not recalculate historical results or present practice metrics as official SSC marks.</p>
+  <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:22px 0">
+    <label>From date<br><input type="date" name="start_date" value="{{ start_date }}" style="padding:10px;border-radius:8px;border:1px solid var(--line);background:#111b30;color:var(--text)"></label>
+    <label>To date<br><input type="date" name="end_date" value="{{ end_date }}" style="padding:10px;border-radius:8px;border:1px solid var(--line);background:#111b30;color:var(--text)"></label>
+    <label>Language<br><select name="language" style="padding:10px;border-radius:8px;border:1px solid var(--line);background:#111b30;color:var(--text)">
+      <option value="" {% if not selected_language %}selected{% endif %}>All languages</option>
+      <option value="ENGLISH" {% if selected_language == "ENGLISH" %}selected{% endif %}>English</option>
+      <option value="HINDI" {% if selected_language == "HINDI" %}selected{% endif %}>Hindi</option>
+    </select></label>
+    <button type="submit" style="padding:10px 16px;border:0;border-radius:8px;background:var(--blue);color:#07111f;font-weight:700">Apply filters</button>
+    <a href="{% url 'typing_sessions:dphcm_dashboard' %}">Clear filters</a>
+  </form>
+  {% if filter_error %}<p role="alert" style="color:#fca5a5">{{ filter_error }}</p>{% endif %}
   <div class="grid">
     <div class="item"><div class="id">{{ attempt_count }}</div><strong>Recorded attempts</strong></div>
     <div class="item"><div class="id">{% if average_net_wpm != None %}{{ average_net_wpm }}{% else %}—{% endif %}</div><strong>Average net practice WPM</strong></div>
