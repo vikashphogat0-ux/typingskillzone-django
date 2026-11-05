@@ -174,6 +174,13 @@ The learner dashboard accepts optional `start_date`, `end_date`, and `language` 
 
 Summary metrics, category totals, and trend series are recomputed from the filtered set of immutable result snapshots. No historical attempt is changed. Tests cover language isolation and reversed date ranges; test execution and CI remain pending.
 
+
+## Delhi Police HCM personal practice goals
+
+Each learner can save one personal goal for the Delhi Police HCM profile. The default targets are 30 net practice WPM and 95% practice accuracy; learners can set net WPM from 1–200 and accuracy from 1–100%. The dashboard displays progress against the average practice metrics in the currently selected date/language filter.
+
+These goals are learner preferences only. They are not official SSC qualifying standards, do not determine eligibility or marks, and are not copied into attempt snapshots. The new `LearnerPracticeGoal` table is separate from historical attempt records. Migration `0002_learnerpracticegoal` creates this table without altering existing attempts.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
