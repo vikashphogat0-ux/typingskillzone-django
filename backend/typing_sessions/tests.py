@@ -42,6 +42,28 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.duration_seconds, 600)
         self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
 
+    def test_live_session_snapshot_captures_all_passage_presentation_fields(self):
+        self.exam.passage_font_family = "Georgia"
+        self.exam.passage_font_size_pt = 14
+        self.exam.passage_line_height = "1.80"
+        self.exam.passage_paragraph_spacing_pt = 18
+        self.exam.passage_alignment = "justify"
+        self.exam.passage_first_line_indent_em = "1.5"
+        self.exam.passage_preserve_tabs = True
+        self.exam.passage_tab_size = 6
+        self.exam.save()
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        rules = attempt.rules_snapshot
+        self.assertEqual(rules["passage_font_family"], "Georgia")
+        self.assertEqual(rules["passage_font_size_pt"], 14)
+        self.assertEqual(rules["passage_line_height"], "1.80")
+        self.assertEqual(rules["passage_paragraph_spacing_pt"], 18)
+        self.assertEqual(rules["passage_alignment"], "justify")
+        self.assertEqual(rules["passage_first_line_indent_em"], "1.5")
+        self.assertTrue(rules["passage_preserve_tabs"])
+        self.assertEqual(rules["passage_tab_size"], 6)
+
     def test_exam_configuration_edits_do_not_change_started_specification_snapshot(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         original_snapshot = attempt.rules_snapshot
