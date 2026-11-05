@@ -164,7 +164,7 @@ class TypingSessionTests(TestCase):
         self.assertEqual(audit["checks"]["newline"], "PASSED")
         self.assertEqual(audit["checks"]["tab"], "PASSED")
         self.assertEqual(
-            audit["client_controls"]["backspace"], "CLIENT_ENFORCED_UNVERIFIED"
+            audit["client_controls"]["backspace"]["verification"], "CLIENT_SIDE_ONLY_UNVERIFIED"
         )
         self.assertEqual(audit["server_verification_scope"], "SUBMITTED_TEXT_ONLY")
 
