@@ -11,6 +11,15 @@ from passages.models import SimulatorPassage
 
 from .models import TypingSession
 from .services import expire_session, start_session, submit_session
+from .result_integrity import verify_result_integrity
+
+
+def _result_context(attempt):
+    integrity = verify_result_integrity(
+        rules_snapshot=attempt.rules_snapshot,
+        result_snapshot=attempt.result_snapshot,
+    ) if attempt.result_snapshot else None
+    return {"attempt": attempt, "result_integrity": integrity}
 
 
 @login_required
@@ -42,7 +51,7 @@ def typing_session(request, session_id):
         learner=request.user,
     )
     if attempt.state != TypingSession.State.ACTIVE:
-        return render(request, "typing_sessions/result.html", {"attempt": attempt})
+        return render(request, "typing_sessions/result.html", _result_context(attempt))
     if attempt.has_expired:
         attempt = expire_session(session_id=attempt.pk, learner=request.user)
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
