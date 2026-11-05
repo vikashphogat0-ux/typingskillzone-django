@@ -16,6 +16,18 @@
     <div class="item"><strong id="live-wpm">0</strong><div class="muted">Live WPM (estimate)</div></div>
     <div class="item"><strong id="live-accuracy">100%</strong><div class="muted">Live accuracy (estimate)</div></div>
   </div>
+  {% if attempt.rules_snapshot.timing.trial_seconds != None or attempt.rules_snapshot.timing.review_seconds != None or attempt.rules_snapshot.timing.correction_seconds != None or attempt.rules_snapshot.timing.transcription_seconds != None %}
+    <div class="item" style="margin:.75rem 0;">
+      <strong>Additional configured timing</strong>
+      <div class="muted" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.35rem;">
+        {% if attempt.rules_snapshot.timing.trial_seconds != None %}<span>Trial: {{ attempt.rules_snapshot.timing.trial_seconds }} sec</span>{% endif %}
+        {% if attempt.rules_snapshot.timing.review_seconds != None %}<span>Review: {{ attempt.rules_snapshot.timing.review_seconds }} sec</span>{% endif %}
+        {% if attempt.rules_snapshot.timing.correction_seconds != None %}<span>Correction: {{ attempt.rules_snapshot.timing.correction_seconds }} sec</span>{% endif %}
+        {% if attempt.rules_snapshot.timing.transcription_seconds != None %}<span>Transcription: {{ attempt.rules_snapshot.timing.transcription_seconds }} sec</span>{% endif %}
+      </div>
+      <p class="muted" style="margin:.4rem 0 0;">These are saved exam settings only. Separate trial, review, correction and transcription stages are not activated in this session; the main test deadline is enforced by the server.</p>
+    </div>
+  {% endif %}
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="muted">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
   <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};text-align:{{ attempt.rules_snapshot.passage_alignment|default:'left' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">
     {% if attempt.rules_snapshot.passage_layout == "PARAGRAPHS" or attempt.rules_snapshot.passage_layout == "TCS" %}
