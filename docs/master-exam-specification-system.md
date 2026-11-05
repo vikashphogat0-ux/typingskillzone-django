@@ -72,6 +72,32 @@ Each profile must resolve these domains:
 - Review the full profile matrix before enabling the new resolver.
 - Use a staged, reversible rollout; do not deploy until explicitly approved.
 
+## Canonical scoring registry (implementation stage)
+
+`backend/exams/scoring_registry.py` now resolves a versioned scoring descriptor for
+each attempt. It identifies a formula, records the parameters available in the
+captured profile, and reports missing or ambiguous inputs without inventing values.
+The scoring engine stores this descriptor with the result and displays unresolved
+requirements on the result page.
+
+Registered formula identifiers currently cover generic practice metrics, correct
+words per minute, stroke-adjusted net speed, word-error allowance, stroke penalty,
+exact full/half word classification, marks per correct word, qualifying-only, and
+custom formulas. Generic metrics are explicitly practice-only. Unknown modes are
+unsupported by the registry.
+
+The registry is currently a compatibility/readiness layer around the existing
+scoring engine, not a complete replacement of its legacy formula branches. A
+qualification result is withheld when the registry says required parameters are
+incomplete or required scoring/qualification domain evidence is not verified.
+Existing score metrics remain available as practice analysis. Profiles that use
+legacy settings must be reviewed and explicitly mapped before they can claim
+official qualification.
+
+The registry does not yet define every official rounding convention, Hindi/Unicode
+stroke counting algorithm, or all exam-specific error taxonomies. Those remain
+source-audit and formula-implementation work, not assumed defaults.
+
 ## Delhi Police HCM 2025 reference case
 
 The official SSC notice states a 10-minute typing test, minimum 30 WPM English / 25 WPM Hindi, and minimum printed passage size of 400 English words / 350 Hindi words (also expressed as 2,000 / 1,750 strokes). The notice describes tentative speed from strokes divided by five and time, then subtracts one word for each mistake. It provides language-specific marks bands. The passage-size stroke count is not a candidate input minimum. The notice does not specify a Backspace restriction; the practice simulator must not present a restriction as official.
