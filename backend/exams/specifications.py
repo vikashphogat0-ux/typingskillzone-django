@@ -101,6 +101,7 @@ def resolve_exam_specification(exam):
         "source_title": _value(exam, "source_title"),
         "source_checked_at": _value(exam, "source_checked_at"),
         "rule_notes": _value(exam, "rule_notes"),
+        "domain_evidence": _value(exam, "domain_evidence") or {},
         "presentation_reference": {
             "status": _value(exam, "presentation_reference_status"),
             "url": _value(exam, "presentation_reference_url"),
