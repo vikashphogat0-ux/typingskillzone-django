@@ -4,6 +4,8 @@ import hashlib
 import json
 import re
 
+from exams.scoring_registry import resolve_scoring_specification
+
 SCORING_VERSION = "tsz-char-word-v3"
 
 
@@ -195,6 +197,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         else None
     )
     scoring_mode = rules.get("scoring_mode", "GENERIC")
+    scoring_specification = resolve_scoring_specification(rules)
     scoring_rules = rules.get("scoring_rules") or {}
     correct_words = _count_correct_words(reference, typed)
     gross_words = len(re.findall(r"\S+", typed))
@@ -318,8 +321,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             else "Full/half mistake result remains pending: " + classification["reason"]
         )
 
+    if qualification is not None and not scoring_specification["qualification_eligible"]:
+        qualification = None
+        qualification_note = "Qualification remains pending: the registered scoring formula is incomplete or its scoring/qualification evidence is not verified."
+
     return {
         "scoring_version": SCORING_VERSION,
+        "scoring_specification": scoring_specification,
         "scoring_audit": {
             "engine_version": SCORING_VERSION,
             "rule_config_version": rules.get("rule_config_version"),
