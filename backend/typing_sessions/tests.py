@@ -869,3 +869,24 @@ class TypingSessionViewTests(TestCase):
         self.assertIsNotNone(monthly_rows[0]["average_accuracy"])
         self.assertContains(response, "Monthly performance report")
         self.assertContains(response, "Print / Save as PDF")
+
+
+    def test_dphcm_dashboard_progress_comparison_handles_missing_prior_period(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        comparisons = response.context["progress_comparisons"]
+        self.assertEqual([item["window_days"] for item in comparisons], [30, 60, 90])
+        self.assertEqual(comparisons[0]["current_attempts"], 1)
+        self.assertIsNotNone(comparisons[0]["current_speed"])
+        self.assertIsNone(comparisons[0]["speed_change"])
+        self.assertIsNone(comparisons[0]["accuracy_change"])
+        self.assertContains(response, "30 / 60 / 90-day progress analysis")
