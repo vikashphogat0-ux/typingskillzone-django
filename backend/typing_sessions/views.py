@@ -226,6 +226,49 @@ def delhi_police_hcm_dashboard(request):
         avg_accuracy = round(sum(month_accuracies) / len(month_accuracies), 2) if month_accuracies else None
         monthly_rows.append({"month": bucket["month"], "attempt_count": bucket["attempt_count"], "average_net_wpm": avg_speed, "average_accuracy": avg_accuracy, "speed_goal_met": bool(avg_speed is not None and avg_speed >= goal.target_net_wpm), "accuracy_goal_met": bool(avg_accuracy is not None and avg_accuracy >= goal.target_accuracy)})
 
+    # Compare each recent window with the immediately preceding window of equal length.
+    # This uses all matching saved attempts in the date window, not only the 100-row history display.
+    progress_cutoff = today - timedelta(days=180)
+    progress_attempts = list(queryset.filter(completed_at__date__gte=progress_cutoff).order_by("completed_at"))
+    progress_rows = []
+    for progress_attempt in progress_attempts:
+        report = progress_attempt.result_snapshot.get("dphcm_attempt_report") or {}
+        metrics = report.get("practice_metrics") or {}
+        stamp = progress_attempt.completed_at or progress_attempt.started_at
+        progress_rows.append({
+            "date": timezone.localtime(stamp).date(),
+            "speed": metrics.get("net_wpm"),
+            "accuracy": metrics.get("accuracy_percent"),
+        })
+    progress_comparisons = []
+    for window_days in (30, 60, 90):
+        current_start = today - timedelta(days=window_days - 1)
+        previous_start = current_start - timedelta(days=window_days)
+        previous_end = current_start - timedelta(days=1)
+        current_rows = [item for item in progress_rows if current_start <= item["date"] <= today]
+        previous_rows = [item for item in progress_rows if previous_start <= item["date"] <= previous_end]
+        current_speeds = [float(item["speed"]) for item in current_rows if isinstance(item["speed"], (int, float))]
+        previous_speeds = [float(item["speed"]) for item in previous_rows if isinstance(item["speed"], (int, float))]
+        current_accuracies = [float(item["accuracy"]) for item in current_rows if isinstance(item["accuracy"], (int, float))]
+        previous_accuracies = [float(item["accuracy"]) for item in previous_rows if isinstance(item["accuracy"], (int, float))]
+        current_speed = round(sum(current_speeds) / len(current_speeds), 2) if current_speeds else None
+        previous_speed = round(sum(previous_speeds) / len(previous_speeds), 2) if previous_speeds else None
+        current_accuracy = round(sum(current_accuracies) / len(current_accuracies), 2) if current_accuracies else None
+        previous_accuracy = round(sum(previous_accuracies) / len(previous_accuracies), 2) if previous_accuracies else None
+        progress_comparisons.append({
+            "window_days": window_days,
+            "current_attempts": len(current_rows),
+            "previous_attempts": len(previous_rows),
+            "current_speed": current_speed,
+            "previous_speed": previous_speed,
+            "speed_change": round(current_speed - previous_speed, 2) if current_speed is not None and previous_speed is not None else None,
+            "current_accuracy": current_accuracy,
+            "previous_accuracy": previous_accuracy,
+            "accuracy_change": round(current_accuracy - previous_accuracy, 2) if current_accuracy is not None and previous_accuracy is not None else None,
+            "speed_goal_met": bool(current_speed is not None and current_speed >= goal.target_net_wpm),
+            "accuracy_goal_met": bool(current_accuracy is not None and current_accuracy >= goal.target_accuracy),
+        })
+
     max_speed = max(speeds, default=0)
     trend_rows = []
     for row in reversed(rows):
@@ -242,7 +285,7 @@ def delhi_police_hcm_dashboard(request):
     return render(request, "typing_sessions/dphcm_dashboard.html", {
         "rows": rows,
         "trend_rows": trend_rows,
-        "weekly_daily_rows": weekly_daily_rows,\n        "monthly_rows": monthly_rows,
+        "weekly_daily_rows": weekly_daily_rows,\n        "monthly_rows": monthly_rows,\n        "progress_comparisons": progress_comparisons,
         "weekly_summary": weekly_summary,
         "attempt_count": len(rows),
         "average_net_wpm": round(sum(speeds) / len(speeds), 2) if speeds else None,
