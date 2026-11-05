@@ -17,8 +17,12 @@
     <div class="item"><strong id="live-accuracy">100%</strong><div class="muted">Live accuracy (estimate)</div></div>
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="muted">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
-  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};text-align:{{ attempt.rules_snapshot.passage_alignment|default:'left' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.passage_first_line_indent_em %}text-indent:{{ attempt.rules_snapshot.passage_first_line_indent_em }}em;{% endif %}">
-    {{ attempt.reference_text }}
+  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};text-align:{{ attempt.rules_snapshot.passage_alignment|default:'left' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">
+    {% if attempt.rules_snapshot.passage_layout == "PARAGRAPHS" or attempt.rules_snapshot.passage_layout == "TCS" %}
+      {% for paragraph in attempt.reference_paragraphs %}<p style="margin:0 0 {{ attempt.rules_snapshot.passage_paragraph_spacing_pt|default:12 }}pt 0;{% if attempt.rules_snapshot.passage_first_line_indent_em %}text-indent:{{ attempt.rules_snapshot.passage_first_line_indent_em }}em;{% endif %}">{{ paragraph }}</p>{% endfor %}
+    {% else %}
+      <div style="{% if attempt.rules_snapshot.passage_first_line_indent_em %}text-indent:{{ attempt.rules_snapshot.passage_first_line_indent_em }}em;{% endif %}">{{ attempt.reference_text }}</div>
+    {% endif %}
   </article>
   <form id="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
