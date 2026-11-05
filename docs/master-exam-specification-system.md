@@ -131,6 +131,17 @@ Implementation safeguards:
 Source: SSC, Notice: Head Constable (Ministerial) in Delhi Police Examination, 2025, paragraphs 24.1-24.2, printed pages 22-23:
 https://ssc.gov.in/api/attachment/uploads/masterData/Notice_of_DPHCM_2025.pdf?mode=light
 
+## Stroke-event counting contract
+
+`backend/typing_sessions/stroke_counting.py` adds a versioned event-based counter (`tsz-key-event-v1`) for English and Hindi practice. It counts explicit physical KEY_DOWN events, excludes modifier-only and auto-repeat events, and marks IME composition commits unresolved because the committed Unicode text does not reveal the physical key sequence.
+
+Critical limitations:
+- This is unverified client telemetry, not a trusted server-side event attestation. Its output always has official_scoring_eligible=false.
+- The SSC notice specifies a stroke-based formula but does not define a browser event-capture protocol, keyboard-layout mapping, or trusted event-integrity mechanism. This counter's event convention is an engineering telemetry contract, not an official SSC definition.
+- The counter is deliberately not connected to official score calculation or live attempt submission. It does not infer strokes from final English or Hindi text.
+- Hindi IME composition, missing physical events, or incomplete event streams remain unresolved rather than being converted into a guessed count.
+- A future production integration requires a reviewed client capture implementation, layout-specific verification, tamper-resistance assessment, and separate evidence before any official scoring eligibility can be considered.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
