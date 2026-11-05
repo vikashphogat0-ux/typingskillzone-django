@@ -162,6 +162,12 @@ The authenticated route `typing_sessions:dphcm_dashboard` at `reports/delhi-poli
 
 Official marks remain explicitly pending. These dashboard aggregates are practice indicators, not official selection or qualification predictions. A learner-isolation test was added; tests and CI have not been run in this environment.
 
+## Delhi Police HCM practice performance trends
+
+The learner dashboard now renders saved attempt trends in chronological order (oldest to newest). Each attempt shows its captured completion/start timestamp, passage identifier, practice net WPM, and accuracy. Speed bars are normalized against the highest displayed practice speed; accuracy bars use a 0–100 scale. The view supplies presentation-only widths and does not alter score snapshots, infer official marks, or mix unverified candidate mistake categories into the trend metrics. History remains limited to the latest 100 learner-owned HCM reports.
+
+A test covers chronological ordering and bar scaling. Automated execution and CI remain pending.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
