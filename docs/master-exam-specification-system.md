@@ -168,6 +168,12 @@ The learner dashboard now renders saved attempt trends in chronological order (o
 
 A test covers chronological ordering and bar scaling. Automated execution and CI remain pending.
 
+## Delhi Police HCM dashboard filters
+
+The learner dashboard accepts optional `start_date`, `end_date`, and `language` GET filters. Dates use ISO calendar dates from native date inputs; language is selected from the captured attempt language (English or Hindi). Filtering occurs against the learner-owned attempt queryset before the latest-100 cap, so a selected language/date window is not accidentally limited by unrelated recent attempts. A reversed or malformed filter is surfaced to the learner and does not silently apply a partial date range. Clearing filters returns the unfiltered dashboard.
+
+Summary metrics, category totals, and trend series are recomputed from the filtered set of immutable result snapshots. No historical attempt is changed. Tests cover language isolation and reversed date ranges; test execution and CI remain pending.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
