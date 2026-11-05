@@ -14,6 +14,16 @@
     </div>
     {% if attempt.result_snapshot.reported_keystrokes != None %}<p>Reported key depressions: {{ attempt.result_snapshot.reported_keystrokes }} <span class="muted">(browser-reported practice telemetry; not tamper-proof)</span></p>{% endif %}
     {% if attempt.result_snapshot.required_keystrokes != None %}<p>Required key depressions: {{ attempt.result_snapshot.required_keystrokes }} · Target reached: {{ attempt.result_snapshot.required_keystrokes_met|yesno:"Yes,No,Not measured" }}</p>{% endif %}
+    {% if attempt.result_snapshot.input_policy_audit %}
+      <h2>Input policy audit</h2>
+      <p>Submitted-text validation: <strong>{{ attempt.result_snapshot.input_policy_audit.status|title }}</strong></p>
+      <p class="muted">Server checked only the submitted text. Backspace, Delete, arrow navigation, paste, copy and cut actions cannot be verified from the final text.</p>
+      <ul>
+        {% for control, detail in attempt.result_snapshot.input_policy_audit.client_controls.items %}
+          <li>{{ control|title }}: {{ detail.verification|lower|cut:"_" }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
     <h2>Detailed analysis</h2>
     <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
     <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
