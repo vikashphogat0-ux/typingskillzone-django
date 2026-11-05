@@ -12,6 +12,36 @@
       <div class="item"><strong>{{ attempt.result_snapshot.accuracy_percent }}%</strong><div class="muted">Accuracy</div></div>
       <div class="item"><strong>{{ attempt.result_snapshot.error_count }}</strong><div class="muted">{{ attempt.result_snapshot.error_count_method|title }} errors</div></div>
     </div>
+    {% if attempt.result_snapshot.dphcm_attempt_report %}
+      {% with report=attempt.result_snapshot.dphcm_attempt_report %}
+        <h2>Delhi Police HCM 2025 result analysis</h2>
+        <p><strong>Practice metrics only</strong> · {{ report.language|title }} · Report {{ report.report_version }}</p>
+        <p>Gross speed: {{ report.practice_metrics.gross_wpm }} WPM · Correct speed: {{ report.practice_metrics.correct_wpm }} WPM · Net practice speed: {{ report.practice_metrics.net_wpm }} WPM · Accuracy: {{ report.practice_metrics.accuracy_percent }}%</p>
+        <h3>Mistake candidates</h3>
+        <p>Detected candidates: {{ report.mistake_analysis.candidate_error_count }} · Unresolved cases: {{ report.mistake_analysis.unresolved_cases|length }}</p>
+        {% if report.mistake_analysis.candidate_errors %}
+          <ul>
+            {% for error in report.mistake_analysis.candidate_errors %}
+              <li><strong>{{ error.category|title|cut:"_" }}</strong> · Reference: “{{ error.reference }}” · Typed: “{{ error.typed }}” · {{ error.basis }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">No confidently categorized text differences were detected.</p>
+        {% endif %}
+        {% if report.mistake_analysis.unresolved_cases %}
+          <h3>Cases requiring review</h3>
+          <ul>
+            {% for error in report.mistake_analysis.unresolved_cases %}
+              <li>Reference: “{{ error.reference }}” · Typed: “{{ error.typed }}” · {{ error.reason }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <h3>Official marks eligibility</h3>
+        <p><strong>{{ report.marks_eligibility.status|title|cut:"_" }}</strong> · Marks: pending</p>
+        <p class="muted">{{ report.marks_eligibility.reason }}</p>
+        <ul>{% for requirement in report.marks_eligibility.required_inputs %}<li>{{ requirement }}</li>{% endfor %}</ul>
+      {% endwith %}
+    {% endif %}
     {% if attempt.result_snapshot.reported_keystrokes != None %}<p>Reported key depressions: {{ attempt.result_snapshot.reported_keystrokes }} <span class="muted">(browser-reported practice telemetry; not tamper-proof)</span></p>{% endif %}
     {% if attempt.result_snapshot.required_keystrokes != None %}<p>Required key depressions: {{ attempt.result_snapshot.required_keystrokes }} · Browser-reported target: {{ attempt.result_snapshot.required_keystrokes_met|yesno:"Yes,No,Not measured" }} <span class="muted">({{ attempt.result_snapshot.keystroke_verification|lower|cut:"_" }})</span></p>{% endif %}
     {% if attempt.result_snapshot.scoring_mode == "ERROR_PERCENTAGE" or attempt.result_snapshot.scoring_mode == "QUALIFYING_ONLY" %}
