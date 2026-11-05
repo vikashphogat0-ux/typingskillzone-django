@@ -26,8 +26,11 @@ DOMAIN_STATUSES = ("UNVERIFIED", "PARTIAL", "VERIFIED")
 def _valid_https_url(value):
     if not isinstance(value, str) or not value.strip():
         return False
-    parsed = urlsplit(value.strip())
-    return parsed.scheme == "https" and bool(parsed.netloc)
+    try:
+        parsed = urlsplit(value.strip())
+        return parsed.scheme == "https" and bool(parsed.netloc)
+    except ValueError:
+        return False
 
 
 def _valid_date(value):
