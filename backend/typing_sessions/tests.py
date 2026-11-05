@@ -53,6 +53,75 @@ class TypingSessionTests(TestCase):
             "NOT_IMPLEMENTED",
         )
 
+    def test_domain_evidence_is_normalized_and_captured_immutably_at_attempt_start(self):
+        self.exam.domain_evidence = {
+            "timing": {
+                "status": "VERIFIED",
+                "references": [{
+                    "url": "https://ssc.gov.in/notice.pdf",
+                    "title": "Official recruitment notice",
+                    "locator": "Section 8.2, page 14",
+                    "checked_at": "2026-11-05",
+                    "claims": ["timing.duration_seconds", "timing.minimum_wpm"],
+                }],
+            },
+            "scoring": {"status": "PARTIAL", "references": [{
+                "url": "https://ssc.gov.in/scoring.pdf",
+                "title": "Scoring instructions",
+                "locator": "Paragraph 3",
+                "checked_at": "2026-11-04",
+                "claims": ["scoring.error_allowance_percent"],
+            }]},
+        }
+        self.exam.save()
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        evidence = attempt.rules_snapshot["domain_evidence_snapshot"]
+        self.assertEqual(evidence["capture_status"], "VALID")
+        self.assertEqual(evidence["domains"]["timing"]["status"], "VERIFIED")
+        self.assertEqual(
+            evidence["domains"]["timing"]["references"][0]["locator"],
+            "Section 8.2, page 14",
+        )
+        self.assertEqual(evidence["domains"]["scoring"]["status"], "PARTIAL")
+        self.assertEqual(evidence["domains"]["identity"]["status"], "UNVERIFIED")
+        self.assertEqual(
+            attempt.rules_snapshot["canonical_specification"]["provenance"]["domain_evidence"],
+            evidence,
+        )
+
+        original = attempt.rules_snapshot
+        self.exam.domain_evidence = {}
+        self.exam.save()
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.rules_snapshot, original)
+        self.assertEqual(
+            attempt.rules_snapshot["domain_evidence_snapshot"]["domains"]["timing"]["status"],
+            "VERIFIED",
+        )
+
+    def test_domain_evidence_snapshot_marks_invalid_legacy_database_payload(self):
+        self.exam.domain_evidence = {
+            "timing": {
+                "status": "VERIFIED",
+                "references": [{
+                    "url": "http://example.gov/rules",
+                    "title": "Untrusted source",
+                    "locator": "",
+                    "checked_at": "not-a-date",
+                    "claims": [],
+                }],
+            },
+        }
+        self.exam.save()
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        evidence = attempt.rules_snapshot["domain_evidence_snapshot"]
+        self.assertEqual(evidence["capture_status"], "INVALID")
+        self.assertTrue(evidence["validation_errors"])
+        self.assertEqual(evidence["domains"]["timing"]["status"], "VERIFIED")
+        self.assertEqual(evidence["domains"]["identity"]["status"], "UNVERIFIED")
+
     def test_configured_auxiliary_timing_is_snapshotted_without_activating_phases(self):
         self.exam.trial_seconds = 15
         self.exam.review_seconds = 30
