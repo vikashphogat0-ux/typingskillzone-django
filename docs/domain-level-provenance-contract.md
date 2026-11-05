@@ -1,6 +1,6 @@
 # Domain-level provenance contract
 
-**Status:** Pure validation contract; no database or runtime behavior changed.
+**Status:** Validation contract integrated into immutable attempt snapshots and historical result display. No database schema or migration change.
 
 The legacy `ExamConfiguration.verification_status` remains authoritative for existing
 compatibility behavior. It must not be copied into individual domain statuses: one
@@ -33,7 +33,16 @@ clause locator, ISO checked date, and explicit claim paths supported by that sou
 
 ## Compatibility and rollout
 
-This is a pure Python contract. It adds no model field, migration, seed behavior,
-admin behavior, publication gate, or automatic status promotion. Existing profiles
-and historical session snapshots remain unchanged. Persistence and admin workflows
-must be designed separately after this contract is reviewed and tested.
+The contract remains a pure validator with no schema or migration change. At session start,
+`build_exam_specification_snapshot` normalizes the evidence and captures its validation
+status, domain statuses, references, claims, and capture timestamp. The same immutable
+evidence object is stored at `domain_evidence_snapshot` and under
+`canonical_specification.provenance.domain_evidence`. Invalid legacy/database payloads
+are retained as an `INVALID` capture with validation errors rather than being silently
+promoted or causing an attempt to claim verification. Missing domains remain
+`UNVERIFIED`. The historical result page displays the captured evidence and explicitly
+warns that metadata completeness does not prove source authority or interpretation.
+
+This integration does not add an admin editing workflow, publication gate, automatic
+status promotion, database field, or migration. Existing historical attempts are not
+rewritten; they simply have no domain evidence snapshot if they predate this change.
