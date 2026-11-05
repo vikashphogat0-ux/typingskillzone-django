@@ -33,6 +33,11 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
         self.assertEqual(attempt.rules_snapshot["allow_backspace"], False)
+        input_policy = attempt.rules_snapshot["input_policy"]
+        self.assertEqual(input_policy["backspace"]["policy"], self.exam.backspace_policy)
+        self.assertFalse(input_policy["delete"])
+        self.assertEqual(input_policy["enter_behavior"], self.exam.enter_behavior)
+        self.assertEqual(input_policy["tab_behavior"], self.exam.tab_behavior)
         canonical = attempt.rules_snapshot["canonical_specification"]
         self.assertEqual(canonical["identity"]["code"], self.exam.code)
         self.assertEqual(canonical["identity"]["name"], self.exam.name)
