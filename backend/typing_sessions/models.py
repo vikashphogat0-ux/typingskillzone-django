@@ -52,3 +52,4 @@ class TypingSession(models.Model):
 
 # Register learner-owned practice goal model with Django's app registry.
 from .practice_goals import LearnerPracticeGoal  # noqa: F401
+from .practice_reminders import LearnerPracticeReminder  # noqa: F401
