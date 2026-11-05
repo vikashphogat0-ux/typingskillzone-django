@@ -96,6 +96,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification = None
     qualification_note = "Qualification is not configured."
     permitted_error_count = excess_error_count = net_words = None
+    error_percent = None
     if scoring_mode == "CORRECT_WORDS":
         net_wpm = round(correct_words / minutes, 2)
     elif scoring_mode == "NET_WPM":
@@ -217,7 +218,11 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "scoring_mode": scoring_mode,
         "score": score,
         "error_percent": error_percent,
-        "error_percentage_unit": "WORDS" if error_percent is not None else "UNRESOLVED",
+        "error_percentage_unit": (
+            "WORDS" if error_percent is not None
+            else "UNRESOLVED" if scoring_mode in {"ERROR_PERCENTAGE", "QUALIFYING_ONLY"}
+            else "NOT_APPLICABLE"
+        ),
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
         "net_words": net_words,
