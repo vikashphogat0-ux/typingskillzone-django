@@ -53,6 +53,21 @@
         {% endfor %}
       </ul>
     {% endif %}
+    {% if attempt.result_snapshot.scoring_audit %}
+      <h2>Scoring audit trail</h2>
+      <p>Scoring engine: {{ attempt.result_snapshot.scoring_audit.engine_version }} · Rule configuration version: {{ attempt.result_snapshot.scoring_audit.rule_config_version|default:"Not specified" }}</p>
+      <p>Exam rule verification: {{ attempt.result_snapshot.scoring_audit.verification_status|title }}</p>
+      {% if attempt.result_snapshot.scoring_audit.source_title %}<p>Rule source: {{ attempt.result_snapshot.scoring_audit.source_title }}{% if attempt.result_snapshot.scoring_audit.source_checked_at %} · Checked: {{ attempt.result_snapshot.scoring_audit.source_checked_at }}{% endif %}</p>{% endif %}
+      {% if attempt.result_snapshot.scoring_audit.official_source_url %}<p><a href="{{ attempt.result_snapshot.scoring_audit.official_source_url }}" target="_blank" rel="noopener noreferrer">Open official rule source</a></p>{% endif %}
+      <p class="muted">Scoring configuration fingerprint (SHA-256): {{ attempt.result_snapshot.scoring_audit.scoring_rules_sha256 }}</p>
+    {% endif %}
+    {% if attempt.result_snapshot.mistake_classification.rule_source %}
+      <p>Classification source status: {{ attempt.result_snapshot.mistake_classification.rule_source.status|title }}</p>
+      {% if attempt.result_snapshot.mistake_classification.rule_source.title %}
+        <p>Classification reference: {{ attempt.result_snapshot.mistake_classification.rule_source.title }} · {{ attempt.result_snapshot.mistake_classification.rule_source.locator }} · Checked {{ attempt.result_snapshot.mistake_classification.rule_source.checked_at }}</p>
+        <p><a href="{{ attempt.result_snapshot.mistake_classification.rule_source.url }}" target="_blank" rel="noopener noreferrer">Open classification source</a></p>
+      {% endif %}
+    {% endif %}
     <h2>Detailed analysis</h2>
     <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
     <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
