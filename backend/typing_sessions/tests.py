@@ -125,6 +125,27 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["error_count"], 1)
         self.assertEqual(result["error_count_method"], "word")
 
+    def test_reported_keystrokes_are_measured_without_claiming_trusted_input(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world", typed="hello world", duration_seconds=60,
+            rules={"required_keystrokes": 1000}, reported_keystrokes=1025,
+        )
+        self.assertEqual(result["reported_keystrokes"], 1025)
+        self.assertEqual(result["keystroke_count_source"], "client_reported")
+        self.assertTrue(result["required_keystrokes_met"])
+        self.assertIsNone(result["qualification"])
+
+    def test_reported_keystrokes_are_saved_with_session_result(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        result = submit_session(
+            session_id=attempt.pk, learner=self.learner,
+            typed_text=attempt.reference_text, reported_keystrokes=37,
+        )
+        self.assertEqual(result.result_snapshot["reported_keystrokes"], 37)
+        self.assertEqual(result.result_snapshot["keystroke_count_source"], "client_reported")
+
     def test_unverified_exam_never_receives_qualification_claim(self):
         from .scoring import calculate_result
 
