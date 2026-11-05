@@ -53,6 +53,8 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
         "passage_font_size_pt": exam.passage_font_size_pt,
         "passage_line_height": str(exam.passage_line_height),
         "passage_alignment": exam.passage_alignment,
+        "passage_paragraph_spacing_pt": exam.passage_paragraph_spacing_pt,
+        "passage_first_line_indent_em": str(exam.passage_first_line_indent_em),
         "passage_preserve_tabs": exam.passage_preserve_tabs,
         "passage_tab_size": exam.passage_tab_size,
         "snapshot_metadata": {
