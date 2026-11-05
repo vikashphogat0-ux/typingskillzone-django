@@ -43,12 +43,30 @@ def audit_submitted_text(*, typed_text, rules):
         checks["tab"] = "PASSED"
 
     client_controls = {
-        "backspace": "CLIENT_ENFORCED_UNVERIFIED",
-        "delete": "CLIENT_ENFORCED_UNVERIFIED",
-        "arrow_navigation": "CLIENT_ENFORCED_UNVERIFIED",
-        "paste": "CLIENT_ENFORCED_UNVERIFIED",
-        "copy": "CLIENT_ENFORCED_UNVERIFIED",
-        "cut": "CLIENT_ENFORCED_UNVERIFIED",
+        "backspace": {
+            "configured": policy.get("backspace"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
+        "delete": {
+            "configured": policy.get("delete"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
+        "arrow_navigation": {
+            "configured": policy.get("arrow_navigation"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
+        "paste": {
+            "configured": policy.get("paste"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
+        "copy": {
+            "configured": policy.get("copy"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
+        "cut": {
+            "configured": policy.get("cut"),
+            "verification": "CLIENT_SIDE_ONLY_UNVERIFIED",
+        },
     }
     audit = {
         "status": "REJECTED" if violations else "TEXT_POLICY_VALIDATED",
