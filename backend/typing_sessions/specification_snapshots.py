@@ -65,5 +65,11 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
         },
         "canonical_specification": resolve_exam_specification(exam),
         "input_policy": resolve_exam_specification(exam)["input_policy"],
+        "timing": resolve_exam_specification(exam)["timing"],
+        "timing_execution": {
+            "overall_duration": "SERVER_DEADLINE" if exam.duration_seconds else "UNLIMITED",
+            "separate_phase_execution": "NOT_IMPLEMENTED",
+            "phase_values_are_metadata_only": True,
+        },
     }
     return snapshot
