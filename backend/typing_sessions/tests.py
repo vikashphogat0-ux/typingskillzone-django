@@ -925,3 +925,34 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(summary["current_streak"], 0)
         self.assertEqual(summary["longest_streak"], 0)
         self.assertEqual(summary["consistency_percent"], 0)
+
+
+    def test_dphcm_dashboard_daily_plan_has_foundation_defaults_without_recent_data(self):
+        from django.urls import reverse
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        plan = response.context["daily_practice_plan"]
+        self.assertEqual(plan["minutes"], 20)
+        self.assertEqual(plan["passages"], 2)
+        self.assertEqual(plan["warmup_minutes"], 5)
+        self.assertEqual(plan["review_minutes"], 5)
+        self.assertContains(response, "Your suggested daily practice plan")
+
+    def test_dphcm_dashboard_daily_plan_adjusts_for_accuracy_gap(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        plan = response.context["daily_practice_plan"]
+        self.assertGreaterEqual(plan["minutes"], 20)
+        self.assertGreaterEqual(plan["passages"], 2)
+        self.assertIn(plan["minutes"], (20, 30, 35, 40, 45))
