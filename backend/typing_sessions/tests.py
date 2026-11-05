@@ -773,3 +773,44 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Start date must be on or before the end date.", response.context["filter_error"])
         self.assertEqual(response.context["attempt_count"], 0)
+
+    def test_dphcm_dashboard_saves_learner_personal_goals(self):
+        from django.urls import reverse
+        from .models import LearnerPracticeGoal
+
+        self.client.force_login(self.learner)
+        response = self.client.post(
+            reverse("typing_sessions:dphcm_dashboard"),
+            {"target_net_wpm": "42", "target_accuracy": "97"},
+        )
+        self.assertEqual(response.status_code, 302)
+        goal = LearnerPracticeGoal.objects.get(learner=self.learner)
+        self.assertEqual(goal.target_net_wpm, 42)
+        self.assertEqual(goal.target_accuracy, 97)
+
+    def test_dphcm_dashboard_rejects_out_of_range_personal_goals(self):
+        from django.urls import reverse
+        from .models import LearnerPracticeGoal
+
+        self.client.force_login(self.learner)
+        response = self.client.post(
+            reverse("typing_sessions:dphcm_dashboard"),
+            {"target_net_wpm": "250", "target_accuracy": "97"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Enter speed from 1")
+        goal = LearnerPracticeGoal.objects.get(learner=self.learner)
+        self.assertEqual(goal.target_net_wpm, 30)
+        self.assertEqual(goal.target_accuracy, 95)
+
+    def test_dphcm_dashboard_goals_are_private_per_learner(self):
+        from .models import LearnerPracticeGoal
+
+        own = LearnerPracticeGoal.objects.create(
+            learner=self.learner, target_net_wpm=45, target_accuracy=98
+        )
+        other = LearnerPracticeGoal.objects.create(
+            learner=self.other, target_net_wpm=35, target_accuracy=96
+        )
+        self.assertNotEqual(own.pk, other.pk)
+        self.assertEqual(LearnerPracticeGoal.objects.filter(learner=self.learner).count(), 1)
