@@ -668,3 +668,30 @@ class TypingSessionViewTests(TestCase):
             result_snapshot={"scoring_version": "legacy"},
         )
         self.assertEqual(integrity["status"], "LEGACY_UNCHECKABLE")
+
+    def test_delhi_police_hcm_submission_stores_unified_practice_report(self):
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        result = submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text="One. Two.",
+        )
+        report = result.result_snapshot["dphcm_attempt_report"]
+        self.assertEqual(report["profile"], "DELHI_POLICE_HCM_2025")
+        self.assertEqual(report["practice_metrics"]["metric_status"], "PRACTICE_ONLY")
+        self.assertIn("mistake_analysis", report)
+        self.assertEqual(report["marks_eligibility"]["status"], "PENDING_VERIFIED_INPUTS")
+        self.assertIsNone(report["marks_eligibility"]["marks"])
+        self.assertFalse(report["official_result_claimed"])
+
+    def test_non_delhi_police_attempt_does_not_receive_dphcm_report(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        result = submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text="One. Two.",
+        )
+        self.assertNotIn("dphcm_attempt_report", result.result_snapshot)
