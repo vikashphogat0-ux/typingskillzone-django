@@ -1,5 +1,7 @@
 """Deterministic server-side scoring for a single submitted typing attempt."""
 from difflib import SequenceMatcher
+import hashlib
+import json
 import re
 
 SCORING_VERSION = "tsz-char-word-v3"
@@ -81,6 +83,16 @@ def _classify_full_half_mistakes(reference, typed, config):
     if not isinstance(overrides, list):
         return unresolved
 
+    source_reference = config.get("source_reference")
+    if not isinstance(source_reference, dict):
+        source_reference = {}
+    source_audit = {
+        "status": "VERIFIED" if all(source_reference.get(key) for key in ("url", "title", "locator", "checked_at")) else "PENDING",
+        "url": source_reference.get("url"),
+        "title": source_reference.get("title"),
+        "locator": source_reference.get("locator"),
+        "checked_at": source_reference.get("checked_at"),
+    }
     lookup = {}
     for item in overrides:
         if not isinstance(item, dict):
@@ -124,6 +136,8 @@ def _classify_full_half_mistakes(reference, typed, config):
                 "typed": typed_word,
                 "classification": "UNCLASSIFIED",
             }]
+            result["rule_source"] = source_audit
+            result["classification_config_version"] = config.get("version")
             result["reason"] = "At least one error case has no exact configured classification."
             return result
         counts[classification] += 1
@@ -131,10 +145,13 @@ def _classify_full_half_mistakes(reference, typed, config):
             "reference": reference_word,
             "typed": typed_word,
             "classification": classification,
+            "rule_source": source_audit,
         })
 
     return {
         "status": "CLASSIFIED",
+        "classification_config_version": config.get("version"),
+        "rule_source": source_audit,
         "full_mistakes": counts["FULL"],
         "half_mistakes": counts["HALF"],
         "ignored_mistakes": counts["IGNORED"],
@@ -303,6 +320,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     return {
         "scoring_version": SCORING_VERSION,
+        "scoring_audit": {
+            "engine_version": SCORING_VERSION,
+            "rule_config_version": rules.get("rule_config_version"),
+            "verification_status": rules.get("verification_status", "UNVERIFIED"),
+            "official_source_url": rules.get("official_source_url"),
+            "source_title": rules.get("canonical_specification", {}).get("provenance", {}).get("source_title"),
+            "source_checked_at": rules.get("canonical_specification", {}).get("provenance", {}).get("source_checked_at"),
+            "scoring_rules_sha256": hashlib.sha256(json.dumps(
+                scoring_rules, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")).hexdigest(),
+        },
         "duration_seconds": duration,
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
