@@ -142,6 +142,14 @@ Critical limitations:
 - Hindi IME composition, missing physical events, or incomplete event streams remain unresolved rather than being converted into a guessed count.
 - A future production integration requires a reviewed client capture implementation, layout-specific verification, tamper-resistance assessment, and separate evidence before any official scoring eligibility can be considered.
 
+## Delhi Police HCM 2025 mistake-analysis prototype
+
+`backend/typing_sessions/dphcm_error_analysis.py` implements a conservative text-difference analyzer for the mistake descriptions in SSC Notice 2025 paragraph 24.2: omission, substitution, added punctuation, capitalization, internal word gaps, excess inter-word gaps, and missing paragraphs.
+
+The analyzer deliberately distinguishes candidate categories from an official mistake count. It reports multi-token replacements, added words, and uncertain whitespace/paragraph changes as unresolved where the notice does not give a complete deterministic adjudication algorithm. `official_mistake_count` remains null and `official_scoring_eligible` remains false. The module is not wired into the general scoring engine or the Delhi Police marks evaluator.
+
+Tests are added for the listed candidate categories, unresolved additions, exact text and invalid input. These tests have not yet been executed in CI or locally.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
