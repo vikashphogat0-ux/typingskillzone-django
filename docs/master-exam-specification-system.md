@@ -211,3 +211,8 @@ The dashboard compares saved practice metrics in each recent 30-, 60-, and 90-ca
 ## Delhi Police HCM 90-day practice calendar
 
 The learner dashboard displays a 90-calendar-day activity grid, active practice days, consistency percentage (active days divided by 90), current consecutive-day streak, longest streak in the 90-day window, and completed attempt count. A day is active when at least one matching saved HCM attempt was completed on that local calendar date. It uses the learner-owned queryset and active date/language filters, but is not capped by the 100-row attempt-history display. Streaks are descriptive engagement indicators only; rest days do not affect scores or qualification. Tests cover a recent attempt and the empty calendar state; execution remains pending.
+
+
+## Delhi Police HCM suggested daily practice planner
+
+The learner dashboard now provides a coaching plan based on saved practice averages from the rolling seven-day report and the learner's personal speed/accuracy targets. It suggests daily minutes, passage count, warm-up and review time, timed-practice time, and a focus area. With no recent metrics it uses a conservative 20-minute/two-passage baseline. Larger speed gaps increase practice volume; an accuracy gap greater than five percentage points adds focused review time and one passage, subject to a 45-minute/five-passage cap. These are transparent coaching defaults, not official SSC rules. The planner does not change scoring or attempt records. Tests are added; execution remains pending.
