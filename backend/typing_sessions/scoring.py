@@ -95,8 +95,8 @@ def _classify_full_half_mistakes(reference, typed, config):
             return unresolved
         lookup[key] = classification
 
-    reference_words = re.findall(r"\\S+", reference)
-    typed_words = re.findall(r"\\S+", typed)
+    reference_words = re.findall(r"\S+", reference)
+    typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=reference_words, b=typed_words, autojunk=False)
     cases = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
