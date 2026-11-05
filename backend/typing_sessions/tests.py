@@ -132,7 +132,7 @@ class TypingSessionTests(TestCase):
 
         with self.assertRaises(ValidationError):
             submit_session(
-                session_id=attempt.pk, learner=self.learner, typed_text="One.\\nTwo."
+                session_id=attempt.pk, learner=self.learner, typed_text="One.\nTwo."
             )
         attempt.refresh_from_db()
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
@@ -145,7 +145,7 @@ class TypingSessionTests(TestCase):
 
         with self.assertRaises(ValidationError):
             submit_session(
-                session_id=attempt.pk, learner=self.learner, typed_text="One.\\tTwo."
+                session_id=attempt.pk, learner=self.learner, typed_text="One.\tTwo."
             )
         attempt.refresh_from_db()
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
@@ -156,7 +156,7 @@ class TypingSessionTests(TestCase):
         self.exam.save()
         attempt = start_session(learner=self.learner, publication=self.publication)
         result = submit_session(
-            session_id=attempt.pk, learner=self.learner, typed_text="One.\\nTwo.\\t"
+            session_id=attempt.pk, learner=self.learner, typed_text="One.\nTwo.\\t"
         )
 
         audit = result.result_snapshot["input_policy_audit"]
