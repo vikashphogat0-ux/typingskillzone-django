@@ -46,6 +46,30 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.rules_snapshot["snapshot_metadata"]["publication_id"], str(self.publication.pk))
         self.assertEqual(attempt.duration_seconds, 600)
         self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
+        self.assertEqual(attempt.rules_snapshot["timing"]["duration_seconds"], 600)
+        self.assertEqual(attempt.rules_snapshot["timing_execution"]["overall_duration"], "SERVER_DEADLINE")
+        self.assertEqual(
+            attempt.rules_snapshot["timing_execution"]["separate_phase_execution"],
+            "NOT_IMPLEMENTED",
+        )
+
+    def test_configured_auxiliary_timing_is_snapshotted_without_activating_phases(self):
+        self.exam.trial_seconds = 15
+        self.exam.review_seconds = 30
+        self.exam.correction_seconds = 45
+        self.exam.transcription_seconds = 90
+        self.exam.save()
+
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        timing = attempt.rules_snapshot["timing"]
+        self.assertEqual(timing["duration_seconds"], 600)
+        self.assertEqual(timing["trial_seconds"], 15)
+        self.assertEqual(timing["review_seconds"], 30)
+        self.assertEqual(timing["correction_seconds"], 45)
+        self.assertEqual(timing["transcription_seconds"], 90)
+        self.assertTrue(attempt.rules_snapshot["timing_execution"]["phase_values_are_metadata_only"])
+        self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
+        self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
 
     def test_live_session_snapshot_captures_all_passage_presentation_fields(self):
         self.exam.passage_font_family = "Georgia"
@@ -83,6 +107,11 @@ class TypingSessionTests(TestCase):
         self.assertEqual(
             attempt.rules_snapshot["canonical_specification"]["identity"]["name"],
             "Sample Exam",
+        )
+        self.assertEqual(attempt.rules_snapshot["timing"]["duration_seconds"], 600)
+        self.assertEqual(
+            attempt.rules_snapshot["timing_execution"]["overall_duration"],
+            "SERVER_DEADLINE",
         )
         self.assertIsNone(
             attempt.rules_snapshot["canonical_specification"]["scoring"]["minimum_wpm"]
