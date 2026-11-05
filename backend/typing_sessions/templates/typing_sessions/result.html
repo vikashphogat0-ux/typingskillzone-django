@@ -68,6 +68,31 @@
         <p><a href="{{ attempt.result_snapshot.mistake_classification.rule_source.url }}" target="_blank" rel="noopener noreferrer">Open classification source</a></p>
       {% endif %}
     {% endif %}
+    {% if domain_evidence %}
+      <h2>Exam rule evidence captured at attempt start</h2>
+      <p>Evidence snapshot: <strong>{{ domain_evidence.capture_status|title }}</strong> · Captured {{ domain_evidence.captured_at }}</p>
+      <p class="muted">Domain statuses below describe the evidence recorded when this attempt began. They are not an independent guarantee that a source is official or correctly interpreted.</p>
+      {% for domain, evidence in domain_evidence.domains.items %}
+        <h3>{{ domain|title|cut:"_" }} · {{ evidence.status|title }}</h3>
+        {% if evidence.references %}
+          <ul>
+            {% for reference in evidence.references %}
+              <li>
+                <a href="{{ reference.url }}" target="_blank" rel="noopener noreferrer">{{ reference.title }}</a>
+                · {{ reference.locator }} · Checked {{ reference.checked_at }}
+                {% if reference.claims %}<ul>{% for claim in reference.claims %}<li>{{ claim }}</li>{% endfor %}</ul>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">No evidence reference was captured for this domain.</p>
+        {% endif %}
+      {% endfor %}
+      {% if domain_evidence.validation_errors %}
+        <p class="muted">Evidence validation warnings:</p>
+        <ul>{% for error in domain_evidence.validation_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      {% endif %}
+    {% endif %}
     {% if result_integrity %}
       <h2>Historical result integrity</h2>
       <p><strong>{{ result_integrity.status|title }}</strong> · {{ result_integrity.reason }}</p>
