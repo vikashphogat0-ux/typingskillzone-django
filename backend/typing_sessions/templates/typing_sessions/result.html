@@ -12,6 +12,8 @@
       <div class="item"><strong>{{ attempt.result_snapshot.accuracy_percent }}%</strong><div class="muted">Accuracy</div></div>
       <div class="item"><strong>{{ attempt.result_snapshot.error_count }}</strong><div class="muted">{{ attempt.result_snapshot.error_count_method|title }} errors</div></div>
     </div>
+    {% if attempt.result_snapshot.reported_keystrokes != None %}<p>Reported key depressions: {{ attempt.result_snapshot.reported_keystrokes }} <span class="muted">(browser-reported practice telemetry; not tamper-proof)</span></p>{% endif %}
+    {% if attempt.result_snapshot.required_keystrokes != None %}<p>Required key depressions: {{ attempt.result_snapshot.required_keystrokes }} · Target reached: {{ attempt.result_snapshot.required_keystrokes_met|yesno:"Yes,No,Not measured" }}</p>{% endif %}
     <h2>Detailed analysis</h2>
     <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
     <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
