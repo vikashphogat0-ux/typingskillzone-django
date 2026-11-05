@@ -156,6 +156,12 @@ Tests are added for the listed candidate categories, unresolved additions, exact
 
 The report deliberately labels speed metrics PRACTICE_ONLY and keeps marks pending until both a verified physical stroke count and an officially adjudicated mistake count are available. It does not call the HCM marks evaluator, change the general score, or rewrite prior attempts. Tests cover HCM report attachment and non-HCM isolation; execution remains pending.
 
+## Delhi Police HCM learner practice dashboard
+
+The authenticated route `typing_sessions:dphcm_dashboard` at `reports/delhi-police-hcm/` reads only the current learner's saved attempts carrying a Delhi Police HCM attempt report. It summarizes attempt count, average practice net WPM, average accuracy, candidate mistake-category frequencies, unresolved text cases, and a reverse-chronological attempt history with links to each immutable report. The view caps history at the latest 100 attempts and performs aggregation in application code; it does not write to attempts or recalculate scores.
+
+Official marks remain explicitly pending. These dashboard aggregates are practice indicators, not official selection or qualification predictions. A learner-isolation test was added; tests and CI have not been run in this environment.
+
 ## Completion criteria
 
 - Every catalogue profile has a documented source/verification state for every applicable rule domain.
