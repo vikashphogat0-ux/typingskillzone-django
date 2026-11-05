@@ -226,3 +226,8 @@ The learner dashboard now displays a Monday-to-Sunday coaching timetable with si
 ## Delhi Police HCM daily dashboard reminder
 
 Learners can enable/disable a private daily reminder and choose a local dashboard reminder time. Once that time has passed, the dashboard displays a reminder if the learner has not completed an HCM attempt on the current local date. Completing an attempt suppresses the reminder for that date. The preference is stored in a separate one-to-one learner settings table (`LearnerPracticeReminder`) and migration `0003_learnerpracticereminder`; it does not alter attempt history. This implementation is dashboard-only: it does not send email, SMS, browser push or background notifications and requires the learner to open or refresh the dashboard. Tests cover saving the preference, reminder due state and suppression after practice; execution remains pending.
+
+
+## Delhi Police HCM learner practice achievements
+
+The learner dashboard derives seven motivational badges from the learner-owned HCM report queryset: first attempt, 10 attempts, 25 attempts, three-day streak, seven-day streak, personal speed target, and personal accuracy target. The dashboard shows unlocked/locked states and an unlocked count. Attempt milestones use the full matching queryset count; streak milestones use the 90-day calendar; speed and accuracy badges use the rolling seven-day saved report averages and current personal goals. Active date/language filters apply. Badges are calculated at request time and are not persisted as permanent awards; they do not affect scoring, official marks, qualification, or historical attempt records. Tests cover first-award unlocking and learner isolation; execution remains pending.
