@@ -19,7 +19,11 @@ def _result_context(attempt):
         rules_snapshot=attempt.rules_snapshot,
         result_snapshot=attempt.result_snapshot,
     ) if attempt.result_snapshot else None
-    return {"attempt": attempt, "result_integrity": integrity}
+    return {
+        "attempt": attempt,
+        "result_integrity": integrity,
+        "domain_evidence": attempt.rules_snapshot.get("domain_evidence_snapshot", {}),
+    }
 
 
 @login_required
@@ -54,7 +58,7 @@ def typing_session(request, session_id):
         return render(request, "typing_sessions/result.html", _result_context(attempt))
     if attempt.has_expired:
         attempt = expire_session(session_id=attempt.pk, learner=request.user)
-        return render(request, "typing_sessions/result.html", {"attempt": attempt})
+        return render(request, "typing_sessions/result.html", _result_context(attempt))
     return render(request, "typing_sessions/live.html", {"attempt": attempt})
 
 
@@ -78,4 +82,4 @@ def submit_typing_session(request, session_id):
         return JsonResponse({"error": "Session not found."}, status=404)
     except (PermissionDenied, ValidationError) as error:
         return JsonResponse({"error": str(error)}, status=403)
-    return render(request, "typing_sessions/result.html", {"attempt": attempt})
+    return render(request, "typing_sessions/result.html", _result_context(attempt))
