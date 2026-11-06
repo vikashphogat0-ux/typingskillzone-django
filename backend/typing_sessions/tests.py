@@ -1058,3 +1058,27 @@ class TypingSessionViewTests(TestCase):
         achievements = {item["code"]: item for item in response.context["achievement_rows"]}
         self.assertFalse(achievements["FIRST_ATTEMPT"]["unlocked"])
         self.assertEqual(response.context["total_hcm_attempts"], 0)
+
+
+    def test_dphcm_weekly_leaderboard_requires_language_and_privacy_threshold(self):
+        from django.urls import reverse
+
+        self.exam.code = "delhi-police-hcm-2025-english"
+        self.exam.language = "ENGLISH"
+        self.exam.save()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        submit_session(session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text)
+
+        self.client.force_login(self.learner)
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["leaderboard_status"], "SELECT_LANGUAGE")
+        self.assertEqual(response.context["leaderboard_rows"], [])
+        self.assertContains(response, "Choose English or Hindi")
+
+        response = self.client.get(reverse("typing_sessions:dphcm_dashboard"), {"language": "ENGLISH"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["leaderboard_status"], "PRIVACY_THRESHOLD")
+        self.assertEqual(response.context["leaderboard_rows"], [])
+        self.assertContains(response, "at least five learners")
+        self.assertNotContains(response, self.learner.email)
