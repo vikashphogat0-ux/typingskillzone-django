@@ -1,8 +1,8 @@
 """Deterministic server-side scoring for a single submitted typing attempt."""
 from difflib import SequenceMatcher
 import re
-
-SCORING_VERSION = "tsz-char-word-v1"
+from .mistake_classification import classify_typing_mistakes
+SCORING_VERSION = "tsz-char-word-v2"
 
 
 def _count_character_errors(reference, typed):
@@ -62,8 +62,21 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     correct_wpm = round(chars["correct_characters"] / 5 / minutes, 2)
     word_errors = _count_word_errors(reference, typed)
     error_rules = rules.get("error_rules") or {}
-    count_word_errors = bool(error_rules.get("count_word_errors", False))
-    error_count = word_errors if count_word_errors else chars["character_errors"]
+    scoring_rules = rules.get("scoring_rules") or {}
+    scoring_mode = rules.get("scoring_mode", "GENERIC")
+
+    mistake_analysis = None
+
+    if (
+        scoring_mode == "CUSTOM"
+        and scoring_rules.get("formula") == "STROKE_NET_WPM"
+    ):
+        mistake_analysis = classify_typing_mistakes(reference, typed)
+        error_count = mistake_analysis["total_detected_errors"]
+        count_word_errors = True
+    else:
+        count_word_errors = bool(error_rules.get("count_word_errors", False))
+        error_count = word_errors if count_word_errors else chars["character_errors"]
     penalty_per_error = error_rules.get("penalty_wpm_per_error", 0)
     try:
         penalty_per_error = max(0, float(penalty_per_error))
@@ -83,8 +96,27 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         if reported_keystrokes is not None and required_keystrokes is not None
         else None
     )
-    scoring_mode = rules.get("scoring_mode", "GENERIC")
-    scoring_rules = rules.get("scoring_rules") or {}
+    stroke_count_for_speed = (
+        reported_keystrokes
+        if reported_keystrokes is not None
+        else len(typed)
+    )
+    stroke_count_source = (
+        "client_reported"
+        if reported_keystrokes is not None
+        else "typed_character_fallback"
+    )
+    # Untrusted client telemetry must never influence an official
+    # qualifying result. When the exam rules are verified, derive the
+    # stroke count server-side from the persisted submitted text so a
+    # manipulated client keystroke count cannot inflate speed or marks.
+    # Practice (unverified) attempts keep the client-reported value as a
+    # separate, clearly-labelled provisional metric.
+    if rules.get("verification_status") == "VERIFIED":
+        stroke_count_for_speed = len(typed)
+        stroke_count_source = "server_derived"
+    tentative_wpm = None
+    
     correct_words = _count_correct_words(reference, typed)
     gross_words = len(re.findall(r"\S+", typed))
     strokes_per_word = rules.get("strokes_per_word") or scoring_rules.get("strokes_per_word") or 5
@@ -149,19 +181,49 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         else:
             qualification_note = "Qualification remains pending: verified source and at least one configured threshold are required."
     elif scoring_mode == "CUSTOM":
-        penalty_words = scoring_rules.get("mistake_penalty_words", 0)
-        try:
-            penalty_words = max(0, int(penalty_words))
-        except (TypeError, ValueError):
-            penalty_words = 0
-        if penalty_words:
-            net_words = max(0, gross_words - error_count * penalty_words)
-            net_wpm = round(net_words / minutes, 2)
+        formula = scoring_rules.get("formula")
+
+        if formula == "STROKE_NET_WPM":
+            try:
+                mistake_penalty_wpm = max(
+                    0,
+                    float(scoring_rules.get("mistake_penalty_wpm", 1)),
+                )
+            except (TypeError, ValueError):
+                mistake_penalty_wpm = 1
+
+            tentative_wpm = round(
+                stroke_count_for_speed / strokes_per_word / minutes,
+                2,
+            )
+
+            net_wpm = round(
+                max(0, tentative_wpm - error_count * mistake_penalty_wpm),
+                2,
+            )
+        else:
+            penalty_words = scoring_rules.get("mistake_penalty_words", 0)
+            try:
+                penalty_words = max(0, int(penalty_words))
+            except (TypeError, ValueError):
+                penalty_words = 0
+
+            if penalty_words:
+                net_words = max(0, gross_words - error_count * penalty_words)
+                net_wpm = round(net_words / minutes, 2)
+
         disqualify_at = scoring_rules.get("disqualify_at_mistakes")
         if disqualify_at is not None and error_count >= int(disqualify_at):
             score = 0
-            qualification = False if rules.get("verification_status") == "VERIFIED" else None
-            qualification_note = "Disqualification threshold reached." if qualification is not None else "Disqualification threshold reached in practice; official qualification is not claimed."
+            qualification = (
+                False if rules.get("verification_status") == "VERIFIED" else None
+            )
+            qualification_note = (
+                "Disqualification threshold reached."
+                if qualification is not None
+                else "Disqualification threshold reached in practice; official qualification is not claimed."
+            )
+
         bands = scoring_rules.get("score_bands") or []
         if bands:
             eligible = []
@@ -170,12 +232,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                     threshold, marks = float(band[0]), float(band[1])
                 except (TypeError, ValueError, IndexError):
                     continue
+
                 if net_wpm >= threshold:
                     eligible.append(marks)
+
             if eligible and score is None:
                 score = max(eligible)
+
         if not bands and score is None:
-            qualification_note = "Custom scoring data is stored, but no executable score formula is configured."
+            qualification_note = (
+                "Custom scoring data is stored, but no executable score formula is configured."
+            )
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
@@ -184,6 +251,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "duration_seconds": duration,
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
+                "stroke_count_for_speed": stroke_count_for_speed,
+        "stroke_count_source": stroke_count_source,
+        "tentative_wpm": tentative_wpm,
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
         "required_keystrokes": required_keystrokes,
         "required_keystrokes_met": required_keystrokes_met,
@@ -198,6 +268,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "excess_error_count": excess_error_count,
         "net_words": net_words,
         "error_count": error_count,
+        "mistake_analysis": mistake_analysis,
+        "mistake_categories": (
+            mistake_analysis["categories"]
+            if mistake_analysis is not None
+            else None
+),
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
