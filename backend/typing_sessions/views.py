@@ -402,6 +402,58 @@ def delhi_police_hcm_dashboard(request):
     # Achievements are derived from saved learner-owned HCM reports and
     # personal targets. They are display-only and never affect official scores.
     total_hcm_attempts = queryset.count()
+    # Public leaderboard: current calendar week, same language only, completed HCM practice reports.
+    # Names, email addresses, institute membership and learner IDs are never rendered.
+    week_start = today - timedelta(days=today.weekday())
+    leaderboard_rows = []
+    accuracy_leaderboard_rows = []
+    leaderboard_status = "SELECT_LANGUAGE"
+    if language:
+        peer_attempts = TypingSession.objects.filter(
+            state=TypingSession.State.SUBMITTED,
+            completed_at__date__gte=week_start,
+            completed_at__date__lte=today,
+            result_snapshot__dphcm_attempt_report__profile="DELHI_POLICE_HCM_2025",
+            result_snapshot__dphcm_attempt_report__language=language,
+        ).values_list("learner_id", "result_snapshot")
+        peer_totals = {}
+        for peer_learner_id, peer_snapshot in peer_attempts:
+            peer_report = (peer_snapshot or {}).get("dphcm_attempt_report") or {}
+            peer_metrics = peer_report.get("practice_metrics") or {}
+            peer_speed = peer_metrics.get("net_wpm")
+            peer_accuracy = peer_metrics.get("accuracy_percent")
+            if not isinstance(peer_speed, (int, float)) or not isinstance(peer_accuracy, (int, float)):
+                continue
+            bucket = peer_totals.setdefault(peer_learner_id, {"speeds": [], "accuracies": []})
+            bucket["speeds"].append(float(peer_speed))
+            bucket["accuracies"].append(float(peer_accuracy))
+        if len(peer_totals) < 5:
+            leaderboard_status = "PRIVACY_THRESHOLD"
+        else:
+            leaderboard_status = "AVAILABLE"
+            # Stable aliases are derived from ordering only; no account fields are exposed.
+            participant_ids = sorted(peer_totals)
+            aliases = {participant_id: "Participant " + chr(65 + index) if index < 26 else "Participant " + str(index + 1)
+                       for index, participant_id in enumerate(participant_ids)}
+            ranked = []
+            for participant_id, bucket in peer_totals.items():
+                ranked.append({
+                    "participant": aliases[participant_id],
+                    "average_net_wpm": round(sum(bucket["speeds"]) / len(bucket["speeds"]), 2),
+                    "average_accuracy": round(sum(bucket["accuracies"]) / len(bucket["accuracies"]), 2),
+                    "attempt_count": len(bucket["speeds"]),
+                })
+            speed_ranked = sorted(
+                ranked,
+                key=lambda item: (-item["average_net_wpm"], -item["average_accuracy"], -item["attempt_count"], item["participant"]),
+            )
+            accuracy_ranked = sorted(
+                ranked,
+                key=lambda item: (-item["average_accuracy"], -item["average_net_wpm"], -item["attempt_count"], item["participant"]),
+            )
+            leaderboard_rows = [dict(item, rank=index + 1) for index, item in enumerate(speed_ranked[:10])]
+            accuracy_leaderboard_rows = [dict(item, rank=index + 1) for index, item in enumerate(accuracy_ranked[:10])]
+
     achievement_definitions = [
         ("FIRST_ATTEMPT", "First Steps", "Complete your first HCM practice attempt", total_hcm_attempts >= 1),
         ("TEN_ATTEMPTS", "Getting Consistent", "Complete 10 HCM practice attempts", total_hcm_attempts >= 10),
@@ -441,6 +493,11 @@ def delhi_police_hcm_dashboard(request):
         "daily_practice_plan": daily_practice_plan,
         "weekly_timetable_rows": weekly_timetable_rows,
         "weekly_plan_summary": weekly_plan_summary,
+        "leaderboard_rows": leaderboard_rows,
+        "accuracy_leaderboard_rows": accuracy_leaderboard_rows,
+        "leaderboard_status": leaderboard_status,
+        "leaderboard_week_start": week_start,
+        "leaderboard_week_end": today,
         "achievement_rows": achievement_rows,
         "unlocked_achievement_count": unlocked_achievement_count,
         "total_hcm_attempts": total_hcm_attempts,
