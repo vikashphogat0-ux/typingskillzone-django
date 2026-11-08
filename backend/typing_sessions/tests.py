@@ -540,6 +540,8 @@ class TypingSessionViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "typing_sessions/result.html")
+        self.assertContains(response, "Time expired — no submission received")
+        self.assertContains(response, "No score was generated")
         attempt.refresh_from_db()
         self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
         self.assertEqual(attempt.result_snapshot, {})
