@@ -25,7 +25,7 @@ class TypingSession(models.Model):
     reference_text = models.TextField()
     submitted_text = models.TextField(blank=True)
     rules_snapshot = models.JSONField(default=dict)
-    # Scoring is intentionally pending until a separately versioned scoring service exists.
+    # Persist the exact scoring implementation version used for this attempt.
     scoring_version = models.CharField(max_length=32, blank=True)
     result_snapshot = models.JSONField(default=dict)
 
