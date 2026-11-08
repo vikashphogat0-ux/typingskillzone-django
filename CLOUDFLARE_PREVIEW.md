@@ -61,6 +61,41 @@ The current application requires a shared Redis cache and SMTP email backend
 in production. Those services must be provisioned and tested before normal
 Django routes are enabled.
 
+## Protected runtime diagnostics
+
+The preview Worker exposes `POST /_preview-runtime-check` for a bounded,
+non-destructive integration check. It is not part of the normal Django URL
+configuration and is intercepted by the Worker adapter.
+
+Before using it, configure a strong, temporary `PREVIEW_DIAGNOSTIC_TOKEN`
+Worker secret. The endpoint requires `Authorization: Bearer <token>` and
+returns only pass/fail booleans; it never returns credentials, hostnames,
+or exception details. Do not place the token in Git, a URL, or browser code.
+
+The checks perform:
+- PostgreSQL `SELECT 1` through Django's configured database connection.
+- Redis cache set/get/delete using a random, short-lived diagnostic key.
+- Django app/auth model initialization (not a login or password test).
+- SMTP configuration presence checks only; no SMTP connection or email is sent.
+
+The endpoint does not write application database rows or run migrations.
+It does create and delete one temporary Redis key. A successful response
+validates only the services reached by this specific diagnostic request;
+it does not certify full application behavior or production readiness.
+
+Example from a trusted terminal (replace the URL and read the token from your
+secret manager; never paste the token into chat):
+
+~~~powershell
+$token = Read-Host "Preview diagnostic token"
+$headers = @{ Authorization = "Bearer $token" }
+Invoke-RestMethod -Method Post -Uri "https://YOUR-PREVIEW-WORKER/_preview-runtime-check" -Headers $headers
+~~~
+
+Expected all-green response has `status: "ok"` and true values for each check.
+An HTTP 503 means at least one check failed; the response identifies only
+which component failed, not the underlying secret or exception.
+
 ## Local Django WSGI smoke test
 
 A separate local-only entrypoint is provided for verifying that Django can
