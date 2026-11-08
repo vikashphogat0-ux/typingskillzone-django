@@ -3,6 +3,7 @@ name: Django CI
 on:
   push:
     branches:
+      - main
       - integration/release-review-2026-11
   pull_request:
     branches:
