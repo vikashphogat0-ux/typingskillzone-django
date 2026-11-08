@@ -25,7 +25,12 @@
     </p>
     <p class="muted">{{ attempt.result_snapshot.qualification_note }}</p>
   {% else %}
-    <p>The attempt ended without a score being generated.</p>
+    {% if attempt.state == "EXPIRED" %}
+      <h2>Time expired — no submission received</h2>
+      <p>Your attempt reached its deadline before any text was submitted. No score was generated, and there is no submitted text to review.</p>
+    {% else %}
+      <p>The attempt ended without a score being generated.</p>
+    {% endif %}
   {% endif %}
   <h2>Your submitted text</h2>
   <pre style="white-space:pre-wrap;overflow-wrap:anywhere;">{{ attempt.submitted_text }}</pre>
