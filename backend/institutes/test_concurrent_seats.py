@@ -30,8 +30,6 @@ class MembershipForm:
 
 @skipUnlessDBFeature("has_select_for_update")
 class ConcurrentSeatLimitTests(TransactionTestCase):
-    reset_sequences = True
-
     def setUp(self):
         owner = User.objects.create_user(
             email="concurrent-owner@example.test",

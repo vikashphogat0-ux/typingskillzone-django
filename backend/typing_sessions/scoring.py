@@ -1,8 +1,8 @@
 """Deterministic server-side scoring for a single submitted typing attempt."""
 from difflib import SequenceMatcher
 import re
-
-SCORING_VERSION = "tsz-char-word-v1"
+from .mistake_classification import classify_typing_mistakes
+SCORING_VERSION = "tsz-char-word-v2"
 
 
 def _count_character_errors(reference, typed):
@@ -51,6 +51,43 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
+def _evaluate_qualification_rules(config, metrics):
+    """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
+    if not isinstance(config, dict) or not config:
+        return None, "Qualification is pending: no qualification conditions are configured."
+    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors"}
+    operators = {
+        "gte": lambda a, b: a >= b, "gt": lambda a, b: a > b,
+        "lte": lambda a, b: a <= b, "lt": lambda a, b: a < b,
+        "eq": lambda a, b: a == b,
+    }
+    def evaluate(condition):
+        if not isinstance(condition, dict):
+            return None
+        metric, operator, expected = condition.get("metric"), condition.get("operator"), condition.get("value")
+        if metric not in allowed_metrics or operator not in operators or expected is None or isinstance(expected, bool):
+            return None
+        actual = metrics.get(metric)
+        if actual is None:
+            return None
+        try:
+            return operators[operator](float(actual), float(expected))
+        except (TypeError, ValueError):
+            return None
+    all_conditions, any_conditions = config.get("all", []), config.get("any", [])
+    if not isinstance(all_conditions, list) or not isinstance(any_conditions, list):
+        return None, "Qualification is pending: qualification conditions have an invalid format."
+    if not all_conditions and not any_conditions:
+        return None, "Qualification is pending: no supported conditions are configured."
+    results = [evaluate(c) for c in all_conditions + any_conditions]
+    if not results or any(value is None for value in results):
+        return None, "Qualification is pending: one or more conditions are unsupported or cannot be measured."
+    passed = all(results[:len(all_conditions)]) and (
+        not any_conditions or any(results[len(all_conditions):])
+    )
+    return passed, "Qualification conditions satisfied." if passed else "One or more qualification conditions were not satisfied."
+
+
 def calculate_result(*, reference, typed, duration_seconds, rules, reported_keystrokes=None):
     """Calculate metrics exclusively from persisted source text and submitted text."""
     duration = max(1, int(duration_seconds))
@@ -62,8 +99,21 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     correct_wpm = round(chars["correct_characters"] / 5 / minutes, 2)
     word_errors = _count_word_errors(reference, typed)
     error_rules = rules.get("error_rules") or {}
-    count_word_errors = bool(error_rules.get("count_word_errors", False))
-    error_count = word_errors if count_word_errors else chars["character_errors"]
+    scoring_rules = rules.get("scoring_rules") or {}
+    scoring_mode = rules.get("scoring_mode", "GENERIC")
+
+    mistake_analysis = None
+
+    if (
+        scoring_mode == "CUSTOM"
+        and scoring_rules.get("formula") == "STROKE_NET_WPM"
+    ):
+        mistake_analysis = classify_typing_mistakes(reference, typed)
+        error_count = mistake_analysis["total_detected_errors"]
+        count_word_errors = True
+    else:
+        count_word_errors = bool(error_rules.get("count_word_errors", False))
+        error_count = word_errors if count_word_errors else chars["character_errors"]
     penalty_per_error = error_rules.get("penalty_wpm_per_error", 0)
     try:
         penalty_per_error = max(0, float(penalty_per_error))
@@ -78,13 +128,38 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         required_keystrokes = None
     if reported_keystrokes is not None:
         reported_keystrokes = max(0, min(1000000, int(reported_keystrokes)))
+    # Browser-reported key depressions are untrusted. Do not use them to
+    # declare that a verified examination's required-stroke threshold was met.
     required_keystrokes_met = (
         reported_keystrokes >= required_keystrokes
-        if reported_keystrokes is not None and required_keystrokes is not None
+        if (
+            rules.get("verification_status") != "VERIFIED"
+            and reported_keystrokes is not None
+            and required_keystrokes is not None
+        )
         else None
     )
-    scoring_mode = rules.get("scoring_mode", "GENERIC")
-    scoring_rules = rules.get("scoring_rules") or {}
+    stroke_count_for_speed = (
+        reported_keystrokes
+        if reported_keystrokes is not None
+        else len(typed)
+    )
+    stroke_count_source = (
+        "client_reported"
+        if reported_keystrokes is not None
+        else "typed_character_fallback"
+    )
+    # Untrusted client telemetry must never influence an official
+    # qualifying result. When the exam rules are verified, derive the
+    # stroke count server-side from the persisted submitted text so a
+    # manipulated client keystroke count cannot inflate speed or marks.
+    # Practice (unverified) attempts keep the client-reported value as a
+    # separate, clearly-labelled provisional metric.
+    if rules.get("verification_status") == "VERIFIED":
+        stroke_count_for_speed = len(typed)
+        stroke_count_source = "server_derived"
+    tentative_wpm = None
+    
     correct_words = _count_correct_words(reference, typed)
     gross_words = len(re.findall(r"\S+", typed))
     strokes_per_word = rules.get("strokes_per_word") or scoring_rules.get("strokes_per_word") or 5
@@ -149,19 +224,49 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         else:
             qualification_note = "Qualification remains pending: verified source and at least one configured threshold are required."
     elif scoring_mode == "CUSTOM":
-        penalty_words = scoring_rules.get("mistake_penalty_words", 0)
-        try:
-            penalty_words = max(0, int(penalty_words))
-        except (TypeError, ValueError):
-            penalty_words = 0
-        if penalty_words:
-            net_words = max(0, gross_words - error_count * penalty_words)
-            net_wpm = round(net_words / minutes, 2)
+        formula = scoring_rules.get("formula")
+
+        if formula == "STROKE_NET_WPM":
+            try:
+                mistake_penalty_wpm = max(
+                    0,
+                    float(scoring_rules.get("mistake_penalty_wpm", 1)),
+                )
+            except (TypeError, ValueError):
+                mistake_penalty_wpm = 1
+
+            tentative_wpm = round(
+                stroke_count_for_speed / strokes_per_word / minutes,
+                2,
+            )
+
+            net_wpm = round(
+                max(0, tentative_wpm - error_count * mistake_penalty_wpm),
+                2,
+            )
+        else:
+            penalty_words = scoring_rules.get("mistake_penalty_words", 0)
+            try:
+                penalty_words = max(0, int(penalty_words))
+            except (TypeError, ValueError):
+                penalty_words = 0
+
+            if penalty_words:
+                net_words = max(0, gross_words - error_count * penalty_words)
+                net_wpm = round(net_words / minutes, 2)
+
         disqualify_at = scoring_rules.get("disqualify_at_mistakes")
         if disqualify_at is not None and error_count >= int(disqualify_at):
             score = 0
-            qualification = False if rules.get("verification_status") == "VERIFIED" else None
-            qualification_note = "Disqualification threshold reached." if qualification is not None else "Disqualification threshold reached in practice; official qualification is not claimed."
+            qualification = (
+                False if rules.get("verification_status") == "VERIFIED" else None
+            )
+            qualification_note = (
+                "Disqualification threshold reached."
+                if qualification is not None
+                else "Disqualification threshold reached in practice; official qualification is not claimed."
+            )
+
         bands = scoring_rules.get("score_bands") or []
         if bands:
             eligible = []
@@ -170,20 +275,47 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                     threshold, marks = float(band[0]), float(band[1])
                 except (TypeError, ValueError, IndexError):
                     continue
+
                 if net_wpm >= threshold:
                     eligible.append(marks)
+
             if eligible and score is None:
                 score = max(eligible)
+
         if not bands and score is None:
-            qualification_note = "Custom scoring data is stored, but no executable score formula is configured."
+            qualification_note = (
+                "Custom scoring data is stored, but no executable score formula is configured."
+            )
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
+
+    error_percent_for_qualification = round(error_count * 100 / max(1, gross_words), 2)
+    qualification_metrics = {
+        "net_wpm": net_wpm, "gross_wpm": gross_wpm,
+        "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
+        "score": score, "correct_words": correct_words, "word_errors": word_errors,
+    }
+    qualification_status = "PENDING"
+    configured_qualification = rules.get("qualification_rules") or {}
+    if rules.get("verification_status") == "VERIFIED" and configured_qualification:
+        evaluated, qualification_note = _evaluate_qualification_rules(configured_qualification, qualification_metrics)
+        qualification = evaluated
+        if evaluated is not None:
+            qualification_status = "QUALIFIED" if evaluated else "NOT_QUALIFIED"
+    elif rules.get("verification_status") != "VERIFIED":
+        qualification = None
+        qualification_note = "Qualification is pending because the exam rules are not verified."
+    elif qualification is not None:
+        qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
 
     return {
         "scoring_version": SCORING_VERSION,
         "duration_seconds": duration,
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
+                "stroke_count_for_speed": stroke_count_for_speed,
+        "stroke_count_source": stroke_count_source,
+        "tentative_wpm": tentative_wpm,
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
         "required_keystrokes": required_keystrokes,
         "required_keystrokes_met": required_keystrokes_met,
@@ -198,12 +330,19 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "excess_error_count": excess_error_count,
         "net_words": net_words,
         "error_count": error_count,
+        "mistake_analysis": mistake_analysis,
+        "mistake_categories": (
+            mistake_analysis["categories"]
+            if mistake_analysis is not None
+            else None
+),
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
+        "qualification_status": qualification_status,
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."
             if rules.get("verification_status") != "VERIFIED" and qualification is None

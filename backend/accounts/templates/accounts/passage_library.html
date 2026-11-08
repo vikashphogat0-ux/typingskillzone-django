@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passage Library | TypingSkillZone</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1020;--panel:rgba(23,32,55,.82);--line:#263653;--text:#edf4ff;--muted:#9eafc8;--blue:#60a5fa;--cyan:#67e8f9}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172b4a 0,#0b1020 55%);color:var(--text);font:15px/1.6 Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+    .wrap{max-width:1050px;margin:0 auto;padding:34px 20px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+    .brand{font-weight:800;letter-spacing:.3px}
+    .brand span{color:var(--cyan)}
+    a{color:var(--blue);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0005;backdrop-filter:blur(14px)}
+    h1{font-size:clamp(25px,4vw,36px);line-height:1.2;margin:0 0 8px}
+    h2{font-size:clamp(20px,3vw,24px);margin:0 0 12px;color:var(--text)}
+    p{color:var(--muted)}
+    .eyebrow{color:var(--cyan);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px}
+    .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end}
+    .filter-group{display:flex;flex-direction:column;gap:6px}
+    .filter-group label{font-size:12px;color:var(--muted);font-weight:600}
+    .filter-group select,.filter-group input[type="search"]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#0f1a2e;color:var(--text);font:inherit}
+    button.filter-btn{padding:8px 14px;border:1px solid var(--cyan);border-radius:8px;background:transparent;color:var(--cyan);font-weight:700;cursor:pointer}
+    button.filter-btn:hover{background:var(--cyan);color:#0b1020}
+    button.clear-btn{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:#0f1a2e;color:var(--muted);cursor:pointer}
+    button.clear-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+    .empty{text-align:center;padding:48px 24px;color:var(--muted)}
+    .empty strong{color:var(--text);display:block;margin-bottom:8px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:16px}
+    .card{border:1px solid var(--line);border-radius:14px;padding:18px;background:#111b30}
+    .card .id{font-size:20px;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums}
+    .card strong{display:block;margin:6px 0;color:var(--text)}
+    .card .muted{font-size:13px;color:var(--muted)}
+    .card a{color:var(--blue);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;display:inline-block;margin-top:12px;font-size:14px}
+    .card a:hover{border-color:var(--cyan);color:var(--cyan)}
+    .nav{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+    .nav a,.nav button{border:1px solid var(--line);border-radius:10px;padding:10px 16px;background:#111b30;color:var(--text);font-size:14px;cursor:pointer;text-decoration:none}
+    .nav a:hover,.nav button:hover{border-color:var(--cyan)}
+    @media(max-width:600px){.wrap{padding:20px 14px}.panel{padding:18px}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">Typing<span>SkillZone</span></div>
+      <div class="eyebrow">Passage library</div>
+      <h1>Published passages</h1>
+      <p class="muted">Browse and start typing tests from published passages across exams.</p>
+    </div>
+    <nav class="nav">
+      <a href="{% url 'accounts:student_dashboard' %}">Dashboard</a>
+      <a href="{% url 'accounts:student_result_history' %}">Result History</a>
+      <a href="{% url 'accounts:student_profile' %}">Edit Profile</a>
+      <form method="post" action="{% url 'institutes:student_logout' %}" style="margin:0">{% csrf_token %}<button type="submit">Sign out</button></form>
+    </nav>
+  </header>
+
+  <section class="panel">
+    <div class="eyebrow">Filters</div>
+    <form method="get" action="{% url 'accounts:passage_library' %}">
+      <div class="filter-row">
+        <div class="filter-group" style="min-width:200px">
+          <label for="id_exam">Exam</label>
+          <select name="exam" id="id_exam">
+            <option value="">All exams</option>
+            {% for exam in exams %}
+            <option value="{{ exam.code }}"{% if selected_exam == exam.code %} selected{% endif %}>{{ exam.name }} ({{ exam.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group" style="min-width:180px">
+          <label for="id_language">Language</label>
+          <select name="language" id="id_language">
+            <option value="">All languages</option>
+            {% for lang in available_languages %}
+            <option value="{{ lang }}"{% if selected_language == lang %} selected{% endif %}>{{ lang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group" style="min-width:260px;flex:1">
+          <label for="id_search">Search passage</label>
+          <input type="search" name="search" id="id_search" placeholder="Search by title or content" value="{{ search_query }}">
+        </div>
+        <button type="submit" class="filter-btn">Apply filters</button>
+        <a href="{% url 'accounts:passage_library' %}" class="clear-btn">Clear</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="eyebrow">Passages</div>
+    <h2>Available passages</h2>
+    {% if passages %}
+    <div class="grid">
+      {% for passage in passages %}
+      <div class="card">
+        <div class="id">{{ passage.passage_id }}</div>
+        <strong>{{ passage.source.title }}</strong>
+        <div class="muted">{{ passage.source.language }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %}</div>
+        <div class="muted">{{ passage.exam.name }}</div>
+        <a href="{% url 'passages:simulator-detail' passage.exam.code passage.passage_id %}">Start test</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <strong>No passages found</strong>
+      <p>No published passages match your filters. Try adjusting your exam, language, or search criteria.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel" style="margin-top:22px">
+    <div class="nav">
+      <a href="{% url 'accounts:student_dashboard' %}">Back to dashboard</a>
+    </div>
+  </section>
+</main></body></html>

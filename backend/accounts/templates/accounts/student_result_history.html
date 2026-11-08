@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Result History | TypingSkillZone</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1020;--panel:rgba(23,32,55,.82);--line:#263653;--text:#edf4ff;--muted:#9eafc8;--blue:#60a5fa;--cyan:#67e8f9}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172b4a 0,#0b1020 55%);color:var(--text);font:15px/1.6 Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+    .wrap{max-width:1050px;margin:0 auto;padding:34px 20px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+    .brand{font-weight:800;letter-spacing:.3px}
+    .brand span{color:var(--cyan)}
+    a{color:var(--blue);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0005;backdrop-filter:blur(14px)}
+    h1{font-size:clamp(25px,4vw,36px);line-height:1.2;margin:0 0 8px}
+    h2{font-size:clamp(20px,3vw,24px);margin:0 0 12px;color:var(--text)}
+    p{color:var(--muted)}
+    .eyebrow{color:var(--cyan);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px}
+    .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end}
+    .filter-group{display:flex;flex-direction:column;gap:6px}
+    .filter-group label{font-size:12px;color:var(--muted);font-weight:600}
+    .filter-group select,.filter-group input[type="date"]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#0f1a2e;color:var(--text);font:inherit}
+    .filter-group input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1)}
+    button.filter-btn{padding:8px 14px;border:1px solid var(--cyan);border-radius:8px;background:transparent;color:var(--cyan);font-weight:700;cursor:pointer}
+    button.filter-btn:hover{background:var(--cyan);color:#0b1020}
+    button.clear-btn{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:#0f1a2e;color:var(--muted);cursor:pointer}
+    button.clear-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+    .empty{text-align:center;padding:48px 24px;color:var(--muted)}
+    .empty strong{color:var(--text);display:block;margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}
+    th{text-align:left;color:var(--muted);font-weight:600;padding:10px;border-bottom:1px solid var(--line)}
+    td{padding:10px;border-bottom:1px solid var(--line);color:var(--text)}
+    tr:hover td{background:#142a4a}
+    .badge{display:inline-block;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#142a4a;color:var(--cyan)}
+    .badge.submitted{color:var(--cyan)}
+    .badge.expired{color:#9ca3af}
+    .pagination{display:flex;justify-content:center;gap:8px;margin-top:20px;flex-wrap:wrap}
+    .pagination a,.pagination span{padding:6px 12px;border:1px solid var(--line);border-radius:8px;color:var(--text);text-decoration:none;background:#0f1a2e}
+    .pagination a:hover{border-color:var(--cyan);color:var(--cyan)}
+    .pagination .current{background:var(--cyan);color:#0b1020;border-color:var(--cyan)}
+    .msg{padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:14px}
+    .msg.success{background:#14532d;color:#bbf7d0}
+    .msg.warning{background:#78350f;color:#fde68a}
+    .msg.error{background:#7f1d1d;color:#fecaca}
+    .nav{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+    .nav a,.nav button{border:1px solid var(--line);border-radius:10px;padding:10px 16px;background:#111b30;color:var(--text);font-size:14px;cursor:pointer;text-decoration:none}
+    .nav a:hover,.nav button:hover{border-color:var(--cyan)}
+    
+
+.muted {
+    color: var(--muted);
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">Typing<span>SkillZone</span></div>
+      <div class="eyebrow">Student result history</div>
+      <h1>Your completed attempts</h1>
+      <p class="muted">Filter and review your submitted and scored typing sessions.</p>
+    </div>
+    <nav class="nav">
+      <a href="{% url 'accounts:student_dashboard' %}">Dashboard</a>
+      <a href="{% url 'accounts:passage_library' %}">Passage Library</a>
+      <a href="{% url 'accounts:student_profile' %}">Edit Profile</a>
+      <form method="post" action="{% url 'institutes:student_logout' %}" style="margin:0">{% csrf_token %}<button type="submit">Sign out</button></form>
+    </nav>
+  </header>
+
+  {% if messages %}
+  <section class="panel">
+    {% for message in messages %}
+    <div class="msg{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="eyebrow">Filters</div>
+    <form method="get" action="{% url 'accounts:student_result_history' %}">
+      <div class="filter-row">
+        <div class="filter-group" style="min-width:180px">
+          <label for="id_language">Language</label>
+          <select name="language" id="id_language">
+            <option value="">All languages</option>
+            {% for lang in languages %}
+            <option value="{{ lang }}"{% if selected_language == lang %} selected{% endif %}>{{ lang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group" style="min-width:220px">
+          <label for="id_exam">Exam</label>
+          <select name="exam" id="id_exam">
+            <option value="">All exams</option>
+            {% for code, name in exams %}
+            <option value="{{ code }}"{% if selected_exam == code %} selected{% endif %}>{{ name }} ({{ code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group" style="min-width:170px">
+          <label for="id_date_from">From</label>
+          <input type="date" name="date_from" id="id_date_from" value="{% if selected_date_from %}{{ selected_date_from }}{% endif %}">
+        </div>
+        <div class="filter-group" style="min-width:170px">
+          <label for="id_date_to">To</label>
+          <input type="date" name="date_to" id="id_date_to" value="{% if selected_date_to %}{{ selected_date_to }}{% endif %}">
+        </div>
+        <button type="submit" class="filter-btn">Apply filters</button>
+        <a href="{% url 'accounts:student_result_history' %}" class="clear-btn">Clear</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="eyebrow">Sessions</div>
+    <h2>Your attempts</h2>
+    {% if page_obj.object_list %}
+    <div class="table-responsive">
+    <table>
+        <thead>
+        <tr>
+          <th>Exam</th>
+          <th>Passage</th>
+          <th>Language</th>
+          <th>State</th>
+          <th>Started</th>
+          <th>WPM</th>
+          <th>Accuracy</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in page_obj.object_list %}
+        <tr>
+          <td>{{ session.publication.exam.name }}</td>
+          <td>#{{ session.publication.passage_id }}</td>
+          <td>{{ session.publication.source.language }}</td>
+          <td><span class="badge {% if session.state == 'SUBMITTED' %}submitted{% else %}expired{% endif %}">{{ session.get_state_display }}</span></td>
+          <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
+          <td>
+            {% if session.result_snapshot.net_wpm != None %}
+    {{ session.result_snapshot.net_wpm|floatformat:1 }}
+{% else %}
+    <span class="muted">—</span>
+{% endif %}
+          </td>
+          <td>
+            {% if session.result_snapshot.accuracy_percent != None %}
+    {{ session.result_snapshot.accuracy_percent|floatformat:1 }}%
+{% else %}
+    <span class="muted">—</span>
+{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+          </tbody>
+    </table>
+</div>
+
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+      <a href="?page=1{% if selected_language %}&language={{ selected_language }}{% endif %}{% if selected_exam %}&exam={{ selected_exam }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">First</a>
+      <a href="?page={{ page_obj.previous_page_number }}{% if selected_language %}&language={{ selected_language }}{% endif %}{% if selected_exam %}&exam={{ selected_exam }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Previous</a>
+      {% endif %}
+
+      <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if selected_language %}&language={{ selected_language }}{% endif %}{% if selected_exam %}&exam={{ selected_exam }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Next</a>
+      <a href="?page={{ page_obj.paginator.num_pages }}{% if selected_language %}&language={{ selected_language }}{% endif %}{% if selected_exam %}&exam={{ selected_exam }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Last</a>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <strong>No attempts found</strong>
+      <p>No submitted or scored sessions match your filters. Start a typing test from the Passage Library.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel" style="margin-top:22px">
+    <div class="nav">
+      <a href="{% url 'accounts:student_dashboard' %}">Back to dashboard</a>
+    </div>
+  </section>
+</main></body></html>

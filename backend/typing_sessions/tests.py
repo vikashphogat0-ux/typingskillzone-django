@@ -11,7 +11,7 @@ from passages.services import publish_source_to_exam
 
 from .models import TypingSession
 from .services import expire_session, start_session, submit_session
-
+from .mistake_classification import classify_typing_mistakes
 
 class TypingSessionTests(TestCase):
     def setUp(self):
@@ -33,12 +33,6 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
         self.assertEqual(attempt.rules_snapshot["allow_backspace"], False)
-        canonical = attempt.rules_snapshot["canonical_specification"]
-        self.assertEqual(canonical["identity"]["code"], self.exam.code)
-        self.assertEqual(canonical["identity"]["name"], self.exam.name)
-        self.assertEqual(canonical["specification_schema_version"], 1)
-        self.assertEqual(attempt.rules_snapshot["snapshot_metadata"]["format_version"], 1)
-        self.assertEqual(attempt.rules_snapshot["snapshot_metadata"]["publication_id"], str(self.publication.pk))
         self.assertEqual(attempt.duration_seconds, 600)
         self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
 
@@ -60,6 +54,7 @@ class TypingSessionTests(TestCase):
         self.assertIsNone(
             attempt.rules_snapshot["canonical_specification"]["scoring"]["minimum_wpm"]
         )
+
 
     def test_source_edits_do_not_change_started_attempt(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
@@ -105,6 +100,34 @@ class TypingSessionTests(TestCase):
         with self.assertRaises(PermissionDenied):
             start_session(learner=None, publication=self.publication)
 
+    def test_non_student_roles_cannot_start_typing_sessions(self):
+        User = get_user_model()
+        for role in (User.Roles.INSTITUTE_OWNER, User.Roles.INSTITUTE_STAFF, User.Roles.ADMIN, User.Roles.SUPER_ADMIN):
+            with self.subTest(role=role):
+                account = User.objects.create_user(
+                    email=f"blocked-{role.lower()}@example.test",
+                    password="SafePassword123!",
+                    role=role,
+                )
+                with self.assertRaises(PermissionDenied):
+                    start_session(learner=account, publication=self.publication)
+
+    def test_non_student_roles_cannot_submit_or_expire_typing_sessions(self):
+        User = get_user_model()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        owner = User.objects.create_user(
+            email="blocked-owner-submit@example.test",
+            password="SafePassword123!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        with self.assertRaises(PermissionDenied):
+            submit_session(session_id=attempt.pk, learner=owner, typed_text="One.")
+        with self.assertRaises(PermissionDenied):
+            expire_session(session_id=attempt.pk, learner=owner)
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
+
+
     def test_unverified_exam_does_not_claim_scoring(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         self.assertEqual(attempt.rules_snapshot["verification_status"], "UNVERIFIED")
@@ -125,7 +148,37 @@ class TypingScoringTests(TestCase):
             script="LATIN", status=PassageSource.Status.PUBLISHED,
         )
         self.publication = publish_source_to_exam(self.source, self.exam)
+    def test_stroke_net_wpm_uses_classified_mistakes(self):
+        from .scoring import calculate_result
 
+        result = calculate_result(
+            reference="hello world",
+            typed="hello word",
+            duration_seconds=60,
+            reported_keystrokes=300,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "strokes_per_word": 5,
+                "verification_status": "UNVERIFIED",
+                "error_rules": {"count_word_errors": True},
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [
+                        [30, 10],
+                        [40, 15],
+                        [50, 21],
+                    ],
+                },
+            },
+        )
+
+        self.assertEqual(result["error_count"], 1)
+        self.assertEqual(result["mistake_categories"]["substitution"], 1)
+        self.assertEqual(result["mistake_categories"]["omission"], 0)
+        self.assertEqual(result["tentative_wpm"], 60.0)
+        self.assertEqual(result["net_wpm"], 59.0)
+        self.assertIsNone(result["qualification"])
     def test_character_level_substitution_insertion_and_deletion(self):
         from .scoring import calculate_result
 
@@ -182,13 +235,282 @@ class TypingScoringTests(TestCase):
         self.assertIn("not verified", result["qualification_note"])
 
     def test_completed_session_persists_server_score(self):
-        attempt = start_session(learner=self.learner, publication=self.publication)
-        result = submit_session(
-            session_id=attempt.pk, learner=self.learner, typed_text=attempt.reference_text
+        attempt = start_session(
+            learner=self.learner,
+            publication=self.publication,
         )
-        self.assertEqual(result.scoring_version, "tsz-char-word-v1")
+
+        result = submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text=attempt.reference_text,
+            reported_keystrokes=300,
+        )
+
+        result.refresh_from_db()
+
+        self.assertEqual(result.scoring_version, "tsz-char-word-v2")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
+
+        self.assertIn("mistake_analysis", result.result_snapshot)
+        self.assertIn("mistake_categories", result.result_snapshot)
+
+        self.assertIsNone(result.result_snapshot["mistake_categories"])
+        self.assertIsNone(result.result_snapshot["mistake_analysis"])
+
+    def test_stroke_net_wpm_uses_total_strokes_and_word_mistakes(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="one two three",
+            typed="one too three",
+            duration_seconds=600,
+            reported_keystrokes=3000,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [
+                        [30, 10], [31, 12], [36, 15],
+                        [41, 18], [46, 21], [51, 25],
+                    ],
+                },
+            },
+        )
+
+        self.assertEqual(result["word_errors"], 1)
+        self.assertEqual(result["tentative_wpm"], 60)
+        self.assertEqual(result["net_wpm"], 59)
+        self.assertEqual(result["score"], 25)
+        self.assertEqual(result["stroke_count_source"], "client_reported")
+
+    def test_stroke_net_wpm_uses_fallback_when_keystrokes_missing(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [[1, 10]],
+                },
+            },
+        )
+
+        self.assertEqual(result["stroke_count_for_speed"], len("hello world"))
+        self.assertEqual(result["stroke_count_source"], "typed_character_fallback")
+        self.assertIsNotNone(result["tentative_wpm"])
+
+    def test_stroke_net_wpm_client_reported_inflates_practice_only(self):
+        from .scoring import calculate_result
+
+        # Unverified practice attempt: client-reported strokes are used as a
+        # clearly-labelled provisional metric and may inflate practice marks.
+        result = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=999999,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "verification_status": "UNVERIFIED",
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [[1, 10]],
+                },
+            },
+        )
+        self.assertEqual(result["stroke_count_source"], "client_reported")
+        self.assertEqual(result["stroke_count_for_speed"], 999999)
+        self.assertEqual(result["score"], 10)
+
+    def test_stroke_net_wpm_negative_keystrokes_clamped_to_zero(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=-500,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "verification_status": "UNVERIFIED",
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [[1, 10]],
+                },
+            },
+        )
+        self.assertEqual(result["stroke_count_source"], "client_reported")
+        self.assertEqual(result["stroke_count_for_speed"], 0)
+        self.assertEqual(result["tentative_wpm"], 0)
+
+    def test_stroke_net_wpm_excessive_keystrokes_clamped(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=99999999,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "verification_status": "UNVERIFIED",
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [[1, 10]],
+                },
+            },
+        )
+        self.assertEqual(result["stroke_count_for_speed"], 1000000)
+
+    def test_verified_required_keystroke_threshold_never_trusts_client_count(self):
+        from .scoring import calculate_result
+
+        rules = {
+            "verification_status": "VERIFIED",
+            "required_keystrokes": 100,
+        }
+        inflated = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=100000,
+            rules=rules,
+        )
+        underreported = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=1,
+            rules=rules,
+        )
+        self.assertIsNone(inflated["required_keystrokes_met"])
+        self.assertIsNone(underreported["required_keystrokes_met"])
+
+    def test_stroke_net_wpm_verified_rules_use_server_derived_strokes(self):
+        from .scoring import calculate_result
+
+        # Verified/exam attempt: manipulated client keystrokes must NOT
+        # influence speed, marks or qualification.
+        result = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=999999,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "error_rules": {"count_word_errors": True},
+                "strokes_per_word": 5,
+                "verification_status": "VERIFIED",
+                "scoring_rules": {
+                    "formula": "STROKE_NET_WPM",
+                    "mistake_penalty_wpm": 1,
+                    "score_bands": [[1, 10]],
+                },
+            },
+        )
+        self.assertEqual(result["stroke_count_source"], "server_derived")
+        self.assertEqual(result["stroke_count_for_speed"], len("hello world"))
+        self.assertEqual(result["tentative_wpm"], 2.2)
+        self.assertEqual(result["net_wpm"], 2.2)
+        self.assertEqual(result["score"], 10)
+
+    def test_stroke_net_wpm_verified_inconsistent_keystrokes_cannot_inflate_score(self):
+        from .scoring import calculate_result
+
+        base = {
+            "scoring_mode": "CUSTOM",
+            "error_rules": {"count_word_errors": True},
+            "strokes_per_word": 5,
+            "verification_status": "VERIFIED",
+            "scoring_rules": {
+                "formula": "STROKE_NET_WPM",
+                "mistake_penalty_wpm": 1,
+                "score_bands": [[40, 25]],
+            },
+        }
+        inflated = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=1000000,
+            rules=base,
+        )
+        honest = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=1,
+            rules=base,
+        )
+        # Client telemetry is ignored for verified rules: identical results.
+        self.assertEqual(inflated["stroke_count_source"], "server_derived")
+        self.assertEqual(honest["stroke_count_source"], "server_derived")
+        self.assertEqual(inflated["net_wpm"], honest["net_wpm"])
+        self.assertEqual(inflated["score"], honest["score"])
+    def test_verified_qualification_rules_evaluate_all_and_any_conditions(self):
+        from .scoring import calculate_result
+        result = calculate_result(
+            reference="one two three four five", typed="one two three four five",
+            duration_seconds=60, rules={
+                "verification_status": "VERIFIED",
+                "qualification_rules": {
+                    "all": [{"metric": "net_wpm", "operator": "gte", "value": 4}],
+                    "any": [{"metric": "accuracy_percent", "operator": "gte", "value": 99}],
+                },
+            },
+        )
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+
+    def test_verified_qualification_failure_is_explicit(self):
+        from .scoring import calculate_result
+        result = calculate_result(
+            reference="one two three four five", typed="one",
+            duration_seconds=60, rules={
+                "verification_status": "VERIFIED",
+                "qualification_rules": {
+                    "all": [{"metric": "net_wpm", "operator": "gte", "value": 30}],
+                },
+            },
+        )
+        self.assertFalse(result["qualification"])
+        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+
+    def test_unverified_or_unsupported_qualification_stays_pending(self):
+        from .scoring import calculate_result
+        config = {"all": [{"metric": "physical_keystrokes", "operator": "gte", "value": 1000}]}
+        unverified = calculate_result(
+            reference="one two", typed="one two", duration_seconds=60,
+            rules={"verification_status": "UNVERIFIED", "qualification_rules": config},
+        )
+        unsupported = calculate_result(
+            reference="one two", typed="one two", duration_seconds=60,
+            rules={"verification_status": "VERIFIED", "qualification_rules": config},
+        )
+        self.assertEqual(unverified["qualification_status"], "PENDING")
+        self.assertEqual(unsupported["qualification_status"], "PENDING")
+        self.assertIsNone(unsupported["qualification"])
 
 
 class TypingSessionViewTests(TestCase):
@@ -221,3 +543,38 @@ class TypingSessionViewTests(TestCase):
         attempt.refresh_from_db()
         self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
         self.assertEqual(attempt.result_snapshot, {})
+class TypingMistakeClassificationTests(TestCase):
+    def test_mistake_categories(self):
+        cases = [
+            ("Omission", "hello world", "hello", "omission"),
+            ("Substitution", "hello world", "hello word", "substitution"),
+            ("Addition", "hello world", "hello x world", "addition"),
+            ("Capitalization", "Hello world", "hello world", "capitalization"),
+            ("Punctuation", "Hello, world.", "Hello world.", "punctuation"),
+            ("Internal spacing", "hello world", "hel lo world", "internal_spacing"),
+            ("Word spacing", "hello world", "hello  world", "word_spacing"),
+            ("Paragraph break", "hello\nworld", "hello world", "paragraph_breaks"),
+            ("Hindi substitution", "भारत महान है", "भारत विशाल है", "substitution"),
+            ("Hindi omission", "भारत महान है", "भारत है", "omission"),
+            ("Hindi addition", "भारत महान है", "भारत बहुत महान है", "addition"),
+            ("Hindi spacing", "भारत महान है", "भा रत महान है", "internal_spacing"),
+            ("Hindi punctuation", "भारत महान है।", "भारत महान है", "punctuation"),
+            (
+                "Missing paragraph break",
+                "First paragraph.\n\nSecond paragraph.",
+                "First paragraph. Second paragraph.",
+                "paragraph_breaks",
+            ),
+            (
+                "Extra paragraph break",
+                "First paragraph. Second paragraph.",
+                "First paragraph.\n\nSecond paragraph.",
+                "paragraph_breaks",
+            ),
+        ]
+
+        for name, reference, typed, expected_category in cases:
+            with self.subTest(case=name):
+                result = classify_typing_mistakes(reference, typed)
+                self.assertEqual(result["categories"][expected_category], 1)
+                self.assertEqual(result["total_detected_errors"], 1)

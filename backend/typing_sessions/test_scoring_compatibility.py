@@ -1,8 +1,8 @@
-"""Regression contract for the legacy scoring engine.
+"""Regression contract for the current scoring engine.
 
-These tests intentionally pin current behavior before introducing a canonical
-exam-specification resolver. They are compatibility tests, not endorsements
-that a formula is officially correct for any particular recruitment exam.
+These tests pin stable scoring behavior across exam-specification changes.
+They are compatibility tests, not endorsements that a formula is officially
+correct for any particular recruitment exam.
 """
 from django.test import SimpleTestCase
 
@@ -20,7 +20,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         )
 
     def test_engine_version_is_pinned(self):
-        self.assertEqual(SCORING_VERSION, "tsz-char-word-v1")
+        self.assertEqual(SCORING_VERSION, "tsz-char-word-v2")
 
     def test_generic_metrics_are_stable(self):
         result = self.calculate()
