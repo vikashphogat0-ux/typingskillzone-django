@@ -7,8 +7,12 @@ Never bind the production Hyperdrive resource or run migrations from a Worker.
 """
 
 import asyncio
+import hmac
+import json
 import os
 import sys
+import uuid
+from urllib.parse import urlsplit
 from pathlib import Path
 
 from workers import Response, WorkerEntrypoint, wsgi
@@ -40,6 +44,7 @@ def _configure_django(worker_env):
         "DJANGO_CSRF_TRUSTED_ORIGINS",
         "DJANGO_CACHE_URL",
         "DJANGO_EMAIL_BACKEND",
+        "PREVIEW_DIAGNOSTIC_TOKEN",
         "EMAIL_HOST",
         "EMAIL_PORT",
         "EMAIL_HOST_USER",
@@ -98,11 +103,65 @@ def _configure_django(worker_env):
         )
 
 
+def _runtime_diagnostics(request, worker_env):
+    """Run non-destructive preview checks; never send email or expose secrets."""
+    expected_token = _binding_value(worker_env, "PREVIEW_DIAGNOSTIC_TOKEN")
+    supplied = request.headers.get("authorization", "")
+    prefix = "Bearer "
+    if not expected_token or not supplied.startswith(prefix):
+        return Response("Unauthorized", status=401)
+    if not hmac.compare_digest(supplied[len(prefix):], expected_token):
+        return Response("Unauthorized", status=401)
+
+    from django.apps import apps
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.core.cache import cache
+    from django.db import connection
+
+    checks = {"database": False, "redis_cache": False, "django_auth": False, "smtp_configuration": False}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            checks["database"] = cursor.fetchone()[0] == 1
+    except Exception:
+        pass
+
+    cache_key = "tsz:preview:diagnostic:" + uuid.uuid4().hex
+    cache_value = uuid.uuid4().hex
+    try:
+        cache.set(cache_key, cache_value, timeout=30)
+        checks["redis_cache"] = cache.get(cache_key) == cache_value
+    except Exception:
+        pass
+    finally:
+        try:
+            cache.delete(cache_key)
+        except Exception:
+            pass
+
+    try:
+        checks["django_auth"] = apps.ready and get_user_model() is not None
+    except Exception:
+        pass
+
+    checks["smtp_configuration"] = bool(
+        settings.EMAIL_HOST and settings.EMAIL_PORT and settings.EMAIL_HOST_USER
+        and settings.EMAIL_HOST_PASSWORD and settings.DEFAULT_FROM_EMAIL
+        and settings.EMAIL_BACKEND.endswith("smtp.EmailBackend")
+    )
+    all_passed = all(checks.values())
+    payload = {"status": "ok" if all_passed else "degraded", "checks": checks,
+               "email_delivery_tested": False, "database_writes": False, "migrations_run": False}
+    return Response(json.dumps(payload), status=200 if all_passed else 503,
+                    headers={"content-type": "application/json; charset=utf-8"})
+
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
         global _django_application
 
-        if request.url.endswith("/_worker-healthz"):
+        request_path = urlsplit(request.url).path
+        if request_path == "/_worker-healthz":
             return Response(
                 "TypingSkillZone Cloudflare preview runtime is alive. "
                 "This endpoint does not check database connectivity.",
@@ -117,6 +176,11 @@ class Default(WorkerEntrypoint):
                     from django.core.wsgi import get_wsgi_application
 
                     _django_application = get_wsgi_application()
+
+                if request_path == "/_preview-runtime-check":
+                    if request.method != "POST":
+                        return Response("Method not allowed", status=405)
+                    return _runtime_diagnostics(request, self.env)
 
                 return await wsgi.fetch(_django_application, request, self.env)
         except Exception:
