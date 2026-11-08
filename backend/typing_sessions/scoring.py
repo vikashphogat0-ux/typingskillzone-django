@@ -91,9 +91,15 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         required_keystrokes = None
     if reported_keystrokes is not None:
         reported_keystrokes = max(0, min(1000000, int(reported_keystrokes)))
+    # Browser-reported key depressions are untrusted. Do not use them to
+    # declare that a verified examination's required-stroke threshold was met.
     required_keystrokes_met = (
         reported_keystrokes >= required_keystrokes
-        if reported_keystrokes is not None and required_keystrokes is not None
+        if (
+            rules.get("verification_status") != "VERIFIED"
+            and reported_keystrokes is not None
+            and required_keystrokes is not None
+        )
         else None
     )
     stroke_count_for_speed = (
