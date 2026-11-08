@@ -14,6 +14,16 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import InstituteEnrollmentForm, StudentProfileForm, StudentRegistrationForm
 from .security import is_rate_limited
+from django.db.models import Q
+
+from exams.models import ExamConfiguration
+from learners.models import LearnerProfile
+from passages.models import PassageSource, SimulatorPassage
+from typing_sessions.models import TypingSession
+from datetime import datetime, time, timedelta
+
+from django.utils.dateparse import parse_date
+from django.core.paginator import Paginator
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -41,9 +51,15 @@ def send_student_verification_email(request, user):
     )
 
 
+
 def student_register(request):
     if request.user.is_authenticated:
+        if request.user.role == User.Roles.STUDENT:
+            return redirect("accounts:student_dashboard")
         return redirect("institutes:student_dashboard")
+
+    # Keep the existing registration logic below unchanged.
+
     if request.method == "POST" and is_rate_limited("student-register", request, limit=5, window=3600):
         return HttpResponse("Too many registration attempts. Please try again later.", status=429)
     form = StudentRegistrationForm(request.POST or None)
@@ -135,11 +151,14 @@ def verify_student_email(request, token):
 def student_profile(request):
     if request.user.role != User.Roles.STUDENT:
         return HttpResponse("Student account required.", status=403)
+
     form = StudentProfileForm(request.POST or None, instance=request.user)
+
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Your profile has been updated.")
         return redirect("accounts:student_profile")
+
     return render(request, "accounts/student_profile.html", {"form": form})
 
 
@@ -148,13 +167,243 @@ def student_profile(request):
 def enroll_institute(request):
     if request.user.role != User.Roles.STUDENT:
         return HttpResponse("Student account required.", status=403)
-    form = InstituteEnrollmentForm(request.POST or None, student=request.user)
+
+    form = InstituteEnrollmentForm(
+        request.POST or None,
+        student=request.user,
+    )
+
     if request.method == "POST" and form.is_valid():
         try:
             membership = form.save()
         except ValidationError as error:
             form.add_error("registration_code", error)
         else:
-            messages.success(request, f"You are now enrolled at {membership.institute.name}.")
+            messages.success(
+                request,
+                f"You are now enrolled at {membership.institute.name}.",
+            )
             return redirect("institutes:student_dashboard")
+
     return render(request, "accounts/enroll_institute.html", {"form": form})
+
+@login_required
+def student_result_history(request):
+    if request.user.role != User.Roles.STUDENT:
+        return HttpResponse("Student account required.", status=403)
+
+    # Include submitted attempts and expired attempts with a saved score.
+    sessions = TypingSession.objects.filter(
+        learner=request.user,
+    ).filter(
+        Q(state=TypingSession.State.SUBMITTED)
+        | Q(
+            state=TypingSession.State.EXPIRED,
+            scoring_version__gt="",
+        )
+    ).select_related(
+        "publication__exam",
+        "publication__source",
+    )
+
+    language = request.GET.get("language", "").strip()
+    exam_code = request.GET.get("exam", "").strip()
+    date_from = parse_date(request.GET.get("date_from", ""))
+    date_to = parse_date(request.GET.get("date_to", ""))
+
+    if date_from and date_to and date_from > date_to:
+        messages.error(request, "Date From cannot be later than Date To.")
+        date_from = None
+        date_to = None
+
+    if language:
+        sessions = sessions.filter(
+            publication__source__language=language
+        )
+
+    if exam_code:
+        sessions = sessions.filter(
+            publication__exam__code=exam_code
+        )
+
+    if date_from:
+        start = timezone.make_aware(
+            datetime.combine(date_from, time.min),
+            timezone.get_current_timezone(),
+        )
+        sessions = sessions.filter(started_at__gte=start)
+
+    if date_to:
+        end_exclusive = timezone.make_aware(
+            datetime.combine(date_to + timedelta(days=1), time.min),
+            timezone.get_current_timezone(),
+        )
+        sessions = sessions.filter(started_at__lt=end_exclusive)
+
+    paginator = Paginator(
+        sessions.order_by("-started_at"),
+        20,
+    )
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    context = {
+        "sessions": page_obj,
+        "page_obj": page_obj,
+        "languages": TypingSession.objects.filter(
+            learner=request.user,
+        ).filter(
+            Q(state=TypingSession.State.SUBMITTED)
+            | Q(
+                state=TypingSession.State.EXPIRED,
+                scoring_version__gt="",
+            )
+        ).values_list(
+            "publication__source__language",
+            flat=True,
+        ).distinct(),
+        "exams": ExamConfiguration.objects.filter(
+            published_passages__typing_sessions__learner=request.user,
+        ).filter(
+            Q(
+                published_passages__typing_sessions__state=TypingSession.State.SUBMITTED
+            )
+            | Q(
+                published_passages__typing_sessions__state=TypingSession.State.EXPIRED,
+                published_passages__typing_sessions__scoring_version__gt="",
+            )
+        ).values_list("code", "name").distinct(),
+        "selected_language": language,
+        "selected_exam": exam_code,
+        "selected_date_from": date_from,
+        "selected_date_to": date_to,
+    }
+
+    return render(
+        request,
+        "accounts/student_result_history.html",
+        context,
+    )
+
+@login_required
+def passage_library(request):
+    """Student passage library with exam, language and text search."""
+
+    if request.user.role != User.Roles.STUDENT:
+        return HttpResponse("Student account required.", status=403)
+
+    exam_code = request.GET.get("exam", "").strip()
+    language = request.GET.get("language", "").strip()
+    search_query = request.GET.get("search", "").strip()
+
+    passages = SimulatorPassage.objects.filter(
+        status=SimulatorPassage.Status.PUBLISHED,
+        exam__is_active=True,
+        source__status=PassageSource.Status.PUBLISHED,
+    ).select_related("source", "exam")
+
+    if exam_code:
+        passages = passages.filter(exam__code=exam_code)
+
+    if language:
+        passages = passages.filter(source__language=language)
+
+    if search_query:
+        passages = passages.filter(
+            Q(source__title__icontains=search_query)
+            | Q(source__content__icontains=search_query)
+        )
+
+    context = {
+        "exams": ExamConfiguration.objects.filter(is_active=True),
+        "available_languages": PassageSource.objects.filter(
+            simulator_publications__status=SimulatorPassage.Status.PUBLISHED,
+            simulator_publications__exam__is_active=True,
+            status=PassageSource.Status.PUBLISHED,
+        ).values_list("language", flat=True).distinct(),
+        "selected_exam": exam_code,
+        "selected_language": language,
+        "search_query": search_query,
+        "passages": passages.distinct(),
+    }
+
+    return render(request, "accounts/passage_library.html", context)
+
+
+
+
+
+
+
+@login_required
+def student_dashboard(request):
+    """Student dashboard with progress, speed, accuracy, and statistics."""
+    if request.user.role != User.Roles.STUDENT:
+        return HttpResponse("Student account required.", status=403)
+
+    user = request.user
+    profile, created = LearnerProfile.objects.get_or_create(user=user)
+
+    # Get all typing sessions for this student, ordered by most recent
+    sessions = TypingSession.objects.filter(learner=user).select_related(
+        'publication__exam'
+    ).order_by('-started_at')
+
+    # Calculate statistics from persisted records
+    total_sessions = sessions.count()
+    completed_sessions = sessions.filter(state=TypingSession.State.SUBMITTED).count()
+
+    # WPM and accuracy statistics from result snapshots
+    wpm_values = []
+    accuracy_values = []
+
+    scored_sessions = sessions.filter(
+        state=TypingSession.State.SUBMITTED,
+    ).exclude(scoring_version="")
+
+    for session in scored_sessions:
+        result = session.result_snapshot
+
+        if not isinstance(result, dict):
+            continue
+
+        net_wpm = result.get("net_wpm")
+        accuracy = result.get("accuracy_percent")
+
+        if isinstance(net_wpm, (int, float)) and not isinstance(net_wpm, bool):
+            wpm_values.append(float(net_wpm))
+
+        if isinstance(accuracy, (int, float)) and not isinstance(accuracy, bool):
+            accuracy_values.append(float(accuracy))
+
+    avg_wpm = sum(wpm_values) / len(wpm_values) if wpm_values else 0
+    avg_accuracy = (
+        sum(accuracy_values) / len(accuracy_values)
+        if accuracy_values else 0
+    )
+    # Recent completed attempts
+    recent = sessions.filter(
+        state=TypingSession.State.SUBMITTED
+    ).order_by('-started_at')[:5]
+
+    # Practice goals
+    daily_goal_minutes = profile.daily_practice_goal_minutes
+    target_wpm = profile.target_wpm
+    target_accuracy = profile.target_accuracy
+
+    context = {
+        'profile': profile,
+        'total_sessions': total_sessions,
+        'completed_sessions': completed_sessions,
+        'avg_wpm': round(avg_wpm, 1),
+        'avg_accuracy': round(avg_accuracy, 1),
+        'recent': recent,
+        'target_wpm': target_wpm,
+        'target_accuracy': target_accuracy,
+        'daily_goal_minutes': daily_goal_minutes,
+    }
+
+    return render(
+        request,
+        "accounts/student_dashboard.html",
+        context,
+    )

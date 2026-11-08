@@ -1,22 +1,26 @@
+from datetime import timedelta
 from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
-from django.core import signing
-from django.core import mail
-from datetime import timedelta
-
+from django.core import mail, signing
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from exams.models import ExamConfiguration
 from institutes.models import (
     Institute,
     InstituteMembership,
     InstituteSubscription,
     SubscriptionPlan,
 )
+from learners.models import LearnerProfile
+from passages.models import PassageSource, SimulatorPassage
+from typing_sessions.models import TypingSession
+
 
 User = get_user_model()
+
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -32,6 +36,21 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
         }
         data.update(overrides)
         return data
+    def test_authenticated_student_visiting_registration_redirects_to_student_dashboard(self):
+        student = User.objects.create_user(
+            email="independent-student@example.test",
+            password="Student-Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+            is_email_verified=True,
+    )
+        self.client.force_login(student)
+
+        response = self.client.get(reverse("accounts:student_register"))
+
+        self.assertRedirects(
+            response,
+            reverse("accounts:student_dashboard"),
+    )
 
     def setUp(self):
         self.owner = User.objects.create_user(
@@ -322,3 +341,301 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         student.refresh_from_db()
         self.assertIsNotNone(student.email_verification_sent_at)
+
+
+class StudentDashboardViewTests(TestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            email="dashboard-student@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.non_student = User.objects.create_user(
+            email="dashboard-admin@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.ADMIN,
+        )
+
+    def test_dashboard_requires_student_role(self):
+        self.client.force_login(self.non_student)
+        response = self.client.get(reverse("accounts:student_dashboard"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_dashboard_shows_stats_and_recent_sessions(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:student_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/student_dashboard.html")
+        self.assertEqual(response.context["total_sessions"], 0)
+        self.assertEqual(response.context["completed_sessions"], 0)
+        self.assertEqual(response.context["avg_wpm"], 0)
+        self.assertEqual(response.context["avg_accuracy"], 0)
+        self.assertEqual(list(response.context["recent"]), [])
+        self.assertIsInstance(response.context["profile"], LearnerProfile)
+
+    def test_dashboard_independent_student_no_institute_required(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:student_dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+
+class StudentResultHistoryViewTests(TestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            email="history-student@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.non_student = User.objects.create_user(
+            email="history-admin@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.ADMIN,
+        )
+        self.exam = ExamConfiguration.objects.create(
+            code="TEST-EXAM",
+            name="Test Exam",
+            category=ExamConfiguration.Category.PRACTICE,
+            duration_seconds=600,
+            is_active=True,
+        )
+        self.source = PassageSource.objects.create(
+            title="Test Passage",
+            content="The quick brown fox jumps over the lazy dog.",
+            language="ENGLISH",
+            status=PassageSource.Status.PUBLISHED,
+        )
+        self.publication = SimulatorPassage.objects.create(
+            exam=self.exam,
+            source=self.source,
+            serial_number=1,
+            status=SimulatorPassage.Status.PUBLISHED,
+        )
+
+    def _create_session(self, state, scoring_version="", result_snapshot=None):
+        return TypingSession.objects.create(
+            learner=self.student,
+            publication=self.publication,
+            state=state,
+            reference_text="The quick brown fox.",
+            submitted_text="The quick brown fox.",
+            rules_snapshot={},
+            scoring_version=scoring_version,
+            result_snapshot=result_snapshot or {},
+        )
+
+    def test_result_history_requires_student_role(self):
+        self.client.force_login(self.non_student)
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_result_history_includes_submitted_sessions(self):
+        self.client.force_login(self.student)
+        self._create_session(
+            TypingSession.State.SUBMITTED,
+            scoring_version="v1",
+            result_snapshot={"net_wpm": 40.5, "accuracy_percent": 96.0},
+        )
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 1)
+
+    def test_result_history_includes_expired_with_score(self):
+        self.client.force_login(self.student)
+        self._create_session(
+            TypingSession.State.EXPIRED,
+            scoring_version="v1",
+            result_snapshot={"net_wpm": 30.0, "accuracy_percent": 90.0},
+        )
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 1)
+
+    def test_result_history_excludes_expired_without_score(self):
+        self.client.force_login(self.student)
+        self._create_session(TypingSession.State.EXPIRED, scoring_version="")
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 0)
+
+    def test_result_history_filters_by_language(self):
+        self.client.force_login(self.student)
+        self._create_session(
+            TypingSession.State.SUBMITTED,
+            scoring_version="v1",
+            result_snapshot={"net_wpm": 40.0, "accuracy_percent": 95.0},
+        )
+        hindi_source = PassageSource.objects.create(
+            title="Hindi Passage",
+            content="हिंदी गद्यांश",
+            language="HINDI",
+            status=PassageSource.Status.PUBLISHED,
+        )
+        hindi_pub = SimulatorPassage.objects.create(
+            exam=self.exam,
+            source=hindi_source,
+            serial_number=2,
+            status=SimulatorPassage.Status.PUBLISHED,
+        )
+        TypingSession.objects.create(
+            learner=self.student,
+            publication=hindi_pub,
+            state=TypingSession.State.SUBMITTED,
+            reference_text="हिंदी गद्यांश",
+            submitted_text="हिंदी गद्यांश",
+            rules_snapshot={},
+            scoring_version="v1",
+            result_snapshot={"net_wpm": 25.0, "accuracy_percent": 88.0},
+        )
+        response = self.client.get(
+            reverse("accounts:student_result_history") + "?language=HINDI"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 1)
+        self.assertEqual(
+            response.context["page_obj"].object_list[0].publication.source.language,
+            "HINDI",
+        )
+
+    def test_result_history_filters_by_exam(self):
+        self.client.force_login(self.student)
+        self._create_session(
+            TypingSession.State.SUBMITTED,
+            scoring_version="v1",
+            result_snapshot={"net_wpm": 40.0, "accuracy_percent": 95.0},
+        )
+        response = self.client.get(
+            reverse("accounts:student_result_history") + f"?exam={self.exam.code}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 1)
+
+    def test_result_history_date_from_cannot_be_later_than_date_to(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("accounts:student_result_history")
+            + "?date_from=2026-01-10&date_to=2026-01-01"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["selected_date_from"])
+        self.assertIsNone(response.context["selected_date_to"])
+
+    def test_result_history_pagination(self):
+        self.client.force_login(self.student)
+        for i in range(25):
+            self._create_session(
+                TypingSession.State.SUBMITTED,
+                scoring_version="v1",
+                result_snapshot={"net_wpm": float(40 + i), "accuracy_percent": 95.0},
+            )
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 20)
+        self.assertTrue(response.context["page_obj"].has_next())
+
+    def test_result_history_empty_state(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["page_obj"].object_list), 0)
+
+
+class PassageLibraryViewTests(TestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            email="library-student@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.STUDENT,
+        )
+        self.non_student = User.objects.create_user(
+            email="library-admin@example.test",
+            password="Strong-Password-2026!",
+            role=User.Roles.ADMIN,
+        )
+        self.exam = ExamConfiguration.objects.create(
+            code="LIB-EXAM",
+            name="Library Exam",
+            category=ExamConfiguration.Category.PRACTICE,
+            duration_seconds=600,
+            is_active=True,
+        )
+        self.source = PassageSource.objects.create(
+            title="Library Passage Alpha",
+            content="Alpha passage content for typing practice.",
+            language="ENGLISH",
+            status=PassageSource.Status.PUBLISHED,
+        )
+        self.publication = SimulatorPassage.objects.create(
+            exam=self.exam,
+            source=self.source,
+            serial_number=1,
+            status=SimulatorPassage.Status.PUBLISHED,
+        )
+        self.draft_source = PassageSource.objects.create(
+            title="Draft Passage",
+            content="This is a draft.",
+            language="ENGLISH",
+            status=PassageSource.Status.DRAFT,
+        )
+        SimulatorPassage.objects.create(
+            exam=self.exam,
+            source=self.draft_source,
+            serial_number=2,
+            status=SimulatorPassage.Status.PUBLISHED,
+        )
+
+    def test_passage_library_requires_student_role(self):
+        self.client.force_login(self.non_student)
+        response = self.client.get(reverse("accounts:passage_library"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_passage_library_shows_published_passages_only(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:passage_library"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/passage_library.html")
+        passage_ids = [p.passage_id for p in response.context["passages"]]
+        self.assertIn("01", passage_ids)
+        self.assertNotIn("02", passage_ids)
+
+    def test_passage_library_filters_by_exam(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("accounts:passage_library") + f"?exam={self.exam.code}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["passages"]), 1)
+
+    def test_passage_library_filters_by_language(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("accounts:passage_library") + "?language=ENGLISH"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["passages"]), 1)
+
+    def test_passage_library_search(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("accounts:passage_library") + "?search=Alpha"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["passages"]), 1)
+
+    def test_passage_library_empty_state(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("accounts:passage_library") + "?language=HINDI"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["passages"]), 0)
+
+    def test_passage_library_links_to_simulator_detail(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:passage_library"))
+        self.assertContains(
+            response,
+            reverse(
+                "passages:simulator-detail",
+                kwargs={"exam_code": self.exam.code, "passage_id": "01"},
+            ),
+        )
