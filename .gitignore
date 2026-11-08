@@ -17,10 +17,14 @@ env/
 # Django / local databases
 backend/db.sqlite3
 backend/db.sqlite3-*
+backend/db.sqlite3.*
 backend/*.sqlite3
 backend/*.sqlite3-*
 backend/staticfiles/
 backend/media/
+
+# Test / local artifacts
+backend/test_run_output.txt
 
 # Secrets and local environment files
 .env
