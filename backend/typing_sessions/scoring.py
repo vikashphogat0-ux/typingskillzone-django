@@ -51,6 +51,43 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
+def _evaluate_qualification_rules(config, metrics):
+    """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
+    if not isinstance(config, dict) or not config:
+        return None, "Qualification is pending: no qualification conditions are configured."
+    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors"}
+    operators = {
+        "gte": lambda a, b: a >= b, "gt": lambda a, b: a > b,
+        "lte": lambda a, b: a <= b, "lt": lambda a, b: a < b,
+        "eq": lambda a, b: a == b,
+    }
+    def evaluate(condition):
+        if not isinstance(condition, dict):
+            return None
+        metric, operator, expected = condition.get("metric"), condition.get("operator"), condition.get("value")
+        if metric not in allowed_metrics or operator not in operators or expected is None or isinstance(expected, bool):
+            return None
+        actual = metrics.get(metric)
+        if actual is None:
+            return None
+        try:
+            return operators[operator](float(actual), float(expected))
+        except (TypeError, ValueError):
+            return None
+    all_conditions, any_conditions = config.get("all", []), config.get("any", [])
+    if not isinstance(all_conditions, list) or not isinstance(any_conditions, list):
+        return None, "Qualification is pending: qualification conditions have an invalid format."
+    if not all_conditions and not any_conditions:
+        return None, "Qualification is pending: no supported conditions are configured."
+    results = [evaluate(c) for c in all_conditions + any_conditions]
+    if not results or any(value is None for value in results):
+        return None, "Qualification is pending: one or more conditions are unsupported or cannot be measured."
+    passed = all(results[:len(all_conditions)]) and (
+        not any_conditions or any(results[len(all_conditions):])
+    )
+    return passed, "Qualification conditions satisfied." if passed else "One or more qualification conditions were not satisfied."
+
+
 def calculate_result(*, reference, typed, duration_seconds, rules, reported_keystrokes=None):
     """Calculate metrics exclusively from persisted source text and submitted text."""
     duration = max(1, int(duration_seconds))
@@ -252,6 +289,25 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
+    error_percent_for_qualification = round(error_count * 100 / max(1, gross_words), 2)
+    qualification_metrics = {
+        "net_wpm": net_wpm, "gross_wpm": gross_wpm,
+        "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
+        "score": score, "correct_words": correct_words, "word_errors": word_errors,
+    }
+    qualification_status = "PENDING"
+    configured_qualification = rules.get("qualification_rules") or {}
+    if rules.get("verification_status") == "VERIFIED" and configured_qualification:
+        evaluated, qualification_note = _evaluate_qualification_rules(configured_qualification, qualification_metrics)
+        qualification = evaluated
+        if evaluated is not None:
+            qualification_status = "QUALIFIED" if evaluated else "NOT_QUALIFIED"
+    elif rules.get("verification_status") != "VERIFIED":
+        qualification = None
+        qualification_note = "Qualification is pending because the exam rules are not verified."
+    elif qualification is not None:
+        qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
+
     return {
         "scoring_version": SCORING_VERSION,
         "duration_seconds": duration,
@@ -286,6 +342,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
+        "qualification_status": qualification_status,
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."
             if rules.get("verification_status") != "VERIFIED" and qualification is None
