@@ -448,6 +448,51 @@ class TypingScoringTests(TestCase):
         self.assertEqual(honest["stroke_count_source"], "server_derived")
         self.assertEqual(inflated["net_wpm"], honest["net_wpm"])
         self.assertEqual(inflated["score"], honest["score"])
+    def test_verified_qualification_rules_evaluate_all_and_any_conditions(self):
+        from .scoring import calculate_result
+        result = calculate_result(
+            reference="one two three four five", typed="one two three four five",
+            duration_seconds=60, rules={
+                "verification_status": "VERIFIED",
+                "qualification_rules": {
+                    "all": [{"metric": "net_wpm", "operator": "gte", "value": 4}],
+                    "any": [{"metric": "accuracy_percent", "operator": "gte", "value": 99}],
+                },
+            },
+        )
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+
+    def test_verified_qualification_failure_is_explicit(self):
+        from .scoring import calculate_result
+        result = calculate_result(
+            reference="one two three four five", typed="one",
+            duration_seconds=60, rules={
+                "verification_status": "VERIFIED",
+                "qualification_rules": {
+                    "all": [{"metric": "net_wpm", "operator": "gte", "value": 30}],
+                },
+            },
+        )
+        self.assertFalse(result["qualification"])
+        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+
+    def test_unverified_or_unsupported_qualification_stays_pending(self):
+        from .scoring import calculate_result
+        config = {"all": [{"metric": "physical_keystrokes", "operator": "gte", "value": 1000}]}
+        unverified = calculate_result(
+            reference="one two", typed="one two", duration_seconds=60,
+            rules={"verification_status": "UNVERIFIED", "qualification_rules": config},
+        )
+        unsupported = calculate_result(
+            reference="one two", typed="one two", duration_seconds=60,
+            rules={"verification_status": "VERIFIED", "qualification_rules": config},
+        )
+        self.assertEqual(unverified["qualification_status"], "PENDING")
+        self.assertEqual(unsupported["qualification_status"], "PENDING")
+        self.assertIsNone(unsupported["qualification"])
+
+
 class TypingSessionViewTests(TestCase):
     def setUp(self):
         User = get_user_model()
