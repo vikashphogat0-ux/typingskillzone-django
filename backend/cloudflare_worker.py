@@ -47,6 +47,10 @@ def _configure_django(worker_env):
             os.environ[name] = value
 
     # Do not silently fall back to SQLite, local-memory cache, or console email.
+    os.environ.setdefault(
+        "DJANGO_EMAIL_BACKEND",
+        "django.core.mail.backends.smtp.EmailBackend",
+    )
     os.environ["DJANGO_DEBUG"] = "false"
     os.environ["DJANGO_DB_ENGINE"] = "django.db.backends.postgresql"
     os.environ["DJANGO_DB_CONN_MAX_AGE"] = "0"
