@@ -39,7 +39,7 @@
   let submitting = false;
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
-  const backspacePolicy = rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED");
+  const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
   const allowEnter = rules.enter_behavior === "DISABLED" ? false : ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
