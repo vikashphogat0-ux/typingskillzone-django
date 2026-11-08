@@ -18,6 +18,11 @@
     <p>Correct characters: {{ attempt.result_snapshot.correct_characters }} · Character errors: {{ attempt.result_snapshot.character_errors }}</p>
     <p>Substitutions: {{ attempt.result_snapshot.substitution_errors }} · Insertions: {{ attempt.result_snapshot.insertion_errors }} · Deletions: {{ attempt.result_snapshot.deletion_errors }}</p>
     <p>Word errors: {{ attempt.result_snapshot.word_errors }} · Duration: {{ attempt.result_snapshot.duration_seconds }} seconds</p>
+    <p><strong>Qualification:</strong>
+      {% if attempt.result_snapshot.qualification_status == "QUALIFIED" %}Qualified
+      {% elif attempt.result_snapshot.qualification_status == "NOT_QUALIFIED" %}Not qualified
+      {% else %}Pending verification{% endif %}
+    </p>
     <p class="muted">{{ attempt.result_snapshot.qualification_note }}</p>
   {% else %}
     <p>The attempt ended without a score being generated.</p>
