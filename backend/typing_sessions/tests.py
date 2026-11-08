@@ -363,6 +363,30 @@ class TypingScoringTests(TestCase):
         )
         self.assertEqual(result["stroke_count_for_speed"], 1000000)
 
+    def test_verified_required_keystroke_threshold_never_trusts_client_count(self):
+        from .scoring import calculate_result
+
+        rules = {
+            "verification_status": "VERIFIED",
+            "required_keystrokes": 100,
+        }
+        inflated = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=100000,
+            rules=rules,
+        )
+        underreported = calculate_result(
+            reference="hello world",
+            typed="hello world",
+            duration_seconds=60,
+            reported_keystrokes=1,
+            rules=rules,
+        )
+        self.assertIsNone(inflated["required_keystrokes_met"])
+        self.assertIsNone(underreported["required_keystrokes_met"])
+
     def test_stroke_net_wpm_verified_rules_use_server_derived_strokes(self):
         from .scoring import calculate_result
 
