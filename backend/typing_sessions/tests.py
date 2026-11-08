@@ -80,6 +80,34 @@ class TypingSessionTests(TestCase):
         with self.assertRaises(PermissionDenied):
             start_session(learner=None, publication=self.publication)
 
+    def test_non_student_roles_cannot_start_typing_sessions(self):
+        User = get_user_model()
+        for role in (User.Roles.INSTITUTE_OWNER, User.Roles.INSTITUTE_STAFF, User.Roles.ADMIN, User.Roles.SUPER_ADMIN):
+            with self.subTest(role=role):
+                account = User.objects.create_user(
+                    email=f"blocked-{role.lower()}@example.test",
+                    password="SafePassword123!",
+                    role=role,
+                )
+                with self.assertRaises(PermissionDenied):
+                    start_session(learner=account, publication=self.publication)
+
+    def test_non_student_roles_cannot_submit_or_expire_typing_sessions(self):
+        User = get_user_model()
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        owner = User.objects.create_user(
+            email="blocked-owner-submit@example.test",
+            password="SafePassword123!",
+            role=User.Roles.INSTITUTE_OWNER,
+        )
+        with self.assertRaises(PermissionDenied):
+            submit_session(session_id=attempt.pk, learner=owner, typed_text="One.")
+        with self.assertRaises(PermissionDenied):
+            expire_session(session_id=attempt.pk, learner=owner)
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
+
+
     def test_unverified_exam_does_not_claim_scoring(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         self.assertEqual(attempt.rules_snapshot["verification_status"], "UNVERIFIED")
