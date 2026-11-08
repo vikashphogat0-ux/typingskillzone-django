@@ -6,8 +6,11 @@ This is an isolated preview adapter for the existing Django application.
 
 - This configuration is not production deployment configuration.
 - Do not bind the existing production Hyperdrive resource.
-- Create a separate Neon development branch first, then create a dedicated
-  Hyperdrive configuration for that development branch.
+- The Wrangler configuration references a dedicated preview Hyperdrive
+  resource, separate from the production Hyperdrive resource.
+- Before deploying or invoking database-backed routes, verify in the Cloudflare
+  dashboard that this preview Hyperdrive resource targets only the Neon
+  development branch. The repository cannot verify the remote target.
 - Do not run migrations from the Worker.
 - Do not add production credentials to local files or Git.
 - Do not enable production traffic until the full verification checklist passes.
@@ -18,6 +21,10 @@ The Worker uses the existing Django WSGI application through Cloudflare's
 Python Workers WSGI adapter. The application source remains under backend/.
 The health endpoint /_worker-healthz only confirms that the Worker runtime
 can answer a request; it does not test Django, PostgreSQL, Redis, or email.
+The adapter is configured to read PostgreSQL connection details from the
+preview HYPERDRIVE binding. Database-backed Django routes can attempt a
+connection once the required Worker secrets and compatible packages are
+available. Actual connectivity has not yet been verified.
 
 ## Required preview bindings and secrets
 
@@ -81,8 +88,8 @@ http://localhost:8787/_worker-healthz
 ~~~
 
 A local health response does not prove that the Django app or database is
-working. A database-enabled test requires a separate test Neon branch,
-Hyperdrive local configuration, Redis, and non-production email credentials.
+working. A database-enabled test requires the preview Hyperdrive to target the separate
+Neon test branch, plus Redis and non-production email credentials.
 
 ## Deployment gates
 
