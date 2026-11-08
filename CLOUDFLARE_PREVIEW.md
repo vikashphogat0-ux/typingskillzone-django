@@ -46,6 +46,25 @@ The current application requires a shared Redis cache and SMTP email backend
 in production. Those services must be provisioned and tested before normal
 Django routes are enabled.
 
+## Local Django WSGI smoke test
+
+A separate local-only entrypoint is provided for verifying that Django can
+initialize and serve a request through the Workers WSGI adapter without
+external services:
+
+- Entry point: `backend/cloudflare_local_test_worker.py`
+- Settings: `config.cloudflare_test_settings`
+- Route: `/_django-runtime-check`
+
+This harness uses an in-memory SQLite configuration, local-memory cache,
+in-memory email backend, and no middleware. It does not exercise application
+business views, database persistence, authentication, Redis, SMTP, or
+Hyperdrive. It must not be used as a deployed Worker entrypoint.
+
+For local testing, point a separate untracked `wrangler.local.jsonc` at
+`backend/cloudflare_local_test_worker.py`. Keep the normal
+`wrangler.jsonc` and its isolated Neon Hyperdrive binding unchanged.
+
 ## Local tooling
 
 Install uv and Node.js, then run:
