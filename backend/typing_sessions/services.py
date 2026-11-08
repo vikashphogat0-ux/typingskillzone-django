@@ -11,9 +11,18 @@ from .scoring import SCORING_VERSION, calculate_result
 
 
 @transaction.atomic
+def _require_active_student(learner):
+    if (
+        not learner
+        or not learner.is_authenticated
+        or not learner.is_active
+        or learner.role != "STUDENT"
+    ):
+        raise PermissionDenied("An active student account is required.")
+
+
 def start_session(*, learner, publication):
-    if not learner or not learner.is_authenticated or not learner.is_active:
-        raise PermissionDenied("An active account is required.")
+    _require_active_student(learner)
     publication = SimulatorPassage.objects.select_related("exam", "source").get(pk=publication.pk)
     if (publication.status != SimulatorPassage.Status.PUBLISHED
             or publication.source.status != PassageSource.Status.PUBLISHED
@@ -81,8 +90,7 @@ def start_session(*, learner, publication):
 
 @transaction.atomic
 def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None):
-    if not learner or not learner.is_authenticated or not learner.is_active:
-        raise PermissionDenied("An active account is required.")
+    _require_active_student(learner)
     session = TypingSession.objects.select_for_update().select_related("publication").get(
         pk=session_id, learner=learner
     )
@@ -129,8 +137,7 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
 
 @transaction.atomic
 def expire_session(*, session_id, learner):
-    if not learner or not learner.is_authenticated or not learner.is_active:
-        raise PermissionDenied("An active account is required.")
+    _require_active_student(learner)
     session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
     if session.state != TypingSession.State.ACTIVE:
         return session
