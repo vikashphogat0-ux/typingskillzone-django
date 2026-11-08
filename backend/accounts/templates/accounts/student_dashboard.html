@@ -153,10 +153,10 @@
           <td><span class="badge">{{ session.get_state_display }}</span></td>
           <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
           <td>
-            {% if session.result_snapshot.net_wpm %}{{ session.result_snapshot.net_wpm|floatformat:1 }}{% else %}<span class="muted">—</span>{% endif %}
+            {% if session.result_snapshot.net_wpm != None %}{{ session.result_snapshot.net_wpm|floatformat:1 }}{% else %}<span class="muted">—</span>{% endif %}
           </td>
           <td>
-            {% if session.result_snapshot.accuracy_percent %}{{ session.result_snapshot.accuracy_percent|floatformat:1 }}%{% else %}<span class="muted">—</span>{% endif %}
+            {% if session.result_snapshot.accuracy_percent != None %}{{ session.result_snapshot.accuracy_percent|floatformat:1 }}%{% else %}<span class="muted">—</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
