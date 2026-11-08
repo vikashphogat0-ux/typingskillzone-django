@@ -26,6 +26,14 @@ preview HYPERDRIVE binding. Database-backed Django routes can attempt a
 connection once the required Worker secrets and compatible packages are
 available. Actual connectivity has not yet been verified.
 
+The preview adapter also uses an `asyncio.Lock` around the WSGI request
+execution. Cloudflare documents this pattern to serialize synchronous database
+operations in Python Workers. Because the current WSGI integration does not
+provide a narrower async boundary around individual ORM calls, this is a
+conservative per-isolate request-level lock: it can reduce throughput for
+requests handled by the same isolate. It is a preview safety measure, not a
+claim of cross-isolate/global serialization or a production performance design.
+
 ## Required preview bindings and secrets
 
 After creating a dedicated Neon test branch and Hyperdrive configuration,
