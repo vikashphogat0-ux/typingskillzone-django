@@ -41,6 +41,8 @@
     .pagination a:hover{border-color:var(--cyan);color:var(--cyan)}
     .pagination .current{background:var(--cyan);color:#0b1020;border-color:var(--cyan)}
     .msg{padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:14px}
+    .msg.success{background:#14532d;color:#bbf7d0}
+    .msg.warning{background:#78350f;color:#fde68a}
     .msg.error{background:#7f1d1d;color:#fecaca}
     .nav{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
     .nav a,.nav button{border:1px solid var(--line);border-radius:10px;padding:10px 16px;background:#111b30;color:var(--text);font-size:14px;cursor:pointer;text-decoration:none}
@@ -83,7 +85,7 @@
   {% if messages %}
   <section class="panel">
     {% for message in messages %}
-    <div class="msg error{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>
+    <div class="msg{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>
     {% endfor %}
   </section>
   {% endif %}
