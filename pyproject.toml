@@ -5,6 +5,11 @@ description = "Isolated Cloudflare Python Worker adapter for the TypingSkillZone
 requires-python = ">=3.12"
 dependencies = [
     "Django==6.1.3",
+    # Required by the existing production Django settings and PostgreSQL backend.
+    # Keep psycopg unpinned here so Pyodide can select its bundled compatible build.
+    "django-redis==5.4.0",
+    "psycopg",
+    "redis==8.1.0",
 ]
 
 [dependency-groups]
