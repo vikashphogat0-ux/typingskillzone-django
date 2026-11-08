@@ -71,6 +71,10 @@ jobs:
         working-directory: backend
         run: python manage.py check
 
+      - name: Check for model/migration drift
+        working-directory: backend
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Run full test suite on PostgreSQL
         working-directory: backend
         run: python manage.py test --verbosity 2
