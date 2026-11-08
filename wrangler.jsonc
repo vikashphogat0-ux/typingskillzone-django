@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "typingskillzone-django-preview",
+  "main": "backend/cloudflare_worker.py",
+  "compatibility_date": "2026-11-08",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": true,
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "f524b6dfa56b4c0eb583f94f11657d07"
+    }
+  ]
+}
