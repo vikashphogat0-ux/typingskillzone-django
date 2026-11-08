@@ -6,6 +6,7 @@ Django routes may access the configured preview database when invoked.
 Never bind the production Hyperdrive resource or run migrations from a Worker.
 """
 
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -17,6 +18,10 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 _django_application = None
+# Hyperdrive requires synchronous database operations to be serialized.
+# WSGI does not expose a narrower async boundary around Django ORM calls, so
+# this preview adapter conservatively serializes each request per Worker isolate.
+_request_lock = asyncio.Lock()
 
 
 def _binding_value(binding, name):
@@ -106,13 +111,14 @@ class Default(WorkerEntrypoint):
             )
 
         try:
-            if _django_application is None:
-                _configure_django(self.env)
-                from django.core.wsgi import get_wsgi_application
+            async with _request_lock:
+                if _django_application is None:
+                    _configure_django(self.env)
+                    from django.core.wsgi import get_wsgi_application
 
-                _django_application = get_wsgi_application()
+                    _django_application = get_wsgi_application()
 
-            return await wsgi.fetch(_django_application, request, self.env)
+                return await wsgi.fetch(_django_application, request, self.env)
         except Exception:
             # Never expose exception details, secrets, or connection metadata.
             return Response(
