@@ -68,6 +68,9 @@ jobs:
       - name: Install Chromium for browser tests
         run: python -m playwright install --with-deps chromium
 
+      - name: Compile Cloudflare Worker adapter syntax
+        run: python -m py_compile backend/cloudflare_worker.py backend/cloudflare_local_test_worker.py
+
       - name: Django system check
         working-directory: backend
         run: python manage.py check
