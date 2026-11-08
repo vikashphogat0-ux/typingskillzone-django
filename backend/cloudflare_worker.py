@@ -1,8 +1,9 @@
 """Isolated Cloudflare Python Worker adapter for the existing Django app.
 
-This preview adapter deliberately does not connect to a database yet.
-A separate Neon test branch and a dedicated Hyperdrive binding must be
-created before database access is enabled.
+The Wrangler configuration binds a dedicated preview Hyperdrive resource.
+The runtime-only health endpoint does not exercise that connection; normal
+Django routes may access the configured preview database when invoked.
+Never bind the production Hyperdrive resource or run migrations from a Worker.
 """
 
 import os
