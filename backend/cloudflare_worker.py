@@ -119,7 +119,7 @@ def _runtime_diagnostics(request, worker_env):
     from django.core.cache import cache
     from django.db import connection
 
-    checks = {"database": False, "redis_cache": False, "django_auth": False, "smtp_configuration": False}
+    checks = {"database": False, "redis_cache": False, "auth_configuration": False, "smtp_configuration": False}
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
@@ -141,7 +141,7 @@ def _runtime_diagnostics(request, worker_env):
             pass
 
     try:
-        checks["django_auth"] = apps.ready and get_user_model() is not None
+        checks["auth_configuration"] = apps.ready and get_user_model() is not None
     except Exception:
         pass
 
@@ -152,7 +152,7 @@ def _runtime_diagnostics(request, worker_env):
     )
     all_passed = all(checks.values())
     payload = {"status": "ok" if all_passed else "degraded", "checks": checks,
-               "email_delivery_tested": False, "database_writes": False, "migrations_run": False}
+               "email_delivery_tested": False, "application_database_writes": False, "temporary_cache_key_created": True, "migrations_run": False}
     return Response(json.dumps(payload), status=200 if all_passed else 503,
                     headers={"content-type": "application/json; charset=utf-8"})
 
