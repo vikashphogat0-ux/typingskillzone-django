@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -125,6 +126,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise serves compressed, content-hashed static assets in production.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Redis provides atomic INCR counters shared across all production web workers.
@@ -166,13 +175,14 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
 
 AUTH_USER_MODEL = "accounts.User"
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "/institutes/student/login/"
 LOGIN_REDIRECT_URL = "/institutes/dashboard/super-admin/"
 LOGOUT_REDIRECT_URL = "/admin/login/"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
-    # Enable only when a trusted reverse proxy overwrites X-Forwarded-Proto.
+    # Set DJANGO_TRUST_X_FORWARDED_PROTO=true only behind a trusted proxy that
+    # overwrites X-Forwarded-Proto; see PRODUCTION_SECURITY.md.
     if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", False):
         SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
