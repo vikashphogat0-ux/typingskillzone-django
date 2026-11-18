@@ -5,6 +5,11 @@ from exams.models import ExamConfiguration
 from .models import SimulatorPassage
 
 
+def home(request):
+    """Public TypingSkillZone landing page."""
+    return render(request, "passages/home.html")
+
+
 @login_required
 def simulator_passage_list(request, exam_code):
     exam = get_object_or_404(ExamConfiguration, code=exam_code, is_active=True)
