@@ -143,3 +143,27 @@ class CentralPassagePublishingTests(TestCase):
         exam.save()
         publication = publish_source_to_exam(source, exam)
         self.assertEqual(publication.rendered_paragraphs, ["First paragraph.", "Second paragraph."])
+
+
+class PublicHomepageAndRedirectTests(TestCase):
+    def test_public_homepage_renders_with_student_and_institute_portal_links(self):
+        response = self.client.get(reverse("home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "passages/home.html")
+        self.assertContains(response, "Build typing speed, accuracy and exam confidence.")
+        self.assertContains(response, reverse("institutes:student_login"))
+        self.assertContains(response, reverse("accounts:student_register"))
+        self.assertContains(response, reverse("institutes:owner_login"))
+
+    def test_anonymous_student_simulator_redirects_to_student_login_portal(self):
+        exam = ExamConfiguration.objects.create(
+            code="redirect-test",
+            name="Redirect Test",
+            language="ENGLISH",
+            script="LATIN",
+            passage_format="CUSTOM",
+        )
+        response = self.client.get(reverse("passages:simulator-list", args=[exam.code]))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:student_login"))
+
