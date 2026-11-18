@@ -121,10 +121,18 @@ No test is reported as passed. No test is reported as failed. The checks above a
 - No deployment was performed.
 - No Phase B, C, D, or E issue was intentionally modified.
 
+## Neon database decision
+
+The selected existing PostgreSQL provider is **Neon**. The intended architecture is Django on Cloudflare Python Workers connecting to the same Neon database. Cloudflare's current documentation explicitly supports Neon through Hyperdrive and documents `psycopg` as a tested PostgreSQL driver for Python Workers. Hyperdrive uses a direct Neon connection string (not Neon's pooled endpoint) and provides connection pooling at the Cloudflare layer. This does not require changing the database provider, but creating a Hyperdrive configuration and possibly a dedicated Neon database role are infrastructure/database-access changes and have **not** been performed.
+
+The current repository settings read PostgreSQL connection fields from `DJANGO_DB_*` environment variables. No Worker binding-to-Django-settings adapter has been added. The production requirements currently contain both `psycopg` and `psycopg-binary`; the binary distribution's compatibility with Pyodide/Workers has not been established. Do not assume that installing the conventional binary wheel will work in the Worker runtime. The existing Neon database, credentials, schema, and data remain untouched.
+
+The Redis/cache provider is still unknown. Production settings require a shared Redis cache via `django-redis`; this must be assessed separately for Cloudflare Workers. No cache provider or cache architecture has been changed.
+
 ## 6. Remaining blockers before Phase A can be declared complete
 
-1. Audit every runtime dependency for Pyodide/Python Workers compatibility, especially Django, `psycopg`, `psycopg-binary`, `django-redis`, `redis`, Pillow, and ReportLab.
-2. Confirm the existing PostgreSQL provider and Redis/cache provider. If PostgreSQL is external, assess Cloudflare Hyperdrive as a connection layer to that same database only; do not create or switch providers without approval. Hyperdrive for Python Workers is documented as beta and requires compatibility date `2026-09-08` or later.
+1. Audit every runtime dependency for Pyodide/Python Workers compatibility, especially Django, `psycopg` (documented as tested with Python Workers Hyperdrive), `psycopg-binary` (not yet verified), `django-redis`, `redis`, Pillow, and ReportLab.
+2. Neon is confirmed as the existing PostgreSQL provider. Assess Cloudflare Hyperdrive as a connection layer to that same Neon database only; do not create a new Neon role, Hyperdrive configuration, or secret without explicit approval. Python Workers Hyperdrive requires compatibility date `2026-09-08` or later. The Redis/cache provider remains to be identified.
 3. Add and test the Cloudflare WSGI Worker entry point and Wrangler configuration only after the dependency and database/cache design is validated.
 4. Configure native Worker static assets and verify admin CSS/JS after `collectstatic`.
 5. Verify HTTPS scheme handling through the actual WSGI adapter; do not set `DJANGO_TRUST_X_FORWARDED_PROTO=true` without proof that the header is trusted and overwritten.
