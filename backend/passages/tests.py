@@ -1,5 +1,6 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from exams.models import ExamConfiguration
@@ -167,3 +168,21 @@ class PublicHomepageAndRedirectTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:student_login"))
 
+
+
+class StaticServingConfigurationTests(SimpleTestCase):
+    def test_static_url_is_root_relative(self):
+        self.assertEqual(settings.STATIC_URL, "/static/")
+
+    def test_whitenoise_middleware_follows_security_middleware(self):
+        self.assertEqual(settings.MIDDLEWARE[0], "django.middleware.security.SecurityMiddleware")
+        self.assertEqual(settings.MIDDLEWARE[1], "whitenoise.middleware.WhiteNoiseMiddleware")
+
+    def test_compressed_manifest_storage_is_configured(self):
+        self.assertEqual(
+            settings.STORAGES["staticfiles"]["BACKEND"],
+            "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        )
+
+    def test_existing_wsgi_entry_point_is_preserved(self):
+        self.assertEqual(settings.WSGI_APPLICATION, "config.wsgi.application")
