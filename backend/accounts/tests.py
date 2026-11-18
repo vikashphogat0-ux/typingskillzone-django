@@ -639,3 +639,15 @@ class PassageLibraryViewTests(TestCase):
                 kwargs={"exam_code": self.exam.code, "passage_id": "01"},
             ),
         )
+
+
+class StudentLoginRedirectTests(TestCase):
+    def test_anonymous_student_dashboard_redirects_to_student_portal(self):
+        response = self.client.get(reverse("accounts:student_dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:student_login"))
+
+    def test_anonymous_student_result_history_redirects_to_student_portal(self):
+        response = self.client.get(reverse("accounts:student_result_history"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:student_login"))
