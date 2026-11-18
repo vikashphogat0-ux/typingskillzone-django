@@ -10,7 +10,7 @@
 
 Phase A changes have been committed to the isolated `phase-a-launch-blockers` branch. The `main` branch has not been modified. No database operation, migration, provider change, DNS change, deployment, authentication architecture change, or payment/subscription change was performed.
 
-Five issue areas have code/documentation changes prepared: production server dependency, WhiteNoise static serving, portal-specific login redirects, the public homepage, and dependency separation. DEP-03 remains **environment-dependent and not fully closed** because the hosting provider has not been selected. The application already supports `DJANGO_TRUST_X_FORWARDED_PROTO`; this branch documents the safe activation rule but deliberately does not enable trust for an unknown proxy.
+Four issue areas have code/documentation changes prepared: portal-specific login redirects, the public homepage, dependency separation, and provisional static-file configuration. The hosting target is now Cloudflare Python Workers. This changes the DEP-01/DEP-02/DEP-03 implementation: Cloudflare's WSGI adapter hosts Django without a conventional Gunicorn process, and Cloudflare Worker static assets are the preferred static delivery mechanism. The current Gunicorn/WhiteNoise setup is therefore provisional and must be reconciled before Phase A can be declared complete. No Cloudflare Worker entry point, Wrangler configuration, Hyperdrive binding, Redis binding, or deployment has been added. Existing PostgreSQL/Redis connectivity and Python package compatibility still require verification.
 
 **No automated tests were executed in this environment.** Django is not installed in the available execution environment, outbound network access is unavailable, and the repository has no GitHub Actions workflow runs or status checks to execute remotely. Regression tests were added, but they must not be described as passing until run.
 
@@ -18,7 +18,7 @@ Five issue areas have code/documentation changes prepared: production server dep
 
 | File | Change |
 |---|---|
-| `backend/requirements.txt` | Added pinned Gunicorn and WhiteNoise. Removed test/browser tooling from production dependencies. |
+| `backend/requirements.txt` | Added pinned Gunicorn and WhiteNoise as an initial conventional-WSGI implementation; removed test/browser tooling from production dependencies. These two production choices are under review for the selected Cloudflare Workers target. |
 | `backend/requirements-dev.txt` | Added development/test dependency file including production requirements plus pinned pytest and Playwright tooling. |
 | `backend/config/settings.py` | Added WhiteNoise middleware after SecurityMiddleware; configured compressed manifest static storage; changed STATIC_URL to root-relative `/static/`; set default LOGIN_URL to student login. Existing WSGI_APPLICATION and proxy-header conditional retained. |
 | `backend/config/urls.py` | Added the public root route named `home`. |
@@ -29,31 +29,28 @@ Five issue areas have code/documentation changes prepared: production server dep
 | `backend/accounts/tests.py` | Added anonymous student dashboard and result-history redirect regression tests. |
 | `backend/institutes/tests.py` | Added owner, staff, and super-admin redirect regression tests. |
 | `backend/passages/tests.py` | Added homepage, simulator redirect, WhiteNoise/static configuration, and WSGI preservation regression tests. |
-| `backend/PRODUCTION_SECURITY.md` | Documented Gunicorn command, collectstatic build step, dev dependency installation, and trusted-proxy requirements. |
+| `backend/PRODUCTION_SECURITY.md` | Documented the initial conventional-WSGI/Gunicorn path, collectstatic, dev dependency installation, and trusted-proxy requirements; this document must be revised for Cloudflare Workers before deployment. |
+| `.github/workflows/django-ci.yml` | Updated CI to install `requirements-dev.txt` and use Python 3.14, aligning test dependencies with the new split and the currently documented Python Workers runtime generation. |
 
 **Not modified:** `backend/config/wsgi.py`. The existing `config.wsgi:application` entry point is preserved.
 
 ## 3. Issue-by-issue implementation
 
-### DEP-01 — Missing production application server dependency
+### DEP-01 — Production application entry point (Cloudflare target)
 
-- **File changed:** `backend/requirements.txt`
-- **Original problem:** Gunicorn was absent, so a Gunicorn production start command could fail with command-not-found.
-- **Exact correction:** Added pinned `gunicorn==23.0.0`.
-- **Reason:** Makes the selected WSGI application server an explicit production dependency.
-- **Tests executed:** None. Dependency installation and Gunicorn startup were not executed.
-- **Result:** Change committed; installation/runtime compatibility remains unverified.
-- **Remaining risks:** The actual hosting provider and its expected port/start command are not yet selected. The documented command uses the provider's `PORT` environment variable.
+- **Initial branch change:** `backend/requirements.txt` adds `gunicorn==23.0.0` for a conventional WSGI host.
+- **Cloudflare finding:** Cloudflare Python Workers provides a WSGI adapter for Django. A normal Gunicorn process is not the Worker entry point; the Worker entry module must call `get_wsgi_application()` and pass it to `workers.wsgi.entrypoint()` (or `workers.wsgi.fetch()`).
+- **Current result:** **NOT CLOSED for Cloudflare.** No Worker entry module or Wrangler configuration has been added yet, and the provisional Gunicorn dependency/documentation must be revised after the complete dependency/runtime audit.
+- **Tests executed:** None. `pywrangler dev` and Worker request handling have not been tested.
+- **Remaining risks:** Python Workers run on Pyodide/WebAssembly. The project's full dependency set and Django runtime behaviour must be proven in that environment before this target is considered viable.
 
 ### DEP-02 — Static files not served in production
 
-- **Files changed:** `backend/requirements.txt`, `backend/config/settings.py`, `backend/PRODUCTION_SECURITY.md`
-- **Original problem:** With DEBUG disabled, Django does not serve static files itself; the admin interface could lose its CSS and JavaScript.
-- **Exact correction:** Added pinned `whitenoise==6.11.0`; inserted `whitenoise.middleware.WhiteNoiseMiddleware` immediately after Django SecurityMiddleware; configured `CompressedManifestStaticFilesStorage`; set `STATIC_URL = "/static/"`; documented `python manage.py collectstatic --noinput` as a build/release step.
-- **Reason:** WhiteNoise can serve the collected, compressed, content-hashed static assets through the existing WSGI deployment.
-- **Tests executed:** None. WhiteNoise installation, Django system checks, static collection, and an HTTP request for an admin static asset were not executed.
-- **Result:** Configuration and regression tests added; runtime behaviour is not yet verified.
-- **Remaining risks:** Manifest collection can expose missing static references during collectstatic; that must be checked in the actual environment.
+- **Initial branch change:** WhiteNoise middleware and compressed manifest storage were added to Django settings, with `collectstatic` documented.
+- **Cloudflare finding:** Cloudflare Workers supports native static asset bindings, which can serve collected files at the edge independently of the Django Worker. This is the preferred production delivery path to validate for this target.
+- **Current result:** **PARTIALLY IMPLEMENTED, NOT VERIFIED.** The WhiteNoise configuration remains in the branch, but no Wrangler `assets.directory` configuration exists yet. The correct collected-static directory, URL behaviour, admin assets, and asset/Worker routing still need a local Worker test.
+- **Tests executed:** None. `collectstatic` and Worker static requests have not been tested.
+- **Remaining risks:** Do not assume that a normal server filesystem or WhiteNoise alone is sufficient inside the Workers runtime.
 
 ### ROUTE-01 — Incorrect student login redirect
 
@@ -87,11 +84,11 @@ Five issue areas have code/documentation changes prepared: production server dep
 
 ### DEP-05 — Separate development dependencies from production dependencies
 
-- **Files changed:** `backend/requirements.txt`, `backend/requirements-dev.txt`, `backend/PRODUCTION_SECURITY.md`
-- **Original problem:** pytest, pytest-django, Playwright, and related test tooling were installed from production requirements.
-- **Exact correction:** Moved test/browser packages and their dedicated pinned dependencies into `requirements-dev.txt`, which includes `-r requirements.txt`. Production requirements retain application/runtime dependencies and add Gunicorn/WhiteNoise.
-- **Reason:** Production installations remain smaller and do not install test/browser tooling; local development can install the complete environment with `pip install -r requirements-dev.txt`.
-- **Tests executed:** None. Fresh production and development dependency installations were not performed.
+- **Files changed:** `backend/requirements.txt`, `backend/requirements-dev.txt`, `backend/PRODUCTION_SECURITY.md`, `.github/workflows/django-ci.yml`
+- **Original problem:** pytest, pytest-django, Playwright, and related test tooling were installed from production requirements; CI continued installing only production requirements, so its Playwright command would not have the package available after the split.
+- **Exact correction:** Moved test/browser packages and their dedicated pinned dependencies into `requirements-dev.txt`, which includes `-r requirements.txt`. Updated CI to install `requirements-dev.txt`, use it as the pip cache dependency file, and run on Python 3.14.
+- **Reason:** Production installs remain separate from test tooling, while CI explicitly installs the complete development/test environment. Python 3.14 also aligns the CI interpreter generation with Cloudflare's currently documented Python Workers runtime.
+- **Tests executed:** None. The workflow change has been committed but no CI run has been observed.
 - **Remaining risks:** A clean local environment must install `requirements-dev.txt`; installing only `requirements.txt` is now intentionally insufficient to run pytest/Playwright.
 
 ## 4. Test and verification matrix
@@ -126,13 +123,13 @@ No test is reported as passed. No test is reported as failed. The checks above a
 
 ## 6. Remaining blockers before Phase A can be declared complete
 
-1. Select the hosting provider so the reverse-proxy behaviour can be verified and DEP-03 can be configured safely.
-2. Run `pip install -r requirements-dev.txt` in a clean development environment.
-3. Run Python compilation and the complete Django test suite.
-4. Run `python manage.py check` and production settings checks using safe test environment variables.
-5. Run `python manage.py collectstatic --noinput` and verify the generated admin static assets.
-6. Verify anonymous student, owner, staff, and administrator redirects with Django's test client and browser checks.
-7. Review any failures and repair only within the six authorized Phase A issues.
+1. Audit every runtime dependency for Pyodide/Python Workers compatibility, especially Django, `psycopg`, `psycopg-binary`, `django-redis`, `redis`, Pillow, and ReportLab.
+2. Confirm the existing PostgreSQL provider and Redis/cache provider. If PostgreSQL is external, assess Cloudflare Hyperdrive as a connection layer to that same database only; do not create or switch providers without approval. Hyperdrive for Python Workers is documented as beta and requires compatibility date `2026-09-08` or later.
+3. Add and test the Cloudflare WSGI Worker entry point and Wrangler configuration only after the dependency and database/cache design is validated.
+4. Configure native Worker static assets and verify admin CSS/JS after `collectstatic`.
+5. Verify HTTPS scheme handling through the actual WSGI adapter; do not set `DJANGO_TRUST_X_FORWARDED_PROTO=true` without proof that the header is trusted and overwritten.
+6. Run `pip install -r requirements-dev.txt`, Python compilation, Django system checks, the complete PostgreSQL test suite, and Worker local tests.
+7. Verify anonymous student, owner, staff, and administrator redirects; review any failures and repair only within the six authorized Phase A issues.
 
 ## 7. Stop condition
 
