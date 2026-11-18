@@ -12,7 +12,7 @@ Phase A changes have been committed to the isolated `phase-a-launch-blockers` br
 
 Four issue areas have code/documentation changes prepared: portal-specific login redirects, the public homepage, dependency separation, and provisional static-file configuration. The hosting target is now Cloudflare Python Workers. This changes the DEP-01/DEP-02/DEP-03 implementation: Cloudflare's WSGI adapter hosts Django without a conventional Gunicorn process, and Cloudflare Worker static assets are the preferred static delivery mechanism. The current Gunicorn/WhiteNoise setup is therefore provisional and must be reconciled before Phase A can be declared complete. No Cloudflare Worker entry point, Wrangler configuration, Hyperdrive binding, Redis binding, or deployment has been added. Existing PostgreSQL/Redis connectivity and Python package compatibility still require verification.
 
-**No automated tests were executed in this environment.** Django is not installed in the available execution environment, outbound network access is unavailable, and the repository has no GitHub Actions workflow runs or status checks to execute remotely. Regression tests were added, but they must not be described as passing until run.
+**No automated tests have completed successfully.** The GitHub Actions run for the updated workflow was cancelled during PostgreSQL service-container initialization before checkout or test steps; an older pre-correction run failed. Regression tests were added, but they must not be described as passing until a complete run finishes.
 
 ## 2. Change inventory
 
@@ -88,7 +88,7 @@ Four issue areas have code/documentation changes prepared: portal-specific login
 - **Original problem:** pytest, pytest-django, Playwright, and related test tooling were installed from production requirements; CI continued installing only production requirements, so its Playwright command would not have the package available after the split.
 - **Exact correction:** Moved test/browser packages and their dedicated pinned dependencies into `requirements-dev.txt`, which includes `-r requirements.txt`. Updated CI to install `requirements-dev.txt`, use it as the pip cache dependency file, and run on Python 3.14.
 - **Reason:** Production installs remain separate from test tooling, while CI explicitly installs the complete development/test environment. Python 3.14 also aligns the CI interpreter generation with Cloudflare's currently documented Python Workers runtime.
-- **Tests executed:** None. The workflow change has been committed but no CI run has been observed.
+- **Tests executed:** No tests ran. The updated workflow was observed in a GitHub Actions run, but that run was cancelled during PostgreSQL service-container initialization before checkout, dependency installation, or test steps. An earlier run on the pre-correction commit failed; it does not verify the updated workflow.
 - **Remaining risks:** A clean local environment must install `requirements-dev.txt`; installing only `requirements.txt` is now intentionally insufficient to run pytest/Playwright.
 
 ## 4. Test and verification matrix
@@ -105,7 +105,7 @@ Four issue areas have code/documentation changes prepared: portal-specific login
 | Static file collection | **NOT RUN** | `collectstatic` was not executed. |
 | Production settings validation | **NOT RUN** | No production environment variables or hosting runtime available. |
 | Existing regression tests | **NOT RUN** | Full existing suite was not executed. |
-| GitHub Actions checks | **NO RUNS FOUND** | The branch commit has no associated workflow runs or status checks. |
+| GitHub Actions checks | **NOT VERIFIED** | A run using the updated workflow was cancelled during service-container initialization before checkout or test steps. An earlier run on an older commit failed before the CI dependency correction. The latest branch head has no completed successful run. |
 
 No test is reported as passed. No test is reported as failed. The checks above are unexecuted unless explicitly marked “test added — not run”.
 
