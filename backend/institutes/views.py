@@ -148,7 +148,7 @@ def owner_login(request):
     return render(request, "institutes/owner_login.html", {"form": form})
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_dashboard(request):
     if not is_institute_owner(request.user):
         return HttpResponseForbidden("Institute owner access required.")
@@ -191,7 +191,7 @@ def owner_dashboard(request):
     )
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_logout(request):
     if request.method != "POST":
         return HttpResponseForbidden("Logout must use POST.")
@@ -212,7 +212,7 @@ def get_owner_institute(request, institute_id):
     )
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_member_list(request, institute_id):
     institute = get_owner_institute(request, institute_id)
     if institute is None:
@@ -231,7 +231,7 @@ def owner_member_list(request, institute_id):
     })
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 @require_http_methods(["GET", "POST"])
 def owner_member_add(request, institute_id):
     institute = get_owner_institute(request, institute_id)
@@ -257,7 +257,7 @@ def owner_member_add(request, institute_id):
     })
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 @require_POST
 def owner_member_status(request, institute_id, membership_id, action):
     institute = get_owner_institute(request, institute_id)
@@ -325,10 +325,11 @@ def member_login(request, portal):
     return render(request, f"institutes/{portal}_login.html", {"form": form, "portal": portal})
 
 
-@login_required
 def member_dashboard(request, portal):
     if portal not in {"student", "staff"}:
         return HttpResponseForbidden("Unsupported member portal.")
+    if not request.user.is_authenticated:
+        return redirect(f"institutes:{portal}_login")
     required_role = _member_role_for_portal(portal)
     if not request.user.is_active or request.user.role != required_role:
         return HttpResponseForbidden("Member access required.")
@@ -355,11 +356,12 @@ def member_dashboard(request, portal):
     })
 
 
-@login_required
 @require_POST
 def member_logout(request, portal):
     if portal not in {"student", "staff"}:
         return HttpResponseForbidden("Unsupported member portal.")
+    if not request.user.is_authenticated:
+        return redirect(f"institutes:{portal}_login")
     required_role = _member_role_for_portal(portal)
     if request.user.role != required_role:
         return HttpResponseForbidden("Member access required.")
@@ -367,7 +369,7 @@ def member_logout(request, portal):
     return redirect(f"institutes:{portal}_login")
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def super_admin_dashboard(request):
     status_counts = {
@@ -388,7 +390,7 @@ def super_admin_dashboard(request):
     return render(request, "institutes/super_admin_dashboard.html", context)
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def institute_list(request):
     institutes = Institute.objects.select_related("owner", "approved_by")
@@ -413,7 +415,7 @@ def institute_list(request):
     })
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def institute_detail(request, pk):
     institute = get_object_or_404(
@@ -423,7 +425,7 @@ def institute_detail(request, pk):
     return render(request, "institutes/institute_detail.html", {"institute": institute})
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_http_methods(["GET", "POST"])
 def institute_edit(request, pk):
@@ -436,7 +438,7 @@ def institute_edit(request, pk):
     return render(request, "institutes/institute_edit.html", {"form": form, "institute": institute})
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_POST
 def review_institute(request, pk, action):

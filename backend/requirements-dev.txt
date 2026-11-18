@@ -1,0 +1,13 @@
+# Install this file for local development and test environments.
+-r requirements.txt
+
+# Test runner and browser workflow tooling.
+colorama==0.4.6
+iniconfig==2.3.1
+packaging==26.3
+playwright==1.64.1
+pluggy==1.7.0
+pyee==14.0.0
+Pygments==2.21.0
+pytest==9.2.0
+pytest-django==4.14.0

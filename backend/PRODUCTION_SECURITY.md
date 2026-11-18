@@ -2,6 +2,23 @@
 
 This Django application is separate from the existing Next.js production service. Do not point it at, migrate, or modify the Next.js application's database.
 
+
+## WSGI application server and static assets
+
+Install production dependencies from the backend directory with `pip install -r requirements.txt`. The WSGI entry point remains `config.wsgi:application`; the production process command is:
+
+```sh
+gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+WhiteNoise is enabled immediately after Django's SecurityMiddleware and uses compressed, manifest-backed static storage. Run this during the hosting provider's build/release step, before starting Gunicorn:
+
+```sh
+python manage.py collectstatic --noinput
+```
+
+For local development and tests, install `requirements-dev.txt` instead; it includes the production requirements plus pytest and Playwright tooling. Do not install test tooling in the production image.
+
 ## Database and concurrent seat enforcement
 
 Production must use PostgreSQL. SQLite remains the local-development default only. Set these environment variables in the Django hosting environment:
@@ -30,7 +47,7 @@ Production uses Redis through django-redis so rate-limit counters are shared acr
 
 Set DJANGO_ALLOWED_HOSTS to comma-separated exact hostnames and DJANGO_CSRF_TRUSTED_ORIGINS to comma-separated full HTTPS origins, including scheme. Production defaults enable SSL redirect, secure session and CSRF cookies, one-year HSTS, content-type sniffing protection, frame denial, and same-origin referrer policy. HSTS should only be enabled after HTTPS is working for every included hostname.
 
-If TLS terminates at a trusted reverse proxy, set DJANGO_TRUST_X_FORWARDED_PROTO=true only when that proxy overwrites X-Forwarded-Proto and does not pass through client-supplied values. Otherwise leave it disabled.
+If TLS terminates at a trusted reverse proxy, set `DJANGO_TRUST_X_FORWARDED_PROTO=true` in that hosting provider's environment only after verifying that the proxy overwrites `X-Forwarded-Proto` and does not pass through client-supplied values. The application already maps this flag to Django's `SECURE_PROXY_SSL_HEADER`. Keep it unset/false for direct connections or proxies that do not guarantee this behavior. The hosting provider has not yet been selected, so no provider-specific environment value is committed here.
 
 ## SMTP email delivery
 

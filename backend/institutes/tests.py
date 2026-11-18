@@ -1062,3 +1062,27 @@ class SuperAdminAdminPermissionTests(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
+
+
+class PortalLoginRedirectTests(TestCase):
+    def test_anonymous_owner_dashboard_redirects_to_owner_login(self):
+        response = self.client.get(reverse("institutes:owner_dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:owner_login"))
+
+    def test_anonymous_owner_member_list_redirects_to_owner_login(self):
+        response = self.client.get(
+            reverse("institutes:owner_member_list", kwargs={"institute_id": "00000000-0000-0000-0000-000000000001"})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:owner_login"))
+
+    def test_anonymous_staff_dashboard_redirects_to_staff_login(self):
+        response = self.client.get(reverse("institutes:staff_dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], reverse("institutes:staff_login"))
+
+    def test_anonymous_super_admin_dashboard_redirects_to_admin_login(self):
+        response = self.client.get(reverse("institutes:super_admin_dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url.split("?", 1)[0], "/admin/login/")
