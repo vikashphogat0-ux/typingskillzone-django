@@ -15,7 +15,15 @@
   </style>
 </head>
 <body><main class="wrap">
-  <header class="top"><div class="brand">Typing<span>SkillZone</span></div><a href="/admin/">Admin Studio</a></header>
+  <header class="top">
+    <div class="brand"><a href="/" aria-label="TypingSkillZone home" style="color:inherit">Typing<span>SkillZone</span></a></div>
+    <nav aria-label="Main navigation" style="display:flex;flex-wrap:wrap;gap:16px">
+      <a href="/institutes/student/login/">Student Login</a>
+      <a href="/accounts/student/register/">Register</a>
+      <a href="/institutes/owner/login/">Institute Login</a>
+      <a href="/admin/">Admin Studio</a>
+    </nav>
+  </header>
   {% block content %}{% endblock %}
 </main></body>
 </html>
