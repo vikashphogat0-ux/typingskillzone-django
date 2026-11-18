@@ -1,0 +1,28 @@
+{% extends "passages/base.html" %}
+
+{% block title %}TypingSkillZone | Typing Practice & Exam Simulator{% endblock %}
+
+{% block content %}
+<section class="panel" aria-labelledby="home-title">
+  <p class="eyebrow">Practice with purpose</p>
+  <h1 id="home-title">Build typing speed, accuracy and exam confidence.</h1>
+  <p>Prepare with focused typing practice and exam-style simulator sessions. Track your progress and strengthen the skills required for competitive typing tests.</p>
+  <div class="grid">
+    <a class="item" href="{% url 'institutes:student_login' %}">
+      <span class="id">01</span>
+      <strong>Student Login</strong>
+      <span class="muted">Continue your practice and view your learning dashboard.</span>
+    </a>
+    <a class="item" href="{% url 'accounts:student_register' %}">
+      <span class="id">02</span>
+      <strong>Create Student Account</strong>
+      <span class="muted">Register to access typing practice and exam preparation.</span>
+    </a>
+    <a class="item" href="{% url 'institutes:owner_login' %}">
+      <span class="id">03</span>
+      <strong>Institute Portal</strong>
+      <span class="muted">Sign in to manage your institute and its learners.</span>
+    </a>
+  </div>
+</section>
+{% endblock %}
