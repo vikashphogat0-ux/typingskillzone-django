@@ -2,14 +2,17 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.core.mail import send_mail
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from .forms import InstituteEnrollmentForm, StudentProfileForm, StudentRegistrationForm
@@ -52,19 +55,50 @@ def send_student_verification_email(request, user):
 
 
 
+@require_http_methods(["GET", "POST"])
+def student_login(request):
+    """Sign-in for independent students. Institute members use the institute portal instead."""
+    if request.user.is_authenticated:
+        if request.user.role == User.Roles.STUDENT:
+            return redirect("accounts:student_dashboard")
+        return HttpResponseForbidden("This account cannot use the student account login.")
+
+    if request.method == "POST" and is_rate_limited(
+        "account-student-login", request, identity=request.POST.get("username", ""), limit=8, window=900
+    ):
+        return HttpResponseForbidden("Too many login attempts. Please try again later.")
+
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        if user.role != User.Roles.STUDENT or not user.is_active:
+            form.add_error(None, "The email or password is incorrect.")
+        else:
+            login(request, user)
+            next_url = request.GET.get("next") or request.POST.get("next") or ""
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+            return redirect("accounts:student_dashboard")
+    return render(request, "accounts/student_login.html", {"form": form})
+
+
 def student_register(request):
     if request.user.is_authenticated:
         if request.user.role == User.Roles.STUDENT:
             return redirect("accounts:student_dashboard")
         return redirect("institutes:student_dashboard")
 
-    # Keep the existing registration logic below unchanged.
-
     if request.method == "POST" and is_rate_limited("student-register", request, limit=5, window=3600):
         return HttpResponse("Too many registration attempts. Please try again later.", status=429)
     form = StudentRegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()
+        try:
+            user = form.save()
+        except IntegrityError:
+            form.add_error("email", "An account with this email already exists.")
+            return render(request, "accounts/student_register.html", {"form": form})
         try:
             send_student_verification_email(request, user)
         except Exception:
@@ -234,11 +268,16 @@ def student_result_history(request):
         sessions = sessions.filter(started_at__gte=start)
 
     if date_to:
-        end_exclusive = timezone.make_aware(
-            datetime.combine(date_to + timedelta(days=1), time.min),
-            timezone.get_current_timezone(),
-        )
-        sessions = sessions.filter(started_at__lt=end_exclusive)
+        try:
+            next_day = date_to + timedelta(days=1)
+        except OverflowError:
+            next_day = None  # 9999-12-31 has no upper bound to apply
+        if next_day is not None:
+            end_exclusive = timezone.make_aware(
+                datetime.combine(next_day, time.min),
+                timezone.get_current_timezone(),
+            )
+            sessions = sessions.filter(started_at__lt=end_exclusive)
 
     paginator = Paginator(
         sessions.order_by("-started_at"),
@@ -313,6 +352,11 @@ def passage_library(request):
             | Q(source__content__icontains=search_query)
         )
 
+    page_obj = Paginator(
+        passages.distinct().order_by("exam__code", "serial_number", "pk"),
+        20,
+    ).get_page(request.GET.get("page"))
+
     context = {
         "exams": ExamConfiguration.objects.filter(is_active=True),
         "available_languages": PassageSource.objects.filter(
@@ -323,7 +367,8 @@ def passage_library(request):
         "selected_exam": exam_code,
         "selected_language": language,
         "search_query": search_query,
-        "passages": passages.distinct(),
+        "passages": page_obj,
+        "page_obj": page_obj,
     }
 
     return render(request, "accounts/passage_library.html", context)
@@ -360,9 +405,7 @@ def student_dashboard(request):
         state=TypingSession.State.SUBMITTED,
     ).exclude(scoring_version="")
 
-    for session in scored_sessions:
-        result = session.result_snapshot
-
+    for result in scored_sessions.values_list("result_snapshot", flat=True).iterator(chunk_size=200):
         if not isinstance(result, dict):
             continue
 

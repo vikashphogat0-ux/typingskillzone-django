@@ -1,0 +1,36 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="TypingSkillZone: government-style typing practice in English and Hindi, with accurate results and institute management.">
+  <title>{% block title %}TypingSkillZone{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="{% url 'home' %}"><span class="brand-mark">TS</span><span>Typing<span>Skill</span>Zone</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="{% url 'accounts:passage_library' %}">Passages</a>
+        <a href="{% url 'institutes:owner_login' %}">Owner login</a>
+        <a href="{% url 'institutes:staff_login' %}">Staff login</a>
+        <a class="cta" href="{% url 'accounts:student_register' %}">Create account</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>&copy; TypingSkillZone</span>
+      <span><a href="{% url 'institutes:student_login' %}">Institute member login</a> · <a href="{% url 'accounts:password_reset' %}">Forgot password</a></span>
+    </div>
+  </footer>
+</body>
+</html>

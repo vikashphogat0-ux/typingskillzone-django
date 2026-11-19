@@ -20,10 +20,6 @@ def _clean_word(word):
     ).casefold()
 
 
-def _is_word_char(char):
-    return bool(char) and (char.isalnum() or char == "_")
-
-
 def classify_typing_mistakes(reference, typed):
     reference = reference or ""
     typed = typed or ""
@@ -91,7 +87,14 @@ def classify_typing_mistakes(reference, typed):
     # Formatting checks on words aligned by content.
     for expected, actual in aligned_pairs:
         if expected != actual:
-            if expected.casefold() == actual.casefold():
+            # Compare letters without punctuation so a case error is still counted when the
+            # same word also has a punctuation error.
+            expected_letters = "".join(char for char in expected if char not in PUNCTUATION)
+            actual_letters = "".join(char for char in actual if char not in PUNCTUATION)
+            if (
+                expected_letters != actual_letters
+                and expected_letters.casefold() == actual_letters.casefold()
+            ):
                 categories["capitalization"] += 1
 
             expected_marks = "".join(

@@ -17,16 +17,18 @@
     <div class="item"><strong id="live-accuracy">100%</strong><div class="muted">Live accuracy (estimate)</div></div>
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="muted">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
-  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};">{{ attempt.reference_text }}</article>
+  <article id="reference" class="passage" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article>
   <form id="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
     <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
+    <input type="hidden" id="policy-events" name="policy_events" value="0">
     <label for="typed-text"><strong>Type the passage below</strong></label>
-    <textarea id="typed-text" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:.75rem;font:16px/1.6 monospace;" autofocus></textarea>
+    <textarea id="typed-text" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:.75rem;font:16px/1.6 monospace;" autofocus>{{ draft_text }}</textarea>
     <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;"><button id="finish-button" type="submit" class="button">Finish test</button><span class="muted">The server validates the deadline and calculates the final score.</span></div>
   </form>
 </section>
 {{ attempt.rules_snapshot|json_script:"typing-rules" }}
+{{ clock|json_script:"typing-clock" }}
 <script>
 (() => {
   const rules = JSON.parse(document.getElementById("typing-rules").textContent);
@@ -35,8 +37,11 @@
   const reference = document.getElementById("reference").innerText;
   const countdown = document.getElementById("countdown");
   const startedAt = Date.now();
-  const deadline = new Date("{{ attempt.deadline_at|date:'c' }}").getTime();
+  const deadline = clock.deadline_ms;
   let submitting = false;
+  let policyEvents = 0;
+  const clock = JSON.parse(document.getElementById("typing-clock").textContent);
+  const clockOffset = clock.server_now_ms - Date.now();
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
@@ -111,6 +116,16 @@
       pendingCommit = null;
     }
   });
+  // Count blocked actions that the browser prevented. Telemetry only; it never changes a score.
+  const countBlocked = event => { if (event.defaultPrevented) policyEvents = Math.min(1000, policyEvents + 1); };
+  input.addEventListener("keydown", event => {
+    if (event.key !== "Tab" && !["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(event.key)) countBlocked(event);
+  });
+  input.addEventListener("beforeinput", countBlocked);
+  input.addEventListener("paste", countBlocked);
+  document.getElementById("reference").addEventListener("copy", event => {
+    if (rules.allow_copy === false) { event.preventDefault(); policyEvents = Math.min(1000, policyEvents + 1); }
+  });
   function updateStats() {
     const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
@@ -122,11 +137,31 @@
   function tick() {
     if(submitting)return;
     if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
-    const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+    const remaining=Math.max(0,Math.ceil((deadline-(Date.now()+clockOffset))/1000));
     countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
-    if(remaining<=0){submitting=true;input.readOnly=true;form.submit();}
+    if(remaining<=0){submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);form.submit();}
   }
-  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("finish-button").disabled=true;});
+  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);document.getElementById("finish-button").disabled=true;});
+  // Autosave: store the current text every 15 seconds if it changed. Drafts are never scored.
+  const draftUrl = "{% url 'typing_sessions:draft' attempt.pk %}";
+  const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+  let lastSaved = input.value;
+  async function saveDraft() {
+    if (submitting || input.value === lastSaved) return;
+    const snapshot = input.value;
+    try {
+      const response = await fetch(draftUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({typed_text: snapshot}),
+      });
+      if (response.ok) lastSaved = snapshot;
+    } catch (error) {
+      // Network failure: the next interval retries.
+    }
+  }
+  window.setInterval(saveDraft, 15000);
   tick(); window.setInterval(tick,250); input.focus();
 })();
 </script>

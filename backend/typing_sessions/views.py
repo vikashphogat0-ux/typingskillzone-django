@@ -9,8 +9,11 @@ from django.views.decorators.http import require_POST
 from exams.models import ExamConfiguration
 from passages.models import SimulatorPassage
 
+from django.utils import timezone
+
+from .drafts import load_draft_text
 from .models import TypingSession
-from .services import expire_session, start_session, submit_session
+from .services import expire_session, save_draft, start_session, submit_session
 
 
 @login_required
@@ -46,7 +49,17 @@ def typing_session(request, session_id):
     if attempt.has_expired:
         attempt = expire_session(session_id=attempt.pk, learner=request.user)
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
-    return render(request, "typing_sessions/live.html", {"attempt": attempt})
+    # Server clock and deadline are sent as epoch milliseconds so the countdown does not
+    # depend on the device clock.
+    clock = {
+        "server_now_ms": int(timezone.now().timestamp() * 1000),
+        "deadline_ms": int(attempt.deadline_at.timestamp() * 1000) if attempt.deadline_at else None,
+    }
+    return render(request, "typing_sessions/live.html", {
+        "attempt": attempt,
+        "clock": clock,
+        "draft_text": load_draft_text(attempt.pk),
+    })
 
 
 @login_required
@@ -59,14 +72,35 @@ def submit_typing_session(request, session_id):
     except (TypeError, ValueError):
         reported_keystrokes = None
     try:
+        client_policy_events = int(request.POST.get("policy_events", "") or 0)
+    except (TypeError, ValueError):
+        client_policy_events = None
+    try:
         attempt = submit_session(
             session_id=session_id,
             learner=request.user,
             typed_text=typed_text,
             reported_keystrokes=reported_keystrokes,
+            client_policy_events=client_policy_events,
         )
     except TypingSession.DoesNotExist:
         return JsonResponse({"error": "Session not found."}, status=404)
     except (PermissionDenied, ValidationError) as error:
         return JsonResponse({"error": str(error)}, status=403)
     return render(request, "typing_sessions/result.html", {"attempt": attempt})
+
+
+@login_required
+@require_POST
+def save_typing_draft(request, session_id):
+    try:
+        save_draft(
+            session_id=session_id,
+            learner=request.user,
+            typed_text=request.POST.get("typed_text", ""),
+        )
+    except TypingSession.DoesNotExist:
+        return JsonResponse({"error": "Session not found."}, status=404)
+    except (PermissionDenied, ValidationError) as error:
+        return JsonResponse({"error": str(error)}, status=403)
+    return JsonResponse({"saved": True})

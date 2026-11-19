@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
@@ -19,10 +21,10 @@ class InstituteAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = ("name", "registration_code", "owner", "email", "city", "state", "status", "created_at")
     list_filter = ("status", "state", "created_at")
     search_fields = ("name", "registration_code", "email", "phone", "owner__email", "city")
-    readonly_fields = ("id", "registration_code", "approved_by", "approved_at", "created_at", "updated_at")
+    readonly_fields = ("id", "registration_code", "status", "approved_by", "approved_at", "created_at", "updated_at")
     inlines = (InstituteMembershipInline,)
     ordering = ("-created_at",)
-    actions = ("approve_selected", "reject_selected", "suspend_selected")
+    actions = ("approve_selected", "reject_selected", "suspend_selected", "rotate_registration_codes")
 
     def get_actions(self, request):
         actions = super().get_actions(request)
@@ -62,6 +64,20 @@ class InstituteAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
             approved_at=timezone.now(),
         )
         self.message_user(request, f"{updated} pending institute application(s) rejected.", level=messages.WARNING)
+
+    @admin.action(description="Rotate registration codes (revokes existing codes)")
+    def rotate_registration_codes(self, request, queryset):
+        rotated = 0
+        with transaction.atomic():
+            for institute in queryset.select_for_update():
+                institute.registration_code = str(uuid.uuid4())
+                institute.save(update_fields=["registration_code", "updated_at"])
+                rotated += 1
+        self.message_user(
+            request,
+            f"{rotated} registration code(s) rotated. Previously shared codes no longer work.",
+            level=messages.WARNING,
+        )
 
     @admin.action(description="Suspend selected approved institutes")
     def suspend_selected(self, request, queryset):

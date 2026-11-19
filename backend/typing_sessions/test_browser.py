@@ -219,7 +219,8 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
                 self.live_server_url + f"/simulators/{self.exam.code}/passages/"
             )
             page.wait_for_load_state("networkidle", timeout=10000)
-            assert "/admin/login/" in page.url
+            # Students are sent to the student login, not the Django admin login (ROUTE-01).
+            assert "/accounts/student/login/" in page.url
             expect(page.locator("text=Browser passage")).not_to_be_visible()
 
             self._login(page, "/institutes/student/login/", STUDENT_EMAIL)

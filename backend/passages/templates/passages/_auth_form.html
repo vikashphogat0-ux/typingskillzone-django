@@ -1,0 +1,14 @@
+<form method="post">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="error-box" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-field">
+    <label for="{{ form.username.id_for_label }}">Email address</label>
+    {{ form.username }}
+    {% if form.username.errors %}<div class="error">{{ form.username.errors }}</div>{% endif %}
+  </div>
+  <div class="form-field">
+    <label for="{{ form.password.id_for_label }}">Password</label>
+    {{ form.password }}
+    {% if form.password.errors %}<div class="error">{{ form.password.errors }}</div>{% endif %}
+  </div>
+  <button class="btn btn-primary" type="submit">Sign in</button>
+</form>

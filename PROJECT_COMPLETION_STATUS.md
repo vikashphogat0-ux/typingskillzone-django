@@ -5,7 +5,7 @@
 **Original base commit:** `174a14109be3f92e1100f62294312deb6e491e00`  
 **Working directory:** `c:\Users\vikas\TypingSkillZone` (Django backend under `backend/`)  
 **Python:** 3.15.0 (`.venv\Scripts\python.exe`)  
-**Django:** 6.1.2  
+**Django:** 6.1.3 (pinned in `backend/requirements.txt`; earlier text said 6.1.2)  
 
 > Status: **Phase 1 critical release-blocker remediation complete.** NOT launch-ready.
 > See "Remaining blockers" below. Do not deploy to production.
@@ -40,13 +40,13 @@
 | Client strokes influence official marks/qualification? | **Practice (unverified):** yes — `stroke_count_source: client_reported` (provisional metric, clearly labelled). **Official (VERIFIED):** no — see guard below |
 | Untrusted client telemetry cannot produce official qualifying result | `scoring.py` now forces `stroke_count_for_speed = len(typed)` and `stroke_count_source = "server_derived"` when `rules.verification_status == "VERIFIED"`; client-reported strokes ignored for official speed/marks |
 | Practice metrics preserved separately | `tentative_wpm`, `stroke_count_source` remain client-derived for unverified practice; `reported_keystrokes` still exposed in result snapshot as practice telemetry |
-| Delhi Police HCM reference spec preserved | `seed_typing_rule_profiles.py` unchanged in substance (STROKE_NET_WPM, strokes_per_word 5, mistake_penalty_wpm 1, score bands, unverified practice default); historical snapshots untouched |
+| Delhi Police HCM reference spec preserved | **Corrected:** the seeded Delhi Police profiles use word-based `CUSTOM` scoring (`mistake_penalty_words`). The `STROKE_NET_WPM` formula exists in the code but **no seeded exam uses it**. Historical snapshots are untouched. |
 | Tests for manipulated/missing/negative/excessive/inconsistent keystrokes | 5 new tests added to `tests.py`: `test_stroke_net_wpm_client_reported_inflates_practice_only`, `test_stroke_net_wpm_negative_keystrokes_clamped_to_zero`, `test_stroke_net_wpm_excessive_keystrokes_clamped`, `test_stroke_net_wpm_verified_rules_use_server_derived_strokes`, `test_stroke_net_wpm_verified_inconsistent_keystrokes_cannot_inflate_score` |
 | No replacement official scoring formula invented | Existing STROKE_NET_WPM formula preserved; only a VERIFIED-server-derived guard added |
 
 **Commit `9174e4b`:** `fix(scoring): block client telemetry from inflating official results`
 
-**Test result (Priority 2):** Full Django unit suite **130 tests, OK (skipped=1), 0 failures** (125 pre-existing + 5 new scoring tests). The single skip is `ConcurrentSeatLimitTests` (skipped on SQLite; runs only on PostgreSQL).
+**Test result (Priority 2, recorded on the developer machine before the remediation branch):** Full Django unit suite **130 tests, OK (skipped=1), 0 failures** (125 pre-existing + 5 new scoring tests). *Not re-verified by the remediation branch; see `backend/REMEDIATION_REPORT.md`.* The single skip is `ConcurrentSeatLimitTests` (skipped on SQLite; runs only on PostgreSQL).
 
 ---
 
@@ -110,6 +110,10 @@ $env:DJANGO_ALLOWED_HOSTS='127.0.0.1,localhost'
 Note: `DJANGO_SECRET_KEY` is required because `settings.py` raises `RuntimeError` when `DJANGO_DEBUG=false` and no secret is set. These are **local dev values only** — never production values.
 
 ---
+
+## Remediation update
+
+The diagnostic findings are tracked in `backend/REMEDIATION_REPORT.md` on branch `fix/diagnostic-remediation`. Items marked there as fixed are not production-verified until the CI suite and browser tests pass on that branch. The `audit §13` referenced in blocker 6 is not in this repository.
 
 ## Remaining blockers (do not deploy until resolved)
 
