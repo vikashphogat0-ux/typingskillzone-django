@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from passages.models import SimulatorPassage, PassageSource
 
+from .drafts import DRAFT_MAX_CHARS, clear_draft, save_draft_text
 from .models import TypingSession
 from .scoring import SCORING_VERSION, calculate_result
 from .specification_snapshots import build_exam_specification_snapshot
@@ -30,6 +31,16 @@ def start_session(*, learner, publication):
             or not publication.exam.is_active):
         raise ValidationError("This passage is not available for a new attempt.")
 
+    # One live attempt per learner and passage: reopen it instead of creating a second.
+    existing = (
+        TypingSession.objects.select_for_update()
+        .filter(learner=learner, publication=publication, state=TypingSession.State.ACTIVE)
+        .order_by("-started_at")
+        .first()
+    )
+    if existing is not None and not existing.has_expired:
+        return existing
+
     exam = publication.exam
     duration = exam.duration_seconds
     now = timezone.now()
@@ -50,7 +61,7 @@ def start_session(*, learner, publication):
 
 
 @transaction.atomic
-def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None):
+def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None, client_policy_events=None):
     _require_active_student(learner)
     session = TypingSession.objects.select_for_update().select_related("publication").get(
         pk=session_id, learner=learner
@@ -85,6 +96,10 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
         rules=session.rules_snapshot,
         reported_keystrokes=reported_keystrokes,
     )
+    # Clipboard and backspace blocks are counted in the browser only. Keep the count as
+    # clearly labelled, unverified telemetry; it never changes the score.
+    if client_policy_events is not None:
+        result["client_policy_events_unverified"] = max(0, min(1000, int(client_policy_events)))
     session.state = TypingSession.State.EXPIRED if expired else TypingSession.State.SUBMITTED
     session.submitted_text = typed_text
     session.completed_at = now
@@ -93,6 +108,26 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None)
     session.save(update_fields=(
         "state", "submitted_text", "completed_at", "scoring_version", "result_snapshot"
     ))
+    clear_draft(session.pk)
+    return session
+
+
+@transaction.atomic
+def save_draft(*, session_id, learner, typed_text):
+    """Store an autosave draft for an active attempt. Drafts are never scored."""
+    _require_active_student(learner)
+    session = TypingSession.objects.get(pk=session_id, learner=learner)
+    if session.state != TypingSession.State.ACTIVE:
+        raise ValidationError("This session has already ended.")
+    if session.has_expired:
+        raise ValidationError("The timer has expired.")
+    if not isinstance(typed_text, str) or len(typed_text) > DRAFT_MAX_CHARS:
+        raise ValidationError("Draft is missing or exceeds the allowed size.")
+    now = timezone.now()
+    timeout = 3600
+    if session.deadline_at:
+        timeout = max(60, int((session.deadline_at - now).total_seconds()) + 300)
+    save_draft_text(session.pk, typed_text, timeout)
     return session
 
 
