@@ -14,7 +14,7 @@ class HomepageAndLoginRedirectTests(TestCase):
         response = self.client.get(reverse("accounts:student_dashboard"))
         self.assertRedirects(
             response,
-            f"{reverse('institutes:student_login')}?next={reverse('accounts:student_dashboard')}",
+            f"{reverse('accounts:student_login')}?next={reverse('accounts:student_dashboard')}",
             fetch_redirect_response=False,
         )
 

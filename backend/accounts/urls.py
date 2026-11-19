@@ -36,6 +36,7 @@ urlpatterns = [
         ),
         name="password_reset_complete",
     ),
+    path("student/login/", views.student_login, name="student_login"),
     path("student/register/", views.student_register, name="student_register"),
     path(
         "student/verify/resend/",

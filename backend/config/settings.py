@@ -180,7 +180,7 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <nore
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")  # Read by config.email_backends.ResendEmailBackend.
 
 AUTH_USER_MODEL = "accounts.User"
-LOGIN_URL = "/institutes/student/login/"  # Student-facing default; staff, owner and admin views pass their own login_url.
+LOGIN_URL = "/accounts/student/login/"  # Independent-student default; staff, owner and admin views pass their own login_url.
 LOGIN_REDIRECT_URL = "/institutes/dashboard/super-admin/"
 LOGOUT_REDIRECT_URL = "/admin/login/"
 

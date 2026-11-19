@@ -2,15 +2,17 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.core.mail import send_mail
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from .forms import InstituteEnrollmentForm, StudentProfileForm, StudentRegistrationForm
@@ -51,6 +53,35 @@ def send_student_verification_email(request, user):
         fail_silently=False,
     )
 
+
+
+@require_http_methods(["GET", "POST"])
+def student_login(request):
+    """Sign-in for independent students. Institute members use the institute portal instead."""
+    if request.user.is_authenticated:
+        if request.user.role == User.Roles.STUDENT:
+            return redirect("accounts:student_dashboard")
+        return HttpResponseForbidden("This account cannot use the student account login.")
+
+    if request.method == "POST" and is_rate_limited(
+        "account-student-login", request, identity=request.POST.get("username", ""), limit=8, window=900
+    ):
+        return HttpResponseForbidden("Too many login attempts. Please try again later.")
+
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        if user.role != User.Roles.STUDENT or not user.is_active:
+            form.add_error(None, "The email or password is incorrect.")
+        else:
+            login(request, user)
+            next_url = request.GET.get("next") or request.POST.get("next") or ""
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+            return redirect("accounts:student_dashboard")
+    return render(request, "accounts/student_login.html", {"form": form})
 
 
 def student_register(request):
