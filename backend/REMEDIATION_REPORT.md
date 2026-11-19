@@ -30,7 +30,7 @@ Base: `origin/integration/release-review-2026-11` (88d04b6).
 | DATA-01 | P2 | **Not changed — approval required** | — | Migration `accounts/0003` auto-verifies existing owners. Editing an applied migration is unsafe. Review the current owner list before any decision. |
 | DATA-02 | P2 | **Not changed — approval required** | — | Migration `institutes/0004` grants trials to existing approved institutes. Confirm the intended dates before any change. |
 | INST-01 | P2 | **Not implemented — product decision** | — | Owners can still add a registered account without consent. A consent or invitation model is a product and legal decision. |
-| INST-02 | P2 | **Not implemented — product decision** | — | Registration codes still work as bearer credentials. Owner approval or code rotation requires a product decision. |
+| INST-02 | P2 | Partially fixed | Super-admin action "Rotate registration codes" revokes shared codes. | Codes still work as bearer credentials until rotated. Owner-approved enrolment is still a product decision. |
 | INST-03 | P2 | Fixed | Approve and reactivate messages report the real subscription state; no longer claim a trial started. | Reactivating an institute whose trial has expired still does not renew the subscription; the message says so. |
 | PERF-01 | P2 | Partially fixed | Dashboard streams only the `result_snapshot` JSON, not model instances. | Still loads every scored result. Full fix needs stored aggregates — a schema change. |
 | PERF-02 | P2 | Fixed | Passage library paginates (20 per page) with previous and next links. | — |
