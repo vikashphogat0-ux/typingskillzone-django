@@ -5,9 +5,12 @@ on:
     branches:
       - main
       - integration/release-review-2026-11
+      - phase-a-launch-blockers
+      - phase-b-free-rate-limiter
   pull_request:
     branches:
       - main
+      - phase-a-launch-blockers
 
 permissions:
   contents: read

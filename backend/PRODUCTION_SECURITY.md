@@ -33,15 +33,21 @@ Production must use PostgreSQL. SQLite remains the local-development default onl
 - DJANGO_DB_PORT=5432
 - DJANGO_DB_CONN_MAX_AGE=60
 
-Install the PostgreSQL driver and Redis cache backend in the Django environment using: pip install "psycopg[binary]>=3.2,<4" "django-redis>=5.4,<6".
+Install the PostgreSQL driver in the Django environment using the Cloudflare-compatible package set validated for the Python Workers runtime. Do not install or configure Redis for this project. The current psycopg-binary wheel and the complete dependency set still require a Cloudflare Python Workers build/runtime compatibility check before deployment.
 
 Run normal Django migrations against the dedicated Django database. Do not run createcachetable or migrations against the Next.js/Neon database.
 
 The membership write path locks the parent Institute row with select_for_update() before checking the current active seat count and inserting the membership. This serializes concurrent seat additions on PostgreSQL. The PostgreSQL-only concurrency regression test is institutes.test_concurrent_seats.ConcurrentSeatLimitTests; it is skipped on SQLite because SQLite cannot prove row-level locking.
 
-## Shared cache and throttling
+## Authentication throttling without Redis
 
-Production uses Redis through django-redis so rate-limit counters are shared across all web workers and use Redis atomic INCR operations. Install django-redis and set DJANGO_CACHE_BACKEND=django_redis.cache.RedisCache and DJANGO_CACHE_URL=redis://<host>:6379/1 (use the TLS URL and credentials required by your Redis provider). Configure the same cache URL for every Django worker. Never use local-memory cache for multi-worker production. Rate-limit counters fail closed if cache operations fail.
+Production authentication throttling runs in `cloudflare_worker.py` before the Django WSGI application. The Worker uses Cloudflare's edge-provided `CF-Connecting-IP`, routes each IP to a deterministic SQLite-backed Durable Object shard, and stores only SHA-256 counter keys (not raw IP addresses or email addresses). The Durable Object performs atomic SQLite upserts with fixed-window expiry. Email resend IP caps suppress delivery while retaining the existing generic success response; email-specific caps retain their existing block responses.
+
+Set `DJANGO_CLOUDFLARE_AUTH_RATE_LIMITING=true` in the Worker environment. Django fails closed if this mode is enabled but the Worker verification marker is absent. The Worker strips client-supplied internal marker headers before checking limits. Do not expose the Django WSGI application through another public origin or bypass the Worker.
+
+Local development continues to use Django's process-local cache fallback. That fallback is not a production multi-instance rate limiter. Redis and django-redis have been removed from production requirements.
+
+The Free plan has finite Durable Object allowances: 100,000 requests/day, 5 million SQLite row reads/day, 100,000 SQLite row writes/day, and 5 GB total SQLite storage. Exceeding a free allowance causes further operations of that type to fail. Configure usage alerts/spending controls where available and monitor usage; this architecture is not guaranteed to remain free above those limits.
 
 ## HTTPS, hosts, and cookies
 
@@ -57,8 +63,9 @@ After deployment, run python manage.py check --deploy and python manage.py check
 
 ## Required deployment verification
 
-1. Confirm all Django workers use the same PostgreSQL database and shared cache.
-2. Confirm the cache table exists and a cache add/increment/delete probe succeeds.
-3. Confirm HTTPS redirect, secure cookies, trusted hosts/origins, and HSTS using the deployed hostname.
-4. Send and receive the test email.
-5. Run the full test suite against PostgreSQL so the concurrency test executes rather than skips.
+1. Confirm the public hostname routes only through the configured Cloudflare Worker.
+2. Confirm the Durable Object binding and SQLite migration are active, and run concurrent counter/expiry tests.
+3. Confirm client-supplied internal marker headers cannot bypass throttling and that missing Durable Object connectivity fails closed.
+4. Confirm HTTPS redirect, secure cookies, trusted hosts/origins, and HSTS using the deployed hostname.
+5. Send and receive the test email.
+6. Run the full test suite against PostgreSQL so the concurrency test executes rather than skips.

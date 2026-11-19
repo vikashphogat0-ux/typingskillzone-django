@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from accounts.models import User
-from accounts.security import is_rate_limited
+from accounts.security import is_rate_limited, is_rate_limit_suppressed
 
 logger = logging.getLogger(__name__)
 SALT = "typingskillzone.institute-owner.email-verification"
@@ -60,7 +60,7 @@ def resend_owner_verification(request):
         email = request.POST.get("email", "").strip().lower()
         if is_rate_limited("owner-resend", request, identity=email, limit=3, window=3600):
             return HttpResponseForbidden("Too many requests. Please try again later.")
-        if not is_rate_limited("owner-resend-ip", request, limit=10, window=3600):
+        if not is_rate_limited("owner-resend-ip", request, limit=10, window=3600) and not is_rate_limit_suppressed(request, "owner-resend-ip"):
             user = User.objects.filter(email__iexact=email, role=User.Roles.INSTITUTE_OWNER, is_active=False, is_email_verified=False).first()
             if user:
                 try:
