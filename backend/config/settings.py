@@ -177,6 +177,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")  # Read by config.email_backends.ResendEmailBackend.
 
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "/institutes/student/login/"  # Student-facing default; staff, owner and admin views pass their own login_url.
