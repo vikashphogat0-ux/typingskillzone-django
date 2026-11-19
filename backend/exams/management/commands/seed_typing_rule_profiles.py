@@ -71,7 +71,7 @@ PROFILES = {
         "passage_source_mode": "SCREEN", "trial_seconds": 300,
         "rule_notes": "MP CPCT rulebook: 5-minute English mock followed by 15-minute paragraph-based typing. Backspace policy not specified.",
     },
-    "MP-CPCT Mangal Remington Gail Hindi": {
+    "MP-CPCT Mangal Remington Gail": {
         "duration_seconds": 900, "language": "HINDI", "keyboard_layout": "Remington Gail",
         "text_encoding": "Unicode", "passage_format": "PARAGRAPHS",
         "passage_source_mode": "SCREEN", "trial_seconds": 600,
