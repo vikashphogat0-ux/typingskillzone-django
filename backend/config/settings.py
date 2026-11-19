@@ -136,24 +136,21 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Redis provides atomic INCR counters shared across all production web workers.
-# Install django-redis and configure DJANGO_CACHE_URL in production.
-DEFAULT_CACHE_BACKEND = (
-    "django_redis.cache.RedisCache"
-    if not DEBUG
-    else "django.core.cache.backends.locmem.LocMemCache"
-)
+# Authentication throttling is performed by the Cloudflare Python Worker
+# and its SQLite-backed Durable Object in production. Local Django runs use
+# process-local cache only for the existing unit-test/development fallback.
+CLOUDFLARE_AUTH_RATE_LIMITING = env_bool("DJANGO_CLOUDFLARE_AUTH_RATE_LIMITING", False)
+if not DEBUG and not CLOUDFLARE_AUTH_RATE_LIMITING:
+    raise RuntimeError(
+        "Production must enable DJANGO_CLOUDFLARE_AUTH_RATE_LIMITING and "
+        "be served only through the configured Cloudflare Worker."
+    )
+
 CACHES = {
     "default": {
-        "BACKEND": os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND),
-        "LOCATION": os.environ.get(
-            "DJANGO_CACHE_URL",
-            os.environ.get("DJANGO_CACHE_LOCATION", "typingskillzone-auth-throttle" if DEBUG else ""),
-        ),
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "typingskillzone-local-auth-throttle",
         "TIMEOUT": 900,
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"}
-        if "django_redis" in os.environ.get("DJANGO_CACHE_BACKEND", DEFAULT_CACHE_BACKEND)
-        else {},
     }
 }
 

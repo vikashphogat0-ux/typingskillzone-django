@@ -1,0 +1,19 @@
+# Example Durable Object binding for the Project B Cloudflare Python Worker.
+# This is not a complete deployment config: add the validated Python dependency
+# build settings, Hyperdrive binding, static assets, and environment secrets
+# only after the full Cloudflare runtime audit.
+name = "typing-skill-zone-project-b"
+main = "cloudflare_worker.py"
+compatibility_date = "2026-11-19"
+compatibility_flags = ["python_workers"]
+
+[vars]
+DJANGO_CLOUDFLARE_AUTH_RATE_LIMITING = "true"
+
+[[durable_objects.bindings]]
+name = "AUTH_RATE_LIMITER"
+class_name = "AuthRateLimiter"
+
+[[migrations]]
+tag = "auth-rate-limiter-v1"
+new_sqlite_classes = ["AuthRateLimiter"]

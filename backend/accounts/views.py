@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .forms import InstituteEnrollmentForm, StudentProfileForm, StudentRegistrationForm
-from .security import is_rate_limited
+from .security import is_rate_limited, is_rate_limit_suppressed
 from django.db.models import Q
 
 from exams.models import ExamConfiguration
@@ -83,7 +83,7 @@ def resend_student_verification(request):
         email = request.POST.get("email", "").strip().lower()
         if is_rate_limited("student-resend", request, identity=email, limit=3, window=3600):
             return HttpResponse("Too many requests. Please try again later.", status=429)
-        if not is_rate_limited("student-resend-ip", request, limit=10, window=3600):
+        if not is_rate_limited("student-resend-ip", request, limit=10, window=3600) and not is_rate_limit_suppressed(request, "student-resend-ip"):
             user = User.objects.filter(
                 email__iexact=email,
                 role=User.Roles.STUDENT,
