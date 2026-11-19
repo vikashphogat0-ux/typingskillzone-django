@@ -9,10 +9,48 @@ import time
 import hashlib
 from urllib.parse import parse_qs, urlparse
 
+from workers import DurableObject, Response, WorkerEntrypoint, env as worker_env, wsgi
+
+# Worker bindings/secrets are exposed through workers.env, not automatically
+# through os.environ. Copy the Django settings used by this project before
+# importing the WSGI application. The rate-limit mode is mandatory in this
+# Worker entrypoint and cannot be disabled by a client request.
+_WORKER_SETTINGS = (
+    "DJANGO_SECRET_KEY",
+    "DJANGO_DEBUG",
+    "DJANGO_ALLOWED_HOSTS",
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "DJANGO_DB_ENGINE",
+    "DJANGO_DB_NAME",
+    "DJANGO_DB_USER",
+    "DJANGO_DB_PASSWORD",
+    "DJANGO_DB_HOST",
+    "DJANGO_DB_PORT",
+    "DJANGO_DB_CONN_MAX_AGE",
+    "DJANGO_EMAIL_BACKEND",
+    "EMAIL_HOST",
+    "EMAIL_PORT",
+    "EMAIL_HOST_USER",
+    "EMAIL_HOST_PASSWORD",
+    "EMAIL_TIMEOUT",
+    "EMAIL_USE_TLS",
+    "DEFAULT_FROM_EMAIL",
+    "DJANGO_TRUST_X_FORWARDED_PROTO",
+    "DJANGO_SECURE_SSL_REDIRECT",
+    "DJANGO_SECURE_HSTS_SECONDS",
+)
+for _setting_name in _WORKER_SETTINGS:
+    try:
+        _setting_value = getattr(worker_env, _setting_name)
+    except Exception:
+        continue
+    if _setting_value is not None:
+        os.environ[_setting_name] = str(_setting_value)
+os.environ["DJANGO_CLOUDFLARE_AUTH_RATE_LIMITING"] = "true"
+
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.core.wsgi import get_wsgi_application
-from workers import DurableObject, Response, WorkerEntrypoint, wsgi
 
 from cloudflare_rate_limits import build_rate_limit_plan
 
@@ -90,19 +128,12 @@ class Default(WorkerEntrypoint):
         request.headers.delete("X-Tsz-Rate-Limit-Checked")
         request.headers.delete("X-Tsz-Rate-Limit-Suppress")
 
-        parsed_url = urlparse(request.url)
-        path = parsed_url.path
+        path = urlparse(request.url).path
         plan = None
 
         if request.method.upper() == "POST":
-            try:
-                body = await request.clone().text()
-                form_values = parse_qs(body, keep_blank_values=True)
-                form = {key: values[0] for key, values in form_values.items() if values}
-            except Exception:
-                # A protected endpoint with an unreadable body must not bypass
-                # its authentication throttle.
-                if path in {
+            protected_path = (
+                path in {
                     "/accounts/student/register/",
                     "/accounts/student/verify/resend/",
                     "/institutes/register/",
@@ -111,10 +142,23 @@ class Default(WorkerEntrypoint):
                     "/institutes/staff/login/",
                     "/institutes/owner/verify/resend/",
                     "/accounts/password-reset/",
-                } or path.startswith("/accounts/student/verify/") or path.startswith("/institutes/owner/verify/"):
+                }
+                or path.startswith("/accounts/student/verify/")
+                or path.startswith("/institutes/owner/verify/")
+            )
+            try:
+                body = await request.clone().text()
+                form_values = parse_qs(body, keep_blank_values=True)
+                form = {key: values[0] for key, values in form_values.items() if values}
+            except Exception:
+                if protected_path:
                     return Response("Authentication protection temporarily unavailable.", status=503)
                 form = {}
+
             client_ip = request.headers.get("CF-Connecting-IP")
+            if not client_ip and protected_path:
+                return Response("Authentication protection temporarily unavailable.", status=503)
+
             if client_ip:
                 valid_reset_email = False
                 if path == "/accounts/password-reset/":
@@ -131,17 +175,6 @@ class Default(WorkerEntrypoint):
                     client_ip,
                     valid_password_reset_email=valid_reset_email,
                 )
-            elif path in {
-                "/accounts/student/register/",
-                "/accounts/student/verify/resend/",
-                "/institutes/register/",
-                "/institutes/owner/login/",
-                "/institutes/student/login/",
-                "/institutes/staff/login/",
-                "/institutes/owner/verify/resend/",
-                "/accounts/password-reset/",
-            } or path.startswith("/accounts/student/verify/") or path.startswith("/institutes/owner/verify/"):
-                return Response("Authentication protection temporarily unavailable.", status=503)
 
         if plan:
             try:
@@ -153,7 +186,6 @@ class Default(WorkerEntrypoint):
                     plan["stop_on_limit"],
                 )
             except Exception:
-                # Fail closed if the shared, durable limiter cannot be reached.
                 return Response("Authentication protection temporarily unavailable.", status=503)
 
             if outcome["blocked"]:
