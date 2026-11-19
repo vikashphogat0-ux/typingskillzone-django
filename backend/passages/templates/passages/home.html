@@ -1,17 +1,34 @@
-{% extends "passages/base.html" %}
-{% block title %}TypingSkillZone{% endblock %}
+{% extends "passages/site_base.html" %}
+{% block title %}TypingSkillZone · Typing practice and examinations{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="eyebrow">Typing practice and examinations</div>
-  <h1>Build exam-ready typing speed</h1>
-  <p class="muted">Practise government-style typing tests in English and Hindi, track your results, and manage your institute from one place.</p>
-  <div class="grid">
-    <a class="item" href="{% url 'accounts:student_register' %}"><strong>Create a student account</strong><span class="muted">Register, verify your email, then start practising.</span></a>
-    <a class="item" href="{% url 'institutes:student_login' %}"><strong>Student sign in</strong><span class="muted">Continue your practice and results.</span></a>
-    <a class="item" href="{% url 'accounts:passage_library' %}"><strong>Passage library</strong><span class="muted">Browse published typing passages.</span></a>
-    <a class="item" href="{% url 'institutes:register' %}"><strong>Register an institute</strong><span class="muted">Apply for an institute account.</span></a>
-    <a class="item" href="{% url 'institutes:owner_login' %}"><strong>Institute owner sign in</strong></a>
-    <a class="item" href="{% url 'institutes:staff_login' %}"><strong>Staff sign in</strong></a>
+<section class="hero">
+  <span class="eyebrow">Typing practice and examinations</span>
+  <h1>Build exam-ready typing speed with accurate, transparent results</h1>
+  <p class="lead">Practise timed tests in English and Hindi, see your speed and accuracy after every attempt, and follow your progress over time. Institutes manage their students from one dashboard.</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'accounts:student_register' %}">Create a free student account</a>
+    <a class="btn btn-ghost" href="{% url 'accounts:student_login' %}">Student sign in</a>
   </div>
 </section>
+
+<div class="section-title">
+  <h2>Everything you need to practise</h2>
+  <p>Built around the rules of real examinations, so what you practise is what you will be tested on.</p>
+</div>
+<div class="grid grid-3">
+  <article class="card"><div class="icon">EN</div><h3>English and Hindi tests</h3><p>Passages in both languages, with Mangal, Inscript, and Remington layouts.</p></article>
+  <article class="card"><div class="icon">%</div><h3>Accurate results</h3><p>Gross and net speed, accuracy, and error counts calculated the same way every time.</p></article>
+  <article class="card"><div class="icon">&#8635;</div><h3>Never lose your work</h3><p>Your typing is saved every few seconds, so a reload brings your text back during a test.</p></article>
+</div>
+
+<div class="section-title">
+  <h2>Choose how you use TypingSkillZone</h2>
+  <p>Students, institutes, and staff each have their own sign-in.</p>
+</div>
+<div class="grid grid-2">
+  <article class="card"><div class="icon">S</div><h3>Individual students</h3><p>Create an account, verify your email, and track your own results.</p><a class="stretched" href="{% url 'accounts:student_login' %}" aria-label="Student sign in"></a></article>
+  <article class="card"><div class="icon">I</div><h3>Institute owners</h3><p>Manage your institute's students and memberships from one dashboard.</p><a class="stretched" href="{% url 'institutes:owner_login' %}" aria-label="Owner sign in"></a></article>
+  <article class="card"><div class="icon">T</div><h3>Institute staff</h3><p>Access your approved institute workspace.</p><a class="stretched" href="{% url 'institutes:staff_login' %}" aria-label="Staff sign in"></a></article>
+  <article class="card"><div class="icon">R</div><h3>Register an institute</h3><p>Apply for an institute account. Your application is reviewed before activation.</p><a class="stretched" href="{% url 'institutes:register' %}" aria-label="Register an institute"></a></article>
+</div>
 {% endblock %}
