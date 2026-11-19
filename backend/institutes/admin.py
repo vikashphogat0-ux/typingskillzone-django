@@ -19,7 +19,7 @@ class InstituteAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = ("name", "registration_code", "owner", "email", "city", "state", "status", "created_at")
     list_filter = ("status", "state", "created_at")
     search_fields = ("name", "registration_code", "email", "phone", "owner__email", "city")
-    readonly_fields = ("id", "registration_code", "approved_by", "approved_at", "created_at", "updated_at")
+    readonly_fields = ("id", "registration_code", "status", "approved_by", "approved_at", "created_at", "updated_at")
     inlines = (InstituteMembershipInline,)
     ordering = ("-created_at",)
     actions = ("approve_selected", "reject_selected", "suspend_selected")

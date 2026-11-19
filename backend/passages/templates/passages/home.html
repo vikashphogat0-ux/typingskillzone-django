@@ -1,0 +1,17 @@
+{% extends "passages/base.html" %}
+{% block title %}TypingSkillZone{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="eyebrow">Typing practice and examinations</div>
+  <h1>Build exam-ready typing speed</h1>
+  <p class="muted">Practise government-style typing tests in English and Hindi, track your results, and manage your institute from one place.</p>
+  <div class="grid">
+    <a class="item" href="{% url 'accounts:student_register' %}"><strong>Create a student account</strong><span class="muted">Register, verify your email, then start practising.</span></a>
+    <a class="item" href="{% url 'institutes:student_login' %}"><strong>Student sign in</strong><span class="muted">Continue your practice and results.</span></a>
+    <a class="item" href="{% url 'passages:simulator-list' %}"><strong>Passage library</strong><span class="muted">Browse published typing passages.</span></a>
+    <a class="item" href="{% url 'institutes:register' %}"><strong>Register an institute</strong><span class="muted">Apply for an institute account.</span></a>
+    <a class="item" href="{% url 'institutes:owner_login' %}"><strong>Institute owner sign in</strong></a>
+    <a class="item" href="{% url 'institutes:staff_login' %}"><strong>Staff sign in</strong></a>
+  </div>
+</section>
+{% endblock %}

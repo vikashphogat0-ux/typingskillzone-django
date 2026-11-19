@@ -50,6 +50,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "config.middleware.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -153,6 +155,17 @@ SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = env_bool("DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE", True)
 CSRF_COOKIE_HTTPONLY = env_bool("DJANGO_CSRF_COOKIE_HTTPONLY", False)
 
+# Client IP used for authentication throttling. X-Forwarded-For is trusted only when this
+# header is named explicitly. Behind one proxy, use X-Forwarded-For with hops=1 (Render).
+# Behind Cloudflare, use CF-Connecting-IP. Missing or malformed values fail closed.
+RATE_LIMIT_CLIENT_IP_HEADER = os.environ.get("DJANGO_RATE_LIMIT_CLIENT_IP_HEADER", "").strip()
+RATE_LIMIT_TRUSTED_PROXY_HOPS = int(os.environ.get("DJANGO_RATE_LIMIT_TRUSTED_PROXY_HOPS", "1"))
+if not DEBUG and not RATE_LIMIT_CLIENT_IP_HEADER:
+    raise RuntimeError(
+        "DJANGO_RATE_LIMIT_CLIENT_IP_HEADER must be set in production, for example "
+        "X-Forwarded-For (one trusted proxy) or CF-Connecting-IP (Cloudflare)."
+    )
+
 EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
@@ -166,14 +179,16 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TypingSkillZone <noreply@localhost>")
 
 AUTH_USER_MODEL = "accounts.User"
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "/institutes/student/login/"  # Student-facing default; staff, owner and admin views pass their own login_url.
 LOGIN_REDIRECT_URL = "/institutes/dashboard/super-admin/"
 LOGOUT_REDIRECT_URL = "/admin/login/"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
-    # Enable only when a trusted reverse proxy overwrites X-Forwarded-Proto.
-    if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", False):
+    # Production runs behind a TLS-terminating proxy (Render / Cloudflare) that sets
+    # X-Forwarded-Proto. Without this, SECURE_SSL_REDIRECT loops forever.
+    # Set DJANGO_TRUST_X_FORWARDED_PROTO=false only when the origin is reached directly over HTTPS.
+    if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", True):
         SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

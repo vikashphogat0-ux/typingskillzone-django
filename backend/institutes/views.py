@@ -1,3 +1,8 @@
+import logging
+from datetime import timedelta
+from functools import wraps
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -7,6 +12,7 @@ from django.db.models import Count, Q
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -16,6 +22,8 @@ from .forms import InstituteAdminEditForm, InstituteMemberAddForm, InstituteRegi
 from .models import Institute, InstituteMembership, InstituteSubscription, SubscriptionPlan
 from .owner_verification import send_owner_verification_email
 
+
+logger = logging.getLogger(__name__)
 
 TRIAL_PLAN_CODE = "free-trial"
 TRIAL_STUDENT_LIMIT = 25
@@ -51,7 +59,7 @@ def start_free_trial(institute, *, created_by=None):
             "plan": plan,
             "status": InstituteSubscription.Status.ACTIVE,
             "starts_at": now,
-            "ends_at": now + timezone.timedelta(days=TRIAL_DURATION_DAYS),
+            "ends_at": now + timedelta(days=TRIAL_DURATION_DAYS),
             "amount_paid": 0,
             "created_by": created_by,
         },
@@ -106,6 +114,27 @@ def create_membership_within_limits(institute, form, role):
         return form.save()
 
 
+def member_login_required(view):
+    """Send anonymous visitors to the login page for the requested portal (student or staff)."""
+
+    @wraps(view)
+    def wrapper(request, portal, *args, **kwargs):
+        if not request.user.is_authenticated:
+            name = "staff_login" if portal == "staff" else "student_login"
+            return redirect(f"{reverse('institutes:' + name)}?{urlencode({'next': request.get_full_path()})}")
+        return view(request, portal, *args, **kwargs)
+
+    return wrapper
+
+
+def _subscription_message(institute, prefix):
+    subscription = active_subscription_for(institute)
+    if subscription is None:
+        return (f"{prefix} No active trial or subscription exists, so members cannot "
+                "access the portal until a subscription is renewed.")
+    return f"{prefix} Subscription is active until {subscription.ends_at:%d %b %Y}."
+
+
 def is_super_admin(user):
     return (
         user.is_authenticated
@@ -148,12 +177,12 @@ def owner_login(request):
     return render(request, "institutes/owner_login.html", {"form": form})
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_dashboard(request):
     if not is_institute_owner(request.user):
         return HttpResponseForbidden("Institute owner access required.")
 
-    institutes = Institute.objects.filter(owner=request.user).prefetch_related("memberships")
+    institutes = Institute.objects.filter(owner=request.user)
     approved_institutes = institutes.filter(status=Institute.Status.APPROVED)
     if not approved_institutes.exists():
         statuses = list(institutes.values_list("status", flat=True))
@@ -191,7 +220,7 @@ def owner_dashboard(request):
     )
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_logout(request):
     if request.method != "POST":
         return HttpResponseForbidden("Logout must use POST.")
@@ -212,7 +241,7 @@ def get_owner_institute(request, institute_id):
     )
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 def owner_member_list(request, institute_id):
     institute = get_owner_institute(request, institute_id)
     if institute is None:
@@ -231,7 +260,7 @@ def owner_member_list(request, institute_id):
     })
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 @require_http_methods(["GET", "POST"])
 def owner_member_add(request, institute_id):
     institute = get_owner_institute(request, institute_id)
@@ -257,7 +286,7 @@ def owner_member_add(request, institute_id):
     })
 
 
-@login_required
+@login_required(login_url="/institutes/owner/login/")
 @require_POST
 def owner_member_status(request, institute_id, membership_id, action):
     institute = get_owner_institute(request, institute_id)
@@ -325,7 +354,7 @@ def member_login(request, portal):
     return render(request, f"institutes/{portal}_login.html", {"form": form, "portal": portal})
 
 
-@login_required
+@member_login_required
 def member_dashboard(request, portal):
     if portal not in {"student", "staff"}:
         return HttpResponseForbidden("Unsupported member portal.")
@@ -355,7 +384,7 @@ def member_dashboard(request, portal):
     })
 
 
-@login_required
+@member_login_required
 @require_POST
 def member_logout(request, portal):
     if portal not in {"student", "staff"}:
@@ -367,7 +396,7 @@ def member_logout(request, portal):
     return redirect(f"institutes:{portal}_login")
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def super_admin_dashboard(request):
     status_counts = {
@@ -388,7 +417,7 @@ def super_admin_dashboard(request):
     return render(request, "institutes/super_admin_dashboard.html", context)
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def institute_list(request):
     institutes = Institute.objects.select_related("owner", "approved_by")
@@ -413,7 +442,7 @@ def institute_list(request):
     })
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 def institute_detail(request, pk):
     institute = get_object_or_404(
@@ -423,7 +452,7 @@ def institute_detail(request, pk):
     return render(request, "institutes/institute_detail.html", {"institute": institute})
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_http_methods(["GET", "POST"])
 def institute_edit(request, pk):
@@ -436,7 +465,7 @@ def institute_edit(request, pk):
     return render(request, "institutes/institute_edit.html", {"form": form, "institute": institute})
 
 
-@login_required
+@login_required(login_url="/admin/login/")
 @user_passes_test(is_super_admin, login_url="/admin/login/")
 @require_POST
 def review_institute(request, pk, action):
@@ -447,7 +476,7 @@ def review_institute(request, pk, action):
         institute.approved_at = timezone.now()
         institute.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
         start_free_trial(institute, created_by=request.user)
-        messages.success(request, f"{institute.name} has been approved and its 7-day free trial has started.")
+        messages.success(request, _subscription_message(institute, f"{institute.name} has been approved."))
     elif action == "reject" and institute.status == Institute.Status.PENDING:
         institute.status = Institute.Status.REJECTED
         institute.approved_by = request.user
@@ -464,7 +493,7 @@ def review_institute(request, pk, action):
         institute.approved_at = timezone.now()
         institute.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
         start_free_trial(institute, created_by=request.user)
-        messages.success(request, f"{institute.name} has been reactivated.")
+        messages.success(request, _subscription_message(institute, f"{institute.name} has been reactivated."))
     else:
         messages.error(request, "This action is not valid for the institute's current status.")
     return redirect("institutes:institute_detail", pk=institute.pk)
@@ -480,12 +509,15 @@ def institute_register(request):
     if request.method == "POST":
         form = InstituteRegistrationForm(request.POST)
         if form.is_valid():
-            institute = form.save()
+            try:
+                institute = form.save()
+            except IntegrityError:
+                form.add_error("owner_email", "An account with this email already exists.")
+                return render(request, "institutes/register.html", {"form": form})
             try:
                 send_owner_verification_email(request, institute.owner)
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception("Unable to send owner verification email for user %s", institute.owner_id)
+                logger.exception("Unable to send owner verification email for user %s", institute.owner_id)
                 messages.warning(request, "Registration was saved, but the verification email could not be sent. Use the resend option below.")
             return render(request, "institutes/registration_success.html", {"institute": institute})
     else:
