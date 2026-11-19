@@ -56,8 +56,8 @@ Base: `origin/integration/release-review-2026-11` (88d04b6).
 
 ## Counts (computed from the table above)
 - **Fixed in code or configuration:** 26. SCORE-01 and SCORE-02 are fixed in the seed only; existing exam rows still need `reconcile_word_error_rules` (dry run, then `--apply`).
-- **Partially fixed:** 4 (EXAM-01, PERF-01, CODE-02, SEC-02).
-- **Not implemented, not changed, not fixed, or not verified:** 12. Each needs a product decision, an approval, or infrastructure not in this codebase.
+- **Partially fixed:** 5 (EXAM-01, PERF-01, CODE-02, SEC-02, INST-02).
+- **Not implemented, not changed, not fixed, or not verified:** 11. Each needs a product decision, an approval, or infrastructure not in this codebase.
 - **Total issues:** 42.
 
 ## Protected items — not changed
