@@ -1,34 +1,105 @@
 {% extends "passages/site_base.html" %}
-{% block title %}TypingSkillZone · Typing practice and examinations{% endblock %}
+{% block title %}TypingSkillZone · Typing practice for competitive exams{% endblock %}
 {% block content %}
 <section class="hero">
-  <span class="eyebrow">Typing practice and examinations</span>
-  <h1>Build exam-ready typing speed with accurate, transparent results</h1>
-  <p class="lead">Practise timed tests in English and Hindi, see your speed and accuracy after every attempt, and follow your progress over time. Institutes manage their students from one dashboard.</p>
-  <div class="actions">
-    <a class="btn btn-primary" href="{% url 'accounts:student_register' %}">Create a free student account</a>
-    <a class="btn btn-ghost" href="{% url 'accounts:student_login' %}">Student sign in</a>
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">Typing practice for competitive exams</span>
+      <h1>Practise the way the exam tests you</h1>
+      <p class="lead">Timed passages in English and Hindi, scored with the rules each examination uses. See your speed and accuracy after every attempt, and track your improvement over time.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="{% url 'accounts:student_register' %}">Create a student account</a>
+        <a class="btn btn-ghost" href="{% url 'accounts:student_login' %}">Sign in</a>
+      </div>
+      <div class="trust">
+        <span class="pill">English</span><span class="pill">Hindi</span><span class="pill">Mangal</span><span class="pill">Inscript</span><span class="pill">Remington Gail</span>
+      </div>
+    </div>
+    <aside class="example" aria-label="Example result">
+      <div class="example-top"><strong>Sample result</strong><small>Example only</small></div>
+      <div class="example-metrics">
+        <div class="metric"><strong>32</strong><span>Net WPM</span></div>
+        <div class="metric"><strong>96%</strong><span>Accuracy</span></div>
+        <div class="metric"><strong>4</strong><span>Errors</span></div>
+      </div>
+      <div class="bar" aria-hidden="true"><i style="width:72%"></i></div>
+      <p class="example-note">Your real results appear here after each timed test, calculated with the rules set for that exam.</p>
+    </aside>
   </div>
 </section>
 
-<div class="section-title">
-  <h2>Everything you need to practise</h2>
-  <p>Built around the rules of real examinations, so what you practise is what you will be tested on.</p>
-</div>
-<div class="grid grid-3">
-  <article class="card"><div class="icon">EN</div><h3>English and Hindi tests</h3><p>Passages in both languages, with Mangal, Inscript, and Remington layouts.</p></article>
-  <article class="card"><div class="icon">%</div><h3>Accurate results</h3><p>Gross and net speed, accuracy, and error counts calculated the same way every time.</p></article>
-  <article class="card"><div class="icon">&#8635;</div><h3>Never lose your work</h3><p>Your typing is saved every few seconds, so a reload brings your text back during a test.</p></article>
-</div>
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">How it works</span>
+    <h2>From sign-up to your first result in minutes</h2>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Create an account</h3><p>Register with your email address and a password.</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Verify your email</h3><p>Open the link we send, then your account is active.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Pick a passage</h3><p>Choose an exam-style passage in the language you need.</p></div>
+    <div class="step"><div class="step-num">4</div><h3>Type and review</h3><p>Finish within the time limit and review your result and history.</p></div>
+  </div>
+</section>
 
-<div class="section-title">
-  <h2>Choose how you use TypingSkillZone</h2>
-  <p>Students, institutes, and staff each have their own sign-in.</p>
-</div>
-<div class="grid grid-2">
-  <article class="card"><div class="icon">S</div><h3>Individual students</h3><p>Create an account, verify your email, and track your own results.</p><a class="stretched" href="{% url 'accounts:student_login' %}" aria-label="Student sign in"></a></article>
-  <article class="card"><div class="icon">I</div><h3>Institute owners</h3><p>Manage your institute's students and memberships from one dashboard.</p><a class="stretched" href="{% url 'institutes:owner_login' %}" aria-label="Owner sign in"></a></article>
-  <article class="card"><div class="icon">T</div><h3>Institute staff</h3><p>Access your approved institute workspace.</p><a class="stretched" href="{% url 'institutes:staff_login' %}" aria-label="Staff sign in"></a></article>
-  <article class="card"><div class="icon">R</div><h3>Register an institute</h3><p>Apply for an institute account. Your application is reviewed before activation.</p><a class="stretched" href="{% url 'institutes:register' %}" aria-label="Register an institute"></a></article>
-</div>
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">Exam-style practice</span>
+    <h2>Rules built in for the exams you are preparing for</h2>
+    <p>Each exam family has its own scoring rules and passage settings. Results follow those rules, and results that are not yet verified are labelled as practice.</p>
+  </div>
+  <div class="exam-list">
+    <span class="pill">Delhi Police</span><span class="pill">BSF</span><span class="pill">RSMSSB</span><span class="pill">MP-CPCT</span><span class="pill">WBPSC</span><span class="pill">Jharkhand High Court</span><span class="pill">CBSE</span><span class="pill">AIIMS CRE</span><span class="pill">Supreme Court</span><span class="pill">Patna High Court</span><span class="pill">Bombay High Court</span>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">Features</span>
+    <h2>Everything for focused practice</h2>
+  </div>
+  <div class="grid grid-3">
+    <article class="card"><div class="icon">T</div><h3>Timed tests</h3><p>A countdown that runs on the server clock, so a fast or slow device does not change your time.</p></article>
+    <article class="card"><div class="icon">%</div><h3>Accurate scoring</h3><p>Speed and accuracy calculated with the rules for each exam, including whole-word error counting where it applies.</p></article>
+    <article class="card"><div class="icon">S</div><h3>Autosave</h3><p>Your typing is saved every few seconds, so a reload brings your text back during a test.</p></article>
+    <article class="card"><div class="icon">H</div><h3>Progress history</h3><p>Filter past results by exam and date to see how your speed and accuracy change.</p></article>
+    <article class="card"><div class="icon">L</div><h3>English and Hindi</h3><p>Passages in both languages, with the keyboard layouts used in these exams.</p></article>
+    <article class="card"><div class="icon">I</div><h3>Institute workspaces</h3><p>Institutes manage their students, memberships and staff from one dashboard.</p></article>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">Who it is for</span>
+    <h2>Start as a student, or manage an institute</h2>
+  </div>
+  <div class="grid grid-3">
+    <article class="card"><div class="icon">S</div><h3>Students</h3><p>Practise on your own, track your results, and build speed at your own pace.</p><a class="more" href="{% url 'accounts:student_register' %}">Create an account &rarr;</a><a class="stretched" href="{% url 'accounts:student_register' %}" aria-label="Create a student account"></a></article>
+    <article class="card"><div class="icon">I</div><h3>Institute owners</h3><p>Register your institute, then add students and staff once your application is approved.</p><a class="more" href="{% url 'institutes:register' %}">Register an institute &rarr;</a><a class="stretched" href="{% url 'institutes:register' %}" aria-label="Register an institute"></a></article>
+    <article class="card"><div class="icon">T</div><h3>Staff</h3><p>Sign in to the approved institute workspace you have been given access to.</p><a class="more" href="{% url 'institutes:staff_login' %}">Staff sign in &rarr;</a><a class="stretched" href="{% url 'institutes:staff_login' %}" aria-label="Staff sign in"></a></article>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">Questions</span>
+    <h2>Frequently asked questions</h2>
+  </div>
+  <div class="faq">
+    <details><summary>Do I need an institute to use TypingSkillZone?</summary><p>No. Students can register directly and practise on their own. Institutes use a separate workspace for managing students and staff.</p></details>
+    <details><summary>Which languages are supported?</summary><p>English and Hindi passages are available, in the layouts used by the exams listed above.</p></details>
+    <details><summary>How are results calculated?</summary><p>Speed and accuracy follow the scoring rules configured for each exam. Results for rules that are not yet verified are shown as practice results, not official qualifications.</p></details>
+    <details><summary>What happens if my page reloads during a test?</summary><p>Your typed text is saved every few seconds and restored when the page reloads. The timer continues, so keep an eye on the clock.</p></details>
+    <details><summary>I did not receive my verification email. What should I do?</summary><p>Check your spam folder first. You can ask for the email to be sent again from the registration page.</p></details>
+  </div>
+</section>
+
+<section class="container">
+  <div class="cta-band">
+    <div>
+      <h2>Ready to practise?</h2>
+      <p>Create your student account and take your first timed passage today.</p>
+    </div>
+    <a class="btn btn-light" href="{% url 'accounts:student_register' %}">Create a student account</a>
+  </div>
+</section>
 {% endblock %}
