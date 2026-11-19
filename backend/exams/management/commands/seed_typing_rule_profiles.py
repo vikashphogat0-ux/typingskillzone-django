@@ -54,6 +54,7 @@ PROFILES = {
         "keyboard_layout": "Inscript", "text_encoding": "Mangal",
         "strokes_per_word": 5, "error_allowance_percent": 5,
         "scoring_mode": "ERROR_PERCENTAGE",
+        "error_rules": {"count_word_errors": True},
         "rule_notes": "BSF-led CAPF direct recruitment 2024 profile: 10 minutes, 30 WPM Hindi, Mangal font; 5% permitted mistakes. Backspace behaviour not specified.",
     },
     "RSMSSB LDC English Typing Test": {
@@ -110,6 +111,7 @@ PROFILES = {
         "duration_seconds": 900, "language": "ENGLISH", "minimum_wpm": 35,
         "keyboard_layout": "QWERTY", "strokes_per_word": 50,
         "mistake_penalty_strokes": 50, "scoring_mode": "STROKE_PENALTY",
+        "error_rules": {"count_word_errors": True},
         "rule_notes": "AIIMS CRE-4 2025 JAA/LDC/UDC: 15 minutes, 35 WPM English, 50 strokes per word and 50-stroke penalty per full mistake. Backspace policy not specified.",
     },
     "AIIMS CRE Hindi Mangal Inscript": {
@@ -117,11 +119,13 @@ PROFILES = {
         "keyboard_layout": "Inscript", "text_encoding": "Mangal",
         "strokes_per_word": 50, "mistake_penalty_strokes": 50,
         "scoring_mode": "STROKE_PENALTY",
+        "error_rules": {"count_word_errors": True},
         "rule_notes": "AIIMS CRE-4 2025 JAA/LDC/UDC: 15 minutes, 30 WPM Hindi, Mangal/Inscript, 50 strokes per word and 50-stroke penalty per full mistake. Backspace policy not specified.",
     },
     "Supreme Court of India - JCA Test": {
         "duration_seconds": 600, "language": "ENGLISH", "minimum_wpm": 35,
         "error_allowance_percent": 3, "scoring_mode": "ERROR_PERCENTAGE",
+        "error_rules": {"count_word_errors": True},
         "rule_notes": "Supreme Court JCA 2025: 10 minutes, 35 WPM English, up to 3% mistakes permitted. Backspace policy not specified.",
     },
     "Patna High Court English Test": {

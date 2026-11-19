@@ -1,6 +1,7 @@
 """Deterministic server-side scoring for a single submitted typing attempt."""
 from difflib import SequenceMatcher
 import re
+import unicodedata
 from .mistake_classification import classify_typing_mistakes
 SCORING_VERSION = "tsz-char-word-v2"
 
@@ -90,6 +91,10 @@ def _evaluate_qualification_rules(config, metrics):
 
 def calculate_result(*, reference, typed, duration_seconds, rules, reported_keystrokes=None):
     """Calculate metrics exclusively from persisted source text and submitted text."""
+    # Hindi text can arrive in composed (NFC) or decomposed (NFD) form. Compare both in NFC so
+    # equivalent characters are never scored as errors.
+    reference = unicodedata.normalize("NFC", reference or "")
+    typed = unicodedata.normalize("NFC", typed or "")
     duration = max(1, int(duration_seconds))
     minutes = duration / 60
     chars = _count_character_errors(reference, typed)
@@ -171,6 +176,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification = None
     qualification_note = "Qualification is not configured."
     permitted_error_count = excess_error_count = net_words = None
+    marks_minimum = None
     if scoring_mode == "CORRECT_WORDS":
         net_wpm = round(correct_words / minutes, 2)
     elif scoring_mode == "NET_WPM":
@@ -193,6 +199,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             score = round(correct_words * max(0, float(marks_per_word)), 2)
         except (TypeError, ValueError):
             score = 0
+        # Marks cannot exceed the configured maximum, whatever the passage length.
+        try:
+            if scoring_rules.get("maximum_marks") is not None:
+                score = min(score, round(float(scoring_rules["maximum_marks"]), 2))
+        except (TypeError, ValueError):
+            pass
+        try:
+            if scoring_rules.get("minimum_marks") is not None:
+                marks_minimum = float(scoring_rules["minimum_marks"])
+        except (TypeError, ValueError):
+            marks_minimum = None
     elif scoring_mode in {"ERROR_PERCENTAGE", "QUALIFYING_ONLY"}:
         try:
             allowance = float(rules.get("error_allowance_percent"))
@@ -256,7 +273,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 net_wpm = round(net_words / minutes, 2)
 
         disqualify_at = scoring_rules.get("disqualify_at_mistakes")
-        if disqualify_at is not None and error_count >= int(disqualify_at):
+        try:
+            disqualify_at = int(disqualify_at) if disqualify_at is not None else None
+        except (TypeError, ValueError):
+            # A malformed admin value must not crash submission; it disables the rule instead.
+            disqualify_at = None
+        if disqualify_at is not None and error_count >= disqualify_at:
             score = 0
             qualification = (
                 False if rules.get("verification_status") == "VERIFIED" else None
@@ -307,6 +329,18 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification_note = "Qualification is pending because the exam rules are not verified."
     elif qualification is not None:
         qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
+
+    # Minimum marks qualify a verified CORRECT_WORD_MARKS attempt when no explicit
+    # qualification rules are configured. Unverified attempts never receive a claim.
+    if (
+        rules.get("verification_status") == "VERIFIED"
+        and not configured_qualification
+        and marks_minimum is not None
+        and score is not None
+    ):
+        qualification = score >= marks_minimum
+        qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
+        qualification_note = "Qualification calculated from the configured minimum marks."
 
     return {
         "scoring_version": SCORING_VERSION,
