@@ -148,8 +148,8 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(SimulatorPassage)
 class SimulatorPassageAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("passage_id", "exam", "source", "status", "published_at")
-    list_filter = ("exam", "status", "source__language")
+    list_display = ("passage_id", "exam", "source", "status", "release_date", "release_slot", "release_position")
+    list_filter = ("exam", "status", "release_slot", "source__language")
     search_fields = ("source__title", "source__content", "exam__name")
     readonly_fields = ("exam", "source", "serial_number", "status", "published_at", "created_at")
     ordering = ("exam", "serial_number")

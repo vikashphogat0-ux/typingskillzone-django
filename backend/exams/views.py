@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from exams.models import ExamConfiguration
-from passages.models import SimulatorPassage
+from passages.models import SimulatorPassage, released_queryset
 
 
 def _published_filter():
@@ -43,11 +43,12 @@ def exam_detail(request, code):
         .order_by("-published_at", "serial_number")
     )
     today = timezone.localdate()
+    passages = released_queryset(passages)
     not_published = exam.scoring_mode == "GENERIC" and not exam.rule_notes
     return render(request, "exams/exam_detail.html", {
         "exam": exam,
         "duration_minutes": (exam.duration_seconds // 60) if exam.duration_seconds else None,
-        "todays_passages": passages.filter(published_at__date=today)[:30],
+        "todays_passages": passages.filter(release_date=today).order_by("release_slot", "release_position")[:30],
         "recent_passages": passages[:60],
         "published_count": passages.count(),
         "today": today,

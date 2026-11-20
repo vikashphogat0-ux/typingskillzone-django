@@ -1,6 +1,28 @@
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
+
+# Release schedule is in Indian Standard Time, whatever the server's timezone.
+LOCAL_TZ = ZoneInfo("Asia/Kolkata")
+
+
+class ReleaseSlot(models.TextChoices):
+    MORNING = "MORNING", "Morning (07:00)"
+    AFTERNOON = "AFTERNOON", "Afternoon (13:00)"
+    EVENING = "EVENING", "Evening special (19:00)"
+
+
+RELEASE_TIMES = {
+    "MORNING": time(7, 0),
+    "AFTERNOON": time(13, 0),
+    "EVENING": time(19, 0),
+}
+SLOT_CAPACITY = {"MORNING": 5, "AFTERNOON": 5, "EVENING": 2}
 
 
 class PassageSource(models.Model):
@@ -48,6 +70,9 @@ class SimulatorPassage(models.Model):
     serial_number = models.PositiveBigIntegerField()
     status = models.CharField(max_length=12, choices=Status.choices, default="PUBLISHED", db_index=True)
     published_at = models.DateTimeField(default=timezone.now)
+    release_date = models.DateField(null=True, blank=True, db_index=True)
+    release_slot = models.CharField(max_length=10, choices=ReleaseSlot.choices, blank=True, default="")
+    release_position = models.PositiveSmallIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -55,12 +80,41 @@ class SimulatorPassage(models.Model):
         constraints = [
             models.UniqueConstraint(fields=("exam", "serial_number"), name="uniq_exam_passage_serial"),
             models.UniqueConstraint(fields=("exam", "source"), name="uniq_exam_source_publication"),
+            models.UniqueConstraint(
+                fields=("exam", "release_date", "release_slot", "release_position"),
+                condition=Q(release_date__isnull=False),
+                name="uniq_exam_release_slot_position",
+            ),
         ]
         indexes = [models.Index(fields=("exam", "status", "serial_number"), name="passage_exam_status_num_idx")]
 
     @property
     def passage_id(self):
         return f"{self.serial_number:02d}"
+
+    @property
+    def release_at(self):
+        """The moment this passage opens, or None if it has no schedule."""
+        if not (self.release_date and self.release_slot):
+            return None
+        return datetime.combine(self.release_date, RELEASE_TIMES[self.release_slot], tzinfo=LOCAL_TZ)
+
+    def is_released(self, now=None):
+        """Unscheduled passages stay available. Scheduled ones open at their slot time."""
+        release = self.release_at
+        if release is None:
+            return True
+        return (now or timezone.now()) >= release
+
+    def clean(self):
+        super().clean()
+        scheduled = [bool(self.release_date), bool(self.release_slot), self.release_position is not None]
+        if any(scheduled) and not all(scheduled):
+            raise ValidationError("Set the release date, slot and position together, or leave all three empty.")
+        if self.release_slot:
+            capacity = SLOT_CAPACITY[self.release_slot]
+            if not (1 <= (self.release_position or 0) <= capacity):
+                raise ValidationError(f"Position must be between 1 and {capacity} for this slot.")
 
     @property
     def rendered_content(self):
@@ -104,3 +158,16 @@ class SimulatorPassage(models.Model):
 
     def __str__(self):
         return f"{self.exam.name} — Passage {self.passage_id}"
+
+
+def released_queryset(queryset, now=None):
+    """Keep scheduled passages whose slot has opened, plus all unscheduled passages."""
+    local_now = timezone.localtime(now or timezone.now(), LOCAL_TZ)
+    today = local_now.date()
+    open_slots = [slot for slot, opens in RELEASE_TIMES.items() if opens <= local_now.time()]
+    return queryset.filter(
+        Q(release_date__isnull=True)
+        | Q(release_date__lt=today)
+        | Q(release_date=today, release_slot__in=open_slots)
+    )
+

@@ -30,6 +30,8 @@ def start_session(*, learner, publication):
             or publication.source.status != PassageSource.Status.PUBLISHED
             or not publication.exam.is_active):
         raise ValidationError("This passage is not available for a new attempt.")
+    if not publication.is_released():
+        raise ValidationError("This passage is not released yet.")
 
     # One live attempt per learner and passage: reopen it instead of creating a second.
     existing = (
