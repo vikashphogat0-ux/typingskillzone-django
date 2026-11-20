@@ -53,6 +53,62 @@ class BulkUploadTests(TestCase):
         first = SimulatorPassage.objects.get(exam=self.exam, serial_number=1)
         self.assertEqual(first.release_date, start)
 
+    def test_ten_passages_publish_to_many_exams_with_independent_sequences(self):
+        exams = [
+            ExamConfiguration.objects.create(
+                code=f"bulk-wide-{index:03d}",
+                name=f"Bulk Wide {index:03d}",
+                language="ENGLISH",
+                script="LATIN",
+                duration_seconds=600,
+                allow_backspace=False,
+            )
+            for index in range(12)
+        ]
+        csv_rows = ["title,content,language,script"]
+        csv_rows.extend(
+            f"Wide {index},Passage content {index}.,ENGLISH,LATIN"
+            for index in range(10)
+        )
+        rows, errors = parse_passage_csv(csv_file("\\n".join(csv_rows) + "\\n"))
+        self.assertEqual(errors, [])
+
+        result = import_passages(rows, self.admin, publish=True, start_date=None)
+
+        self.assertEqual(result["created"], 10)
+        self.assertEqual(result["published"], 120)
+        self.assertEqual(
+            SimulatorPassage.objects.filter(exam__in=exams, status=SimulatorPassage.Status.PUBLISHED).count(),
+            120,
+        )
+        for exam in exams:
+            self.assertEqual(
+                list(SimulatorPassage.objects.filter(exam=exam).order_by("serial_number").values_list("serial_number", flat=True)),
+                list(range(1, 11)),
+            )
+
+    def test_retry_resumes_same_users_partially_published_source(self):
+        source = PassageSource.objects.create(
+            title="Resume me",
+            content="Resume passage.",
+            language="ENGLISH",
+            script="LATIN",
+            created_by=self.admin,
+            status=PassageSource.Status.PUBLISHED,
+        )
+        rows, _ = parse_passage_csv(
+            csv_file("title,content,language,script\\nResume me,Resume passage.,ENGLISH,LATIN\\n")
+        )
+
+        first = import_passages(rows, self.admin, publish=True, start_date=None)
+        second = import_passages(rows, self.admin, publish=True, start_date=None)
+
+        self.assertEqual(first["created"], 0)
+        self.assertEqual(first["published"], 1)
+        self.assertEqual(second["created"], 0)
+        self.assertEqual(second["published"], 0)
+        self.assertEqual(SimulatorPassage.objects.filter(source=source).count(), 1)
+
     def test_existing_title_is_skipped(self):
         PassageSource.objects.create(title="Dup", content="x", language="ENGLISH", script="LATIN")
         rows, _ = parse_passage_csv(csv_file("title,content,language\nDup,Text.,ENGLISH\n"))
