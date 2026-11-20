@@ -15,11 +15,13 @@
     <header><h3>Import complete</h3></header>
     <ul>
       <li><span>Passages created</span><strong>{{ result.created }}</strong></li>
-      <li><span>Publications created</span><strong>{{ result.published }}</strong></li>
+      <li><span>New publications created</span><strong>{{ result.published }}</strong></li>
+      <li><span>Archived publications restored</span><strong>{{ result.reactivated }}</strong></li>
       <li><span>Passages scheduled</span><strong>{{ result.scheduled }}</strong></li>
     </ul>
     {% for line in result.skipped %}<p class="tsz-muted">Skipped: {{ line }}</p>{% endfor %}
     {% for line in result.problems %}<p class="tsz-warn">{{ line }}</p>{% endfor %}
+    {% if result.problems %}<p class="tsz-muted">Successful exam publications are retained. Correct the reported issue and submit the same CSV again to safely complete missing publications.</p>{% endif %}
   </section>
   {% endif %}
 
@@ -31,6 +33,7 @@
       <label class="tsz-check">Schedule each exam's queue from <input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></label>
       <button class="tsz-btn" type="submit" name="action" value="preview">Check file</button>
       <p class="tsz-muted">Header line example: <code>title,content,language,script,source_reference</code></p>
+      <p class="tsz-muted">Each passage may be distributed to many matching exam simulators. The importer processes each exam as a separate transaction so a failure does not roll back completed exams. If a run is interrupted, submit the same CSV again to resume missing publications without duplicating passage IDs.</p>
     </div>
   </form>
 
