@@ -1,179 +1,42 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Student Dashboard | TypingSkillZone</title>
-  <style>
-    :root{color-scheme:dark;--bg:#0b1020;--panel:rgba(23,32,55,.82);--line:#263653;--text:#edf4ff;--muted:#9eafc8;--blue:#60a5fa;--cyan:#67e8f9}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172b4a 0,#0b1020 55%);color:var(--text);font:15px/1.6 Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
-    .wrap{max-width:1050px;margin:0 auto;padding:34px 20px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap}
-    .brand{font-weight:800;letter-spacing:.3px}
-    .brand span{color:var(--cyan)}
-    a{color:var(--blue);text-decoration:none}
-    a:hover{text-decoration:underline}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0005;backdrop-filter:blur(14px)}
-    h1{font-size:clamp(25px,4vw,36px);line-height:1.2;margin:0 0 8px}
-    h2{font-size:clamp(20px,3vw,24px);margin:0 0 12px;color:var(--text)}
-    p{color:var(--muted)}
-    .eyebrow{color:var(--cyan);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}
-    .item{border:1px solid var(--line);border-radius:14px;padding:18px;background:#111b30}
-    .id{font-size:25px;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums}
-    .item strong{display:block;margin:4px 0}
-    .muted{color:var(--muted);font-size:13px}
-    .empty{text-align:center;padding:48px 24px;color:var(--muted)}
-    .empty strong{color:var(--text);display:block;margin-bottom:8px}
-    .nav{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
-    .nav a,.nav button{border:1px solid var(--line);border-radius:10px;padding:10px 16px;background:#111b30;color:var(--text);font-size:14px;cursor:pointer;text-decoration:none}
-    .nav a:hover,.nav button:hover{border-color:var(--cyan)}
-    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}
-    th{text-align:left;color:var(--muted);font-weight:600;padding:10px;border-bottom:1px solid var(--line)}
-    td{padding:10px;border-bottom:1px solid var(--line);color:var(--text)}
-    tr:hover td{background:#142a4a}
-    .metric-progress {
-    display: block;
-    width: 100%;
-    height: 8px;
-    margin-top: 6px;
-    border: 0;
-    border-radius: 4px;
-    overflow: hidden;
-    appearance: none;
-    background: #142a4a;
-}
-
-.metric-progress::-webkit-progress-bar {
-    background: #142a4a;
-    border-radius: 4px;
-}
-
-.metric-progress::-webkit-progress-value {
-    background: linear-gradient(90deg, var(--cyan), var(--blue));
-    border-radius: 4px;
-}
-
-.metric-progress::-moz-progress-bar {
-    background: linear-gradient(90deg, var(--cyan), var(--blue));
-    border-radius: 4px;
-}
-    .badge{display:inline-block;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#142a4a;color:var(--cyan)}
-    @media(max-width:600px){.wrap{padding:20px 14px}.panel{padding:18px}.top{align-items:flex-start;flex-direction:column}}
-  </style>
-</head>
-<body><main class="wrap">
-  <header class="top">
-    <div>
-      <div class="brand">Typing<span>SkillZone</span></div>
-      <div class="eyebrow">Student workspace</div>
-      <h1>Welcome, {{ request.user.first_name|default:request.user.email }}</h1>
-      <p class="muted">Track your typing progress, review past attempts, and browse published passages.</p>
-    </div>
-    <nav class="nav">
-      <a href="{% url 'accounts:passage_library' %}">Passage Library</a>
-      <a href="{% url 'accounts:student_result_history' %}">Result History</a>
-      <a href="{% url 'accounts:student_profile' %}">Edit Profile</a>
-      <form method="post" action="{% url 'institutes:student_logout' %}" style="margin:0">{% csrf_token %}<button type="submit">Sign out</button></form>
-    </nav>
-  </header>
-
-  <section class="panel">
-    <div class="eyebrow">Progress overview</div>
-    <h2>Your statistics</h2>
-    <div class="grid">
-      <div class="item">
-        <strong>Total attempts</strong>
-        <div class="id">{{ total_sessions }}</div>
-        <div class="muted">All typing sessions started</div>
-      </div>
-      <div class="item">
-        <strong>Completed</strong>
-        <div class="id">{{ completed_sessions }}</div>
-        <div class="muted">Submitted and scored</div>
-      </div>
-      <div class="item">
-        <strong>Avg WPM</strong>
-        <div class="id">{{ avg_wpm }}</div>
-        <div class="muted">Words per minute (scored attempts)</div>
-        <progress class="metric-progress" max="100" value="{{ avg_wpm|floatformat:0 }}" aria-label="Average typing speed"></progress>
-      </div>
-      <div class="item">
-        <strong>Avg accuracy</strong>
-        <div class="id">{{ avg_accuracy }}%</div>
-        <div class="muted">Character accuracy (scored attempts)</div>
-        <progress class="metric-progress" max="100" value="{{ avg_accuracy }}" aria-label="Average accuracy"></progress>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel" style="margin-top:22px">
-    <div class="eyebrow">Practice goals</div>
-    <h2>Targets</h2>
-    <div class="grid">
-      <div class="item">
-        <strong>Target WPM</strong>
-        <div class="id">{{ target_wpm }}</div>
-        <div class="muted">Your goal words per minute</div>
-      </div>
-      <div class="item">
-        <strong>Target accuracy</strong>
-        <div class="id">{{ target_accuracy }}%</div>
-        <div class="muted">Your goal accuracy</div>
-      </div>
-      <div class="item">
-        <strong>Daily goal</strong>
-        <div class="id">{{ daily_goal_minutes }}</div>
-        <div class="muted">Practice minutes per day</div>
-      </div>
-    </div>
-    <p class="muted" style="margin-top:12px">Update your targets at <a href="{% url 'accounts:student_profile' %}">Student Profile</a>.</p>
-  </section>
-
-  <section class="panel" style="margin-top:22px">
-    <div class="eyebrow">Recent attempts</div>
-    <h2>Completed sessions</h2>
-    {% if recent %}
-    <table>
-      <thead>
-        <tr>
-          <th>Exam</th>
-          <th>Passage</th>
-          <th>State</th>
-          <th>Started</th>
-          <th>WPM</th>
-          <th>Accuracy</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for session in recent %}
-        <tr>
-          <td>{{ session.publication.exam.name }}</td>
-          <td>#{{ session.publication.passage_id }}</td>
-          <td><span class="badge">{{ session.get_state_display }}</span></td>
-          <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
-          <td>
-            {% if session.result_snapshot.net_wpm != None %}{{ session.result_snapshot.net_wpm|floatformat:1 }}{% else %}<span class="muted">—</span>{% endif %}
-          </td>
-          <td>
-            {% if session.result_snapshot.accuracy_percent != None %}{{ session.result_snapshot.accuracy_percent|floatformat:1 }}%{% else %}<span class="muted">—</span>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">
-      <strong>No completed attempts yet</strong>
-      <p>Start a typing test from the Passage Library to see your results here.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <section class="panel" style="margin-top:22px">
-    <div class="nav">
-      <a href="{% url 'accounts:passage_library' %}" style="background:linear-gradient(90deg,#3979ed,#36a9d8);color:white;border:none">Start a new test</a>
-      <a href="{% url 'accounts:student_result_history' %}">View full history</a>
-    </div>
-  </section>
-</main></body></html>
+{% extends "passages/student_base.html" %}
+{% block title %}My dashboard · TypingSkillZone{% endblock %}
+{% block app %}
+<section class="page-head">
+  <span class="eyebrow">Student dashboard</span>
+  <h1>Welcome back{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
+  <p class="lead">Your practice at a glance. Pick an exam to continue, or review your recent results.</p>
+</section>
+<div class="metrics">
+  <article class="metric-card"><span>Tests completed</span><strong>{{ completed_sessions }}</strong><small>{{ total_sessions }} started</small></article>
+  <article class="metric-card"><span>Average net speed</span><strong>{{ avg_wpm|default:"–" }}</strong><small>Target {{ target_wpm|default:"not set" }} WPM</small></article>
+  <article class="metric-card"><span>Average accuracy</span><strong>{{ avg_accuracy|default:"–" }}{% if avg_accuracy %}%{% endif %}</strong><small>Target {{ target_accuracy|default:"not set" }}{% if target_accuracy %}%{% endif %}</small></article>
+  <article class="metric-card"><span>Daily goal</span><strong>{{ daily_goal_minutes|default:"–" }}</strong><small>minutes of practice</small></article>
+</div>
+<div class="quick-actions">
+  <a class="btn btn-primary" href="{% url 'exams:catalogue' %}">Choose an exam</a>
+  <a class="btn btn-ghost" href="{% url 'accounts:passage_library' %}">Passage library</a>
+  <a class="btn btn-ghost" href="{% url 'accounts:student_result_history' %}">Full result history</a>
+</div>
+<section class="card">
+  <h2>Recent results</h2>
+  {% if recent %}
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Exam</th><th>Passage</th><th>Status</th><th>Started</th><th>Net WPM</th><th>Accuracy</th></tr></thead>
+    <tbody>
+    {% for session in recent %}
+      <tr>
+        <td>{{ session.publication.exam.name }}</td>
+        <td>Passage {{ session.publication.serial_number }}</td>
+        <td><span class="status-pill">{{ session.get_state_display }}</span></td>
+        <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
+        <td>{{ session.result_snapshot.net_wpm|default:"–" }}</td>
+        <td>{% if session.result_snapshot.accuracy_percent %}{{ session.result_snapshot.accuracy_percent }}%{% else %}–{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">No tests yet. <a href="{% url 'exams:catalogue' %}">Choose an exam to start your first test.</a></p>
+  {% endif %}
+</section>
+{% endblock %}

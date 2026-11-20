@@ -1,7 +1,48 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Institute Dashboard | TypingSkillZone</title>
-<style>
-:root{color-scheme:dark;--bg:#091321;--panel:#14243a;--line:#294363;--text:#eef5ff;--muted:#9db1cb;--blue:#4d91ff;--cyan:#45d5e8;--green:#36c995}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% 0%,#173d68,transparent 35%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:1200px;margin:auto;padding:34px 22px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:21px;font-weight:800}.brand span{color:var(--cyan)}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800}h1{font-size:30px;margin:7px 0}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:17px;margin-top:25px}.card{padding:23px;background:linear-gradient(145deg,#192e49,var(--panel));border:1px solid var(--line);border-radius:17px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.metric{padding:14px;background:#0c1a2c;border:1px solid var(--line);border-radius:11px}.metric strong{display:block;font-size:26px}.metric span{font-size:12px;color:var(--muted)}.approved{display:inline-block;padding:5px 10px;border-radius:99px;background:#36c99520;color:var(--green);font-size:12px;font-weight:800}.member-link{display:inline-block;margin-top:16px;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#172b45;color:var(--text);text-decoration:none;font-weight:700}.code{margin-top:14px;color:#b6c9e2;font-size:12px;overflow-wrap:anywhere}button{padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:#172b45;color:var(--text);font-weight:700;cursor:pointer}@media(max-width:560px){.wrap{padding:23px 14px}h1{font-size:25px}}
-</style></head><body><main class="wrap"><header class="top"><div><div class="brand">Typing<span>Skill</span>Zone</div><div class="eyebrow">Institute workspace</div><h1>Welcome, {{ request.user.first_name|default:request.user.email }}</h1><p class="muted">Overview of your approved institute accounts and membership.</p></div><form method="post" action="{% url 'institutes:owner_logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form></header>
-<section class="grid">{% for row in institute_rows %}<article class="card"><div class="eyebrow">Institute overview</div><h2>{{ row.institute.name }}</h2><span class="approved">Approved</span><p class="muted">{{ row.institute.city|default:"" }}{% if row.institute.city and row.institute.state %}, {% endif %}{{ row.institute.state|default:"" }}</p><div class="metric-grid"><div class="metric"><strong>{{ row.student_count }}</strong><span>Active students</span></div><div class="metric"><strong>{{ row.staff_count }}</strong><span>Active staff</span></div></div><div class="metric-grid"><div class="metric"><span>Subscription plan</span><strong style="font-size:17px">{% if row.subscription %}{{ row.subscription.plan.name }}{% else %}Not assigned{% endif %}</strong></div><div class="metric"><span>Subscription status</span><strong style="font-size:17px">{% if row.subscription %}{{ row.subscription.effective_status }}{% else %}Unassigned{% endif %}</strong></div></div>{% if row.subscription %}<p class="muted">Valid until {{ row.subscription.ends_at|date:"d M Y" }} · {{ row.subscription.plan.currency }} {{ row.subscription.amount_paid }} paid</p><div class="metric-grid"><div class="metric"><strong>{{ row.student_count }} / {{ row.subscription.plan.max_students|default:"Unlimited" }}</strong><span>Student seats used</span></div><div class="metric"><strong>{{ row.staff_count }} / {{ row.subscription.plan.max_staff|default:"Unlimited" }}</strong><span>Staff seats used</span></div></div>{% if row.subscription.effective_status != "ACTIVE" %}<p class="muted">Access is paused. Contact the platform administrator to renew your subscription.</p>{% elif row.subscription.plan.code == "free-trial" %}<p class="muted">7-day free trial. Upgrade before expiry to keep institute access.</p>{% endif %}{% else %}<p class="muted">No trial or subscription is assigned. Contact the platform administrator.</p>{% endif %}<a class="member-link" href="{% url 'institutes:owner_member_list' row.institute.pk %}">Manage members →</a><div class="code">Registration ID: {{ row.institute.registration_code }}</div></article>{% endfor %}</section>
-</main></body></html>
+{% extends "institutes/owner_base.html" %}
+{% block title %}Owner dashboard · TypingSkillZone{% endblock %}
+{% block app %}
+<section class="page-head">
+  <span class="eyebrow">Institute owner</span>
+  <h1>Welcome{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
+  <p class="lead">Your approved institutes, seats and subscriptions.</p>
+</section>
+<p class="catalogue-link"><a href="{% url 'exams:catalogue' %}">Open the exam catalogue →</a> See the patterns and passages your students practise.</p>
+{% for row in institute_rows %}
+<section class="card institute-card">
+  <div class="institute-top">
+    <div>
+      <span class="eyebrow">Institute overview</span>
+      <h2>{{ row.institute.name }}</h2>
+      <p class="muted">{{ row.institute.city|default:"" }}{% if row.institute.city and row.institute.state %}, {% endif %}{{ row.institute.state|default:"" }}</p>
+    </div>
+    <span class="status-pill ok">Approved</span>
+  </div>
+  <div class="metrics">
+    <article class="metric-card"><span>Active students</span><strong>{{ row.student_count }}</strong></article>
+    <article class="metric-card"><span>Active staff</span><strong>{{ row.staff_count }}</strong></article>
+    <article class="metric-card"><span>Subscription plan</span><strong>{% if row.subscription %}{{ row.subscription.plan.name }}{% else %}Not assigned{% endif %}</strong></article>
+    <article class="metric-card"><span>Subscription status</span><strong>{% if row.subscription %}{{ row.subscription.effective_status }}{% else %}Unassigned{% endif %}</strong></article>
+  </div>
+  {% if row.subscription %}
+    <p class="muted">Valid until {{ row.subscription.ends_at|date:"d M Y" }} · {{ row.subscription.plan.currency }} {{ row.subscription.amount_paid }} paid</p>
+    <div class="metrics">
+      <article class="metric-card"><span>Student seats used</span><strong>{{ row.student_count }} / {{ row.subscription.plan.max_students|default:"Unlimited" }}</strong></article>
+      <article class="metric-card"><span>Staff seats used</span><strong>{{ row.staff_count }} / {{ row.subscription.plan.max_staff|default:"Unlimited" }}</strong></article>
+    </div>
+    {% if row.subscription.effective_status != "ACTIVE" %}
+      <p class="notice warn">Access is paused. Contact the platform administrator to renew your subscription.</p>
+    {% elif row.subscription.plan.code == "free-trial" %}
+      <p class="notice">7-day free trial. Upgrade before expiry to keep institute access.</p>
+    {% endif %}
+  {% else %}
+    <p class="notice warn">No trial or subscription is assigned. Contact the platform administrator.</p>
+  {% endif %}
+  <div class="institute-foot">
+    <a class="btn btn-primary btn-small" href="{% url 'institutes:owner_member_list' row.institute.pk %}">Manage members</a>
+    <span class="code">Registration ID: {{ row.institute.registration_code }}</span>
+  </div>
+</section>
+{% empty %}
+<section class="empty-state card"><h2>No approved institute yet</h2><p class="muted">Your institute appears here once the platform administrator approves it.</p></section>
+{% endfor %}
+{% endblock %}

@@ -1,1 +1,19 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verification request | TypingSkillZone</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#091321;color:#eef5ff;font:16px Segoe UI,Arial}.panel{max-width:520px;padding:32px;background:#14243a;border:1px solid #294363;border-radius:18px}</style></head><body><main class="panel"><h1>Verification request</h1><p>{{ message }}</p><form method="post">{% csrf_token %}<label for="email">Owner email</label><input id="email" type="email" name="email" required><button type="submit">Resend verification link</button></form><a href="{% url 'institutes:owner_login' %}">Return to owner login</a></main></body></html>
+{% extends "passages/site_base.html" %}
+{% block title %}Verification request · TypingSkillZone{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <section class="auth-panel">
+    <span class="eyebrow">TypingSkillZone</span>
+    <h1>Verification request</h1>
+    <p class="intro">{{ message }}</p>
+    <form method="post" style="margin-top:22px">{% csrf_token %}
+      <div class="form-field">
+        <label for="email">Owner email</label>
+        <input id="email" type="email" name="email" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Resend verification link</button>
+    </form>
+    <div class="auth-links"><a href="{% url 'institutes:owner_login' %}">Return to owner login</a></div>
+  </section>
+</div>
+{% endblock %}

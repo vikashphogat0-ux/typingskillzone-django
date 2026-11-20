@@ -1,0 +1,9 @@
+{% extends "passages/site_base.html" %}
+{% block content %}
+<nav class="app-nav" aria-label="Administration">
+  <a href="{% url 'institutes:super_admin_dashboard' %}">Overview</a>
+  <a href="{% url 'institutes:institute_list' %}">Institutes</a>
+  <a href="/admin/">Django admin</a>
+</nav>
+{% block app %}{% endblock %}
+{% endblock %}

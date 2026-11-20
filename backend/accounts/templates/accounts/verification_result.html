@@ -1,14 +1,21 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Email verification | TypingSkillZone</title>
-<style>
-:root{color-scheme:dark;--bg:#091321;--panel:#14243a;--line:#294363;--text:#eef5ff;--muted:#9db1cb;--cyan:#45d5e8}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 10%,#1a3e68,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}.panel{width:min(100%,520px);padding:32px;background:linear-gradient(145deg,#192e49,var(--panel));border:1px solid var(--line);border-radius:20px}.brand{font-size:20px;font-weight:800}.brand span{color:var(--cyan)}h1{font-size:27px;margin:25px 0 4px}.muted{color:var(--muted)}button,.button{display:inline-block;margin-top:20px;padding:12px 16px;border:0;border-radius:10px;background:linear-gradient(90deg,#3979ed,#36a9d8);color:white;font-weight:800;text-decoration:none;cursor:pointer}a{color:#9bc4ff}
-</style></head><body><main class="panel"><div class="brand">Typing<span>Skill</span>Zone</div><h1>{% if success %}Email verified{% elif confirmation %}Confirm your email{% else %}Verification unsuccessful{% endif %}</h1><p class="muted">{{ message }}</p>
-{% if confirmation %}
-<form method="post">{% csrf_token %}<button type="submit">Verify email and activate account</button></form>
-{% elif success and not already_verified %}
-<a class="button" href="{% url 'institutes:student_dashboard' %}">Open student dashboard</a>
-{% elif success %}
-<a class="button" href="{% url 'institutes:student_login' %}">Go to student login</a>
-{% else %}
-<a class="button" href="{% url 'accounts:student_register' %}">Register again</a>
-{% endif %}</main></body></html>
+{% extends "passages/site_base.html" %}
+{% block title %}Email verification · TypingSkillZone{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <section class="auth-panel">
+    <span class="eyebrow">TypingSkillZone</span>
+    <h1>{% if success %}Email verified{% elif confirmation %}Confirm your email{% else %}Verification unsuccessful{% endif %}</h1>
+    <p class="intro">{{ message }}</p>
+    {% if confirmation %}
+    <form method="post" style="margin-top:22px">{% csrf_token %}
+      <button class="btn btn-primary" type="submit">Verify email and activate account</button>
+    </form>
+    {% endif %}
+    <div class="auth-links">
+      <a href="{% url 'institutes:student_dashboard' %}">Open student dashboard</a>
+      <a href="{% url 'institutes:student_login' %}">Go to student login</a>
+      <a href="{% url 'accounts:student_register' %}">Register again</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

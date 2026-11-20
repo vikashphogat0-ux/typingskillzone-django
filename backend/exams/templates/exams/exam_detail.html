@@ -1,0 +1,70 @@
+{% extends "passages/site_base.html" %}
+{% block title %}{{ exam.name }} · TypingSkillZone{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'exams:catalogue' %}">Exam catalogue</a> <span aria-hidden="true">/</span> {{ exam.name }}</nav>
+
+<section class="exam-hero">
+  <div class="exam-badge large" aria-hidden="true">{{ exam.name|slice:":2"|upper }}</div>
+  <div>
+    <h1>{{ exam.name }}</h1>
+    <p class="lead">{{ published_count }} published passage{{ published_count|pluralize }} · {{ exam.language|title }}{% if duration_minutes %} · {{ duration_minutes }} min{% endif %}</p>
+    {% if exam.verification_status == "VERIFIED" %}
+      <span class="status ok">Rules verified</span>
+    {% else %}
+      <span class="status warn">Practice only. Results are not official qualifications.</span>
+    {% endif %}
+  </div>
+</section>
+
+<div class="exam-layout">
+  <section class="card pattern">
+    <h2>Exam pattern</h2>
+    {% if not_published %}
+      <p class="muted">The pattern for this exam is not yet published. You can still practise its passages.</p>
+    {% else %}
+      <dl class="pattern-grid">
+        <div><dt>Duration</dt><dd>{% if duration_minutes %}{{ duration_minutes }} minutes{% else %}Not set{% endif %}</dd></div>
+        <div><dt>Language</dt><dd>{{ exam.language|title }}</dd></div>
+        <div><dt>Keyboard layout</dt><dd>{{ exam.keyboard_layout|default:"Not specified" }}</dd></div>
+        <div><dt>Text encoding</dt><dd>{{ exam.text_encoding|default:"Not specified" }}</dd></div>
+        <div><dt>Backspace</dt><dd>{{ exam.get_backspace_policy_display }}</dd></div>
+        <div><dt>Copy and paste</dt><dd>{% if exam.allow_copy or exam.allow_paste %}Partly allowed{% else %}Not allowed{% endif %}</dd></div>
+        <div><dt>Scoring</dt><dd>{{ exam.get_scoring_mode_display }}</dd></div>
+        <div><dt>Permitted mistakes</dt><dd>{% if exam.error_allowance_percent %}{{ exam.error_allowance_percent }}%{% else %}Not applicable{% endif %}</dd></div>
+        <div><dt>Minimum speed</dt><dd>{% if exam.minimum_wpm %}{{ exam.minimum_wpm }} WPM{% else %}Not set{% endif %}</dd></div>
+      </dl>
+      {% if exam.rule_notes %}<p class="pattern-note">{{ exam.rule_notes }}</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section class="card passages">
+    <h2>Today's passages <span class="muted">({{ today|date:"d M Y" }})</span></h2>
+    {% if todays_passages %}
+      <ul class="passage-list">
+        {% for passage in todays_passages %}
+        <li>
+          <div><strong>{{ passage.source.title }}</strong><span class="muted">Passage {{ passage.serial_number }}</span></div>
+          <a class="btn btn-primary" href="{% url 'passages:simulator-detail' exam.code passage.serial_number %}">Practise</a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No new passages today. Browse the earlier passages below.</p>
+    {% endif %}
+
+    <h2 class="section-sub">All passages</h2>
+    {% if recent_passages %}
+      <ul class="passage-list">
+        {% for passage in recent_passages %}
+        <li>
+          <div><strong>{{ passage.source.title }}</strong><span class="muted">Passage {{ passage.serial_number }} · {{ passage.published_at|date:"d M Y" }}</span></div>
+          <a class="btn btn-ghost" href="{% url 'passages:simulator-detail' exam.code passage.serial_number %}">Open</a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No passages are published for this exam yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
