@@ -69,9 +69,6 @@ def dashboard_url_for(user):
 @require_http_methods(["GET", "POST"])
 def student_login(request):
     """Sign-in for independent students. Institute members use the institute portal instead."""
-    if request.user.is_authenticated:
-        return redirect(dashboard_url_for(request.user))
-
     if request.method == "POST" and is_rate_limited(
         "account-student-login", request, identity=request.POST.get("username", ""), limit=8, window=900
     ):
