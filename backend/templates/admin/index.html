@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Overview | TypingSkillZone Admin{% endblock %}
+{% block content %}
+<div class="tsz-dashboard">
+  <section class="tsz-hero">
+    <div>
+      <span class="tsz-eyebrow">Platform overview</span>
+      <h2>Welcome back{% if user.first_name %}, {{ user.first_name }}{% endif %}</h2>
+      <p>Signed in as {{ user.email }}. Review institutes, exams and passages from one place.</p>
+    </div>
+  </section>
+
+  {% if tsz_stats %}
+  <div class="tsz-stats">
+    {% for card in tsz_stats %}
+    <a class="tsz-stat" href="{{ card.url }}">
+      <span>{{ card.label }}</span>
+      <strong>{{ card.value }}</strong>
+      <small>{{ card.note }}</small>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="tsz-apps">
+    {% for app in app_list %}
+    <section class="tsz-app">
+      <header><h3><a href="{{ app.app_url }}">{{ app.name }}</a></h3></header>
+      <ul>
+        {% for model in app.models %}
+        <li>
+          <a class="tsz-model" href="{{ model.admin_url }}">{{ model.name }}</a>
+          <span class="tsz-actions">
+            {% if model.add_url %}<a href="{{ model.add_url }}">Add</a>{% endif %}
+            {% if model.admin_url %}<a href="{{ model.admin_url }}">Manage</a>{% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
