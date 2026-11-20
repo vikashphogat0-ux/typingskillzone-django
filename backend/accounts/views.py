@@ -55,13 +55,22 @@ def send_student_verification_email(request, user):
 
 
 
+def dashboard_url_for(user):
+    """Each role lands on its own dashboard, never on another portal's page."""
+    if user.is_superuser or user.role == User.Roles.SUPER_ADMIN:
+        return reverse("institutes:super_admin_dashboard")
+    if user.role == User.Roles.INSTITUTE_OWNER:
+        return reverse("institutes:owner_dashboard")
+    if user.role == User.Roles.INSTITUTE_STAFF:
+        return reverse("institutes:staff_dashboard")
+    return reverse("accounts:student_dashboard")
+
+
 @require_http_methods(["GET", "POST"])
 def student_login(request):
     """Sign-in for independent students. Institute members use the institute portal instead."""
     if request.user.is_authenticated:
-        if request.user.role == User.Roles.STUDENT:
-            return redirect("accounts:student_dashboard")
-        return HttpResponseForbidden("This account cannot use the student account login.")
+        return redirect(dashboard_url_for(request.user))
 
     if request.method == "POST" and is_rate_limited(
         "account-student-login", request, identity=request.POST.get("username", ""), limit=8, window=900
@@ -86,9 +95,7 @@ def student_login(request):
 
 def student_register(request):
     if request.user.is_authenticated:
-        if request.user.role == User.Roles.STUDENT:
-            return redirect("accounts:student_dashboard")
-        return redirect("institutes:student_dashboard")
+        return redirect(dashboard_url_for(request.user))
 
     if request.method == "POST" and is_rate_limited("student-register", request, limit=5, window=3600):
         return HttpResponse("Too many registration attempts. Please try again later.", status=429)

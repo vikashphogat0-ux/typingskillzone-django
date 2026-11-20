@@ -9,6 +9,7 @@
     {% include "passages/_auth_form.html" %}
     <div class="auth-links">
       <a href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
+      <span>New student? <a href="{% url 'accounts:student_register' %}">Create a free account</a></span>
       <a href="{% url 'institutes:student_login' %}">Institute member login</a>
       <a href="{% url 'institutes:staff_login' %}">Institute staff login</a>
     </div>
