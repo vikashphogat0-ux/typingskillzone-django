@@ -3,6 +3,7 @@ import logging
 
 from django.contrib import admin, messages
 from django.db import DatabaseError
+from django.db.models import Count, Max, Q
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path
@@ -114,30 +115,55 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
         return render(request, "admin/passages/preview.html", context)
 
     def studio_view(self, request):
-        """Passage studio: layout status and publication counts for every active exam. Read-only."""
+        """Passage studio: efficient, read-only distribution and layout overview."""
         from exams.models import ExamConfiguration
         from .models import SimulatorPassage
 
         self._require_superuser(request)
+        published_filter = Q(published_passages__status=SimulatorPassage.Status.PUBLISHED)
+        exam_rows = ExamConfiguration.objects.filter(is_active=True).annotate(
+            published_count=Count("published_passages", filter=published_filter),
+            latest_published=Max("published_passages__published_at", filter=published_filter),
+        ).order_by("language", "name")
+
+        # Aggregate drafts once rather than issuing one count query per exam.
+        draft_groups = list(
+            PassageSource.objects.filter(status=PassageSource.Status.DRAFT)
+            .values("language", "script")
+            .annotate(total=Count("pk"))
+        )
         exams = []
-        for exam in ExamConfiguration.objects.filter(is_active=True).order_by("language", "name"):
-            published = SimulatorPassage.objects.filter(exam=exam, status=SimulatorPassage.Status.PUBLISHED)
-            latest = published.order_by("-published_at").first()
+        for exam in exam_rows:
+            ready_drafts = sum(
+                group["total"]
+                for group in draft_groups
+                if group["language"].casefold() == exam.language.casefold()
+                and (
+                    not group["script"]
+                    or not exam.script
+                    or group["script"].casefold() == exam.script.casefold()
+                )
+            )
             exams.append({
                 "exam": exam,
                 "layout": exam.get_passage_layout_display(),
                 "configured": exam.passage_layout != exam.PassageLayout.UNCONFIGURED,
-                "published": published.count(),
-                "latest": latest.published_at if latest else None,
-                "ready_drafts": PassageSource.objects.filter(
-                    status=PassageSource.Status.DRAFT, language__iexact=exam.language
-                ).count(),
+                "published": exam.published_count,
+                "latest": exam.latest_published,
+                "ready_drafts": ready_drafts,
             })
+
         context = dict(
             self.admin_site.each_context(request),
             exams=exams,
             draft_count=PassageSource.objects.filter(status=PassageSource.Status.DRAFT).count(),
             published_count=PassageSource.objects.filter(status=PassageSource.Status.PUBLISHED).count(),
+            publication_count=SimulatorPassage.objects.filter(
+                status=SimulatorPassage.Status.PUBLISHED
+            ).count(),
+            archived_count=SimulatorPassage.objects.filter(
+                status=SimulatorPassage.Status.ARCHIVED
+            ).count(),
             unconfigured_count=sum(1 for row in exams if not row["configured"]),
             empty_count=sum(1 for row in exams if row["published"] == 0),
             title="Passage studio",
