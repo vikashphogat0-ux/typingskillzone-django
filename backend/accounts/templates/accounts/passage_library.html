@@ -61,24 +61,8 @@
     <div class="eyebrow">Filters</div>
     <form method="get" action="{% url 'accounts:passage_library' %}">
       <div class="filter-row">
-        <div class="filter-group" style="min-width:200px">
-          <label for="id_exam">Exam</label>
-          <select name="exam" id="id_exam">
-            <option value="">All exams</option>
-            {% for exam in exams %}
-            <option value="{{ exam.code }}"{% if selected_exam == exam.code %} selected{% endif %}>{{ exam.name }} ({{ exam.code }})</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="filter-group" style="min-width:180px">
-          <label for="id_language">Language</label>
-          <select name="language" id="id_language">
-            <option value="">All languages</option>
-            {% for lang in available_languages %}
-            <option value="{{ lang }}"{% if selected_language == lang %} selected{% endif %}>{{ lang }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        <div class="filter-group" style="min-width:200px"><span class="field-label">Exam</span><a class="filter-btn" href="{% url 'exams:catalogue' %}">Browse by exam →</a></div>
+        <div class="filter-group" style="min-width:180px"><span class="field-label">Language</span><div class="chip-row" role="group" aria-label="Language"><a class="chip{% if not selected_language %} active{% endif %}" href="{% url 'accounts:passage_library' %}">All</a>{% for lang in available_languages %}<a class="chip{% if selected_language == lang %} active{% endif %}" href="?language={{ lang|urlencode }}">{{ lang|title }}</a>{% endfor %}</div></div>
         <div class="filter-group" style="min-width:260px;flex:1">
           <label for="id_search">Search passage</label>
           <input type="search" name="search" id="id_search" placeholder="Search by title or content" value="{{ search_query }}">

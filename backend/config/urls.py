@@ -9,5 +9,6 @@ urlpatterns = [
     path("institutes/", include("institutes.urls")),
     path("accounts/", include("accounts.urls")),
     path("simulators/", include("passages.urls")),
+    path("exams/", include("exams.urls")),
     path("typing/", include("typing_sessions.urls")),
 ]

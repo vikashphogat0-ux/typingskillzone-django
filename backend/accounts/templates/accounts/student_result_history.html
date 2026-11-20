@@ -94,24 +94,8 @@
     <div class="eyebrow">Filters</div>
     <form method="get" action="{% url 'accounts:student_result_history' %}">
       <div class="filter-row">
-        <div class="filter-group" style="min-width:180px">
-          <label for="id_language">Language</label>
-          <select name="language" id="id_language">
-            <option value="">All languages</option>
-            {% for lang in languages %}
-            <option value="{{ lang }}"{% if selected_language == lang %} selected{% endif %}>{{ lang }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="filter-group" style="min-width:220px">
-          <label for="id_exam">Exam</label>
-          <select name="exam" id="id_exam">
-            <option value="">All exams</option>
-            {% for code, name in exams %}
-            <option value="{{ code }}"{% if selected_exam == code %} selected{% endif %}>{{ name }} ({{ code }})</option>
-            {% endfor %}
-          </select>
-        </div>
+        <div class="filter-group" style="min-width:180px"><span class="field-label">Language</span><div class="chip-row" role="group" aria-label="Language"><a class="chip{% if not selected_language %} active{% endif %}" href="{% url 'accounts:student_result_history' %}">All</a>{% for lang in languages %}<a class="chip{% if selected_language == lang %} active{% endif %}" href="?language={{ lang|urlencode }}">{{ lang|title }}</a>{% endfor %}</div></div>
+        <div class="filter-group" style="min-width:220px"><span class="field-label">Exam</span><div class="chip-row" role="group" aria-label="Exam"><a class="chip{% if not selected_exam %} active{% endif %}" href="{% url 'accounts:student_result_history' %}">All</a>{% for code, name in exams %}<a class="chip{% if selected_exam == code %} active{% endif %}" href="?exam={{ code|urlencode }}">{{ name }}</a>{% endfor %}</div></div>
         <div class="filter-group" style="min-width:170px">
           <label for="id_date_from">From</label>
           <input type="date" name="date_from" id="id_date_from" value="{% if selected_date_from %}{{ selected_date_from }}{% endif %}">

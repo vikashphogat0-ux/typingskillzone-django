@@ -1,0 +1,42 @@
+{% extends "passages/site_base.html" %}
+{% block title %}Exam catalogue · TypingSkillZone{% endblock %}
+{% block content %}
+<section class="catalog-head">
+  <span class="eyebrow">Exam catalogue</span>
+  <h1>Choose your exam</h1>
+  <p class="lead">Each exam has its own passages, layout and scoring rules. Pick an exam to see its pattern and today's passages.</p>
+  <form method="get" action="{% url 'exams:catalogue' %}" class="catalog-search" role="search">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search exam name or code" aria-label="Search exams">
+    {% if selected_language %}<input type="hidden" name="lang" value="{{ selected_language }}">{% endif %}
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+  <div class="chip-row" role="group" aria-label="Language">
+    <a class="chip{% if not selected_language %} active{% endif %}" href="{% url 'exams:catalogue' %}{% if query %}?q={{ query|urlencode }}{% endif %}">All languages</a>
+    {% for lang in languages %}
+    <a class="chip{% if selected_language == lang %} active{% endif %}" href="?lang={{ lang|urlencode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">{{ lang|title }}</a>
+    {% endfor %}
+  </div>
+  <p class="muted catalog-count">Showing {{ exams|length }} of {{ total_exams }} exams</p>
+</section>
+
+{% if exams %}
+<section class="exam-grid">
+  {% for exam in exams %}
+  <a class="exam-card" href="{% url 'exams:exam_detail' exam.code %}">
+    <span class="exam-badge" aria-hidden="true">{{ exam.name|slice:":2"|upper }}</span>
+    <h3>{{ exam.name }}</h3>
+    <p class="exam-meta">{{ exam.language|title }}{% if exam.duration_seconds %} · {{ exam.duration_seconds|divisibleby:60 }}{% endif %}</p>
+    <div class="exam-foot">
+      <span class="count">{{ exam.passage_count }} passage{{ exam.passage_count|pluralize }}</span>
+      {% if exam.verification_status == "VERIFIED" %}<span class="status ok">Verified rules</span>{% else %}<span class="status warn">Practice</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</section>
+{% else %}
+<section class="empty-state">
+  <h2>No exams match your search</h2>
+  <p class="muted">Try another name or <a href="{% url 'exams:catalogue' %}">clear the filters</a>.</p>
+</section>
+{% endif %}
+{% endblock %}
