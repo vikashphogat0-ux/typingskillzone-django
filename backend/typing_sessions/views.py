@@ -3,6 +3,7 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
+import logging
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -14,6 +15,9 @@ from django.utils import timezone
 from .drafts import load_draft_text
 from .models import TypingSession
 from .services import expire_session, save_draft, start_session, submit_session
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -32,8 +36,22 @@ def start_typing_session(request, exam_code, passage_id):
     )
     try:
         attempt = start_session(learner=request.user, publication=publication)
-    except (PermissionDenied, ValidationError) as error:
+    except PermissionDenied as error:
+        logger.warning(
+            "Typing session start denied: user_id=%s role=%s active=%s exam=%s passage=%s reason=%s",
+            request.user.pk, request.user.role, request.user.is_active,
+            exam.code, passage_id, error,
+        )
         return render(request, "typing_sessions/error.html", {"message": str(error)}, status=403)
+    except ValidationError as error:
+        # The account is authorized; the requested publication is unavailable
+        # under its current publication/release state. Do not misreport this as
+        # an authentication or role failure.
+        logger.info(
+            "Typing session unavailable: user_id=%s role=%s exam=%s passage=%s reason=%s",
+            request.user.pk, request.user.role, exam.code, passage_id, error,
+        )
+        return render(request, "typing_sessions/error.html", {"message": str(error)}, status=409)
     return redirect("typing_sessions:session", session_id=attempt.pk)
 
 
