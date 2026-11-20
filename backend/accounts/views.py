@@ -332,6 +332,10 @@ def passage_library(request):
     """Student passage library with exam, language and text search."""
 
     if request.user.role != User.Roles.STUDENT:
+        logger.warning(
+            "Student passage library access denied: user_id=%s role=%s active=%s superuser=%s",
+            request.user.pk, request.user.role, request.user.is_active, request.user.is_superuser,
+        )
         return HttpResponse("Student account required.", status=403)
 
     exam_code = request.GET.get("exam", "").strip()
