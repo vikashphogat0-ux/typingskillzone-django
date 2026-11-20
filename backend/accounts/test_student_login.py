@@ -21,6 +21,35 @@ class IndependentStudentLoginTests(TestCase):
     def test_page_loads(self):
         self.assertEqual(self.client.get(self.url).status_code, 200)
 
+    def test_authenticated_owner_can_open_student_login_page(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/student_login.html")
+
+    def test_authenticated_owner_can_switch_to_independent_student_account(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.post(
+            self.url,
+            {
+                "username": "independent@example.com",
+                "password": "SafePassword123!",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("accounts:student_dashboard"),
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(
+            int(self.client.session["_auth_user_id"]),
+            self.student.pk,
+        )
+
     def test_independent_student_signs_in_to_account_dashboard(self):
         response = self.client.post(self.url, {"username": "independent@example.com", "password": "SafePassword123!"})
         self.assertRedirects(response, reverse("accounts:student_dashboard"), fetch_redirect_response=False)
