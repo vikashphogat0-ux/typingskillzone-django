@@ -100,6 +100,15 @@ class TypingSessionTests(TestCase):
         with self.assertRaises(PermissionDenied):
             start_session(learner=None, publication=self.publication)
 
+    def test_inactive_student_cannot_start_typing_sessions(self):
+        self.learner.is_active = False
+        self.learner.save(update_fields=("is_active",))
+        with self.assertRaises(PermissionDenied):
+            start_session(learner=self.learner, publication=self.publication)
+        self.assertFalse(
+            TypingSession.objects.filter(learner=self.learner, publication=self.publication).exists()
+        )
+
     def test_non_student_roles_cannot_start_typing_sessions(self):
         User = get_user_model()
         for role in (User.Roles.INSTITUTE_OWNER, User.Roles.INSTITUTE_STAFF, User.Roles.ADMIN, User.Roles.SUPER_ADMIN):
@@ -548,24 +557,6 @@ class TypingSessionViewTests(TestCase):
         )
         self.assertEqual(attempt.state, TypingSession.State.ACTIVE)
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
-
-    def test_inactive_student_cannot_start_typing_test(self):
-        from django.urls import reverse
-
-        self.learner.is_active = False
-        self.learner.save(update_fields=("is_active",))
-        self.client.force_login(self.learner)
-        response = self.client.post(
-            reverse("typing_sessions:start", kwargs={
-                "exam_code": self.exam.code,
-                "passage_id": self.publication.passage_id,
-            })
-        )
-
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(
-            TypingSession.objects.filter(learner=self.learner, publication=self.publication).exists()
-        )
 
     def test_start_view_returns_403_for_non_student_role(self):
         from django.urls import reverse
