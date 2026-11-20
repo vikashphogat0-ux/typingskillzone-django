@@ -1,5 +1,5 @@
-from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db import DatabaseError, IntegrityError, transaction
+from django.db.models import Max, Q
 
 from .models import ExamPassageSequence, PassageSource, SimulatorPassage
 
@@ -108,6 +108,13 @@ def publish_sources_to_matching_exams(sources):
             with transaction.atomic():
                 sequence, _ = ExamPassageSequence.objects.get_or_create(exam=exam)
                 sequence = ExamPassageSequence.objects.select_for_update().get(pk=sequence.pk)
+                # Recover safely if an older/manual publication exists without a
+                # corresponding counter row or the counter was left behind.
+                highest_serial = SimulatorPassage.objects.filter(
+                    exam=exam
+                ).aggregate(value=Max("serial_number"))["value"] or 0
+                if sequence.next_number <= highest_serial:
+                    sequence.next_number = highest_serial + 1
                 source_ids = [source.pk for source in exam_sources]
                 existing = list(
                     SimulatorPassage.objects.filter(
@@ -142,7 +149,7 @@ def publish_sources_to_matching_exams(sources):
                     sequence.next_number = first_serial + len(missing)
                     sequence.save(update_fields=("next_number", "updated_at"))
                     created += len(missing)
-        except Exception as error:
+        except DatabaseError as error:
             # Preserve successful exam commits and report the failed exam so the
             # administrator can safely retry; publication is idempotent.
             failures.append(f"{exam.name}: {error.__class__.__name__}: {error}")
