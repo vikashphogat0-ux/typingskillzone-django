@@ -70,7 +70,7 @@ class BulkUploadTests(TestCase):
             f"Wide {index},Passage content {index}.,ENGLISH,LATIN"
             for index in range(10)
         )
-        rows, errors = parse_passage_csv(csv_file("\\n".join(csv_rows) + "\\n"))
+        rows, errors = parse_passage_csv(csv_file("\n".join(csv_rows) + "\n"))
         self.assertEqual(errors, [])
 
         result = import_passages(rows, self.admin, publish=True, start_date=None)
@@ -97,7 +97,7 @@ class BulkUploadTests(TestCase):
             status=PassageSource.Status.PUBLISHED,
         )
         rows, _ = parse_passage_csv(
-            csv_file("title,content,language,script\\nResume me,Resume passage.,ENGLISH,LATIN\\n")
+            csv_file("title,content,language,script\nResume me,Resume passage.,ENGLISH,LATIN\n")
         )
 
         first = import_passages(rows, self.admin, publish=True, start_date=None)
