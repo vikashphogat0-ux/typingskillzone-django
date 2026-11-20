@@ -1,201 +1,37 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Institute Registration | TypingSkillZone</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 35px 16px;
-            min-height: 100vh;
-            background: #10141d;
-            color: #f4f7fb;
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            max-width: 760px;
-            margin: auto;
-            padding: 32px;
-            background: #1b2230;
-            border: 1px solid #303b50;
-            border-radius: 16px;
-        }
-        h1 { margin-top: 0; font-size: 28px; }
-        .subtitle { color: #aab6c8; line-height: 1.6; }
-        .section-title {
-            margin-top: 28px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #354157;
-            color: #83b5ff;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        .field { margin-top: 16px; }
-        label {
-            display: block;
-            margin-bottom: 7px;
-            font-size: 14px;
-            color: #dce5f2;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #3b4961;
-            border-radius: 8px;
-            background: #111827;
-            color: white;
-            font-size: 15px;
-        }
-        textarea { min-height: 90px; resize: vertical; }
-        input:focus, textarea:focus {
-            outline: 2px solid #438cf5;
-            border-color: transparent;
-        }
-        .errors {
-            margin-top: 6px;
-            color: #ff9292;
-            font-size: 13px;
-        }
-        .messages {
-            padding: 12px;
-            margin-bottom: 18px;
-            background: #49351d;
-            border-radius: 8px;
-            color: #ffd18a;
-        }
-        button {
-            width: 100%;
-            margin-top: 28px;
-            padding: 14px;
-            border: 0;
-            border-radius: 9px;
-            background: #347ef0;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        button:hover { background: #2468d4; }
-        .note {
-            margin-top: 18px;
-            color: #aab6c8;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        @media (max-width: 600px) {
-            .grid { grid-template-columns: 1fr; }
-            .container { padding: 22px; }
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>Institute Registration</h1>
-    <p class="subtitle">
-        Register your coaching institute with TypingSkillZone.
-        Your application will be reviewed by our Super Admin.
-    </p>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="messages">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-
-    <form method="post">
-        {% csrf_token %}
-
-        <h3 class="section-title">Institute Details</h3>
-
-        <div class="field">
-            <label for="{{ form.name.id_for_label }}">Institute Name</label>
-            {{ form.name }}
-            {% for error in form.name.errors %}
-                <div class="errors">{{ error }}</div>
-            {% endfor %}
+{% extends "passages/site_base.html" %}
+{% block title %}Register your institute · TypingSkillZone{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <section class="auth-panel">
+    <span class="eyebrow">TypingSkillZone</span>
+    <h1>Register your institute</h1>
+    <p class="intro">Create your institute and owner account. Your application is reviewed before activation.</p>
+    {% for message in messages %}<div class="error-box">{{ message }}</div>{% endfor %}
+    {% if error %}<div class="error-box" role="alert">{{ error }}</div>{% endif %}
+    {% if form.non_field_errors %}<div class="error-box" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    <form method="post" style="margin-top:18px">{% csrf_token %}
+      <h2 style="font-size:20px;margin-top:8px">Institute details</h2>
+      {% for field in form %}
+        {% if field.name == "name" or field.name == "email" or field.name == "phone" or field.name == "address" or field.name == "city" or field.name == "state" or field.name == "postal_code" %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
         </div>
-
-        <div class="grid">
-            <div class="field">
-                <label for="{{ form.email.id_for_label }}">Institute Email</label>
-                {{ form.email }}
-                {% for error in form.email.errors %}
-                    <div class="errors">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="field">
-                <label for="{{ form.phone.id_for_label }}">Institute Phone</label>
-                {{ form.phone }}
-                {% for error in form.phone.errors %}
-                    <div class="errors">{{ error }}</div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="field">
-            <label for="{{ form.address.id_for_label }}">Address</label>
-            {{ form.address }}
-            {% for error in form.address.errors %}
-                <div class="errors">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="grid">
-            <div class="field">
-                <label for="{{ form.city.id_for_label }}">City</label>
-                {{ form.city }}
-                {% for error in form.city.errors %}
-                    <div class="errors">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="field">
-                <label for="{{ form.state.id_for_label }}">State</label>
-                {{ form.state }}
-                {% for error in form.state.errors %}
-                    <div class="errors">{{ error }}</div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="field">
-            <label for="{{ form.postal_code.id_for_label }}">Postal Code</label>
-            {{ form.postal_code }}
-            {% for error in form.postal_code.errors %}
-                <div class="errors">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <h3 class="section-title">Institute Owner Account</h3>
-
-        {% for field in form %}
-            {% if field.name == "owner_name" or field.name == "owner_email" or field.name == "owner_phone" or field.name == "password" or field.name == "confirm_password" %}
-                <div class="field">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}
-                        <div class="errors">{{ error }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endfor %}
-
-        {% if form.non_field_errors %}
-            <div class="errors">{{ form.non_field_errors }}</div>
         {% endif %}
-
-        <button type="submit">Submit Institute Registration</button>
-
-        <p class="note">
-            By submitting, you request registration on TypingSkillZone.
-            Institute access remains pending until Super Admin approval.
-        </p>
+      {% endfor %}
+      <h2 style="font-size:20px;margin-top:26px">Institute owner account</h2>
+      {% for field in form %}
+        {% if field.name == "owner_name" or field.name == "owner_email" or field.name == "owner_phone" or field.name == "password" or field.name == "confirm_password" %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+      <button class="btn btn-primary" type="submit" style="margin-top:24px">Submit institute registration</button>
     </form>
+  </section>
 </div>
-</body>
-</html>
+{% endblock %}

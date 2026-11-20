@@ -1,11 +1,17 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Institute access | TypingSkillZone</title>
-<style>
-:root{color-scheme:dark;--bg:#091321;--panel:#14243a;--line:#294363;--text:#eef5ff;--muted:#9db1cb;--blue:#4d91ff;--amber:#f2b84b;--red:#ef7784}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 10%,#1a3e68,transparent 38%),var(--bg);color:var(--text);font:15px/1.6 Inter,Segoe UI,Arial,sans-serif}.panel{width:min(100%,620px);padding:32px;background:var(--panel);border:1px solid var(--line);border-radius:20px}.eyebrow{color:#65d5e5;text-transform:uppercase;font-size:12px;letter-spacing:1.5px;font-weight:800}h1{margin:10px 0}.muted{color:var(--muted)}.status{padding:16px;margin:20px 0;border:1px solid var(--line);border-radius:12px;background:#0c1a2c}.PENDING{color:var(--amber)}.REJECTED,.SUSPENDED{color:var(--red)}.NO_INSTITUTE{color:#9bc4ff}button{padding:11px 15px;border:0;border-radius:9px;background:#315f9e;color:white;font-weight:700;cursor:pointer}
-</style></head><body><main class="panel"><div class="eyebrow">Institute owner portal</div>
-{% if access_status == "PENDING" %}<h1>Application under review</h1><p class="muted">Your institute registration has been received. The owner dashboard will become available after the Super Admin approves your application.</p>
-{% elif access_status == "REJECTED" %}<h1>Application not approved</h1><p class="muted">Your institute application was rejected. Please contact TypingSkillZone support for clarification.</p>
-{% elif access_status == "SUSPENDED" %}<h1>Institute access suspended</h1><p class="muted">Your institute access is currently suspended. Contact platform support for assistance.</p>
-{% else %}<h1>No institute found</h1><p class="muted">This owner account is not currently linked to an institute. Contact platform support.</p>{% endif %}
-<div class="status {{ access_status }}"><strong>{{ access_status|title }}</strong></div>
-<form method="post" action="{% url 'institutes:owner_logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form></main></body></html>
+{% extends "passages/site_base.html" %}
+{% block title %}Owner access status · TypingSkillZone{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <section class="auth-panel">
+    <span class="eyebrow">TypingSkillZone</span>
+    <span class="status {{ access_status }}"><strong>{{ access_status|title }}</strong></span>
+    {% if access_status == "PENDING" %}<h1>Application under review</h1><p class="intro">Your institute registration has been received. The owner dashboard will become available after the Super Admin approves your application.</p>
+    {% elif access_status == "REJECTED" %}<h1>Application not approved</h1><p class="intro">Your institute application was rejected. Please contact TypingSkillZone support for clarification.</p>
+    {% elif access_status == "SUSPENDED" %}<h1>Institute access suspended</h1><p class="intro">Your institute access is currently suspended. Contact platform support for assistance.</p>
+    {% else %}<h1>No institute found</h1><p class="intro">This owner account is not currently linked to an institute. Contact platform support.</p>{% endif %}
+    <form method="post" action="{% url 'institutes:owner_logout' %}" style="margin-top:22px">{% csrf_token %}
+      <button class="btn btn-ghost" type="submit">Sign out</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
