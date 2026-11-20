@@ -1,7 +1,8 @@
 """Bulk passage import from a CSV file.
 
-Columns: title, content, language, script (optional), source_reference (optional).
-Parsing never writes to the database. Import runs only after the admin confirms a preview.
+CSV parsing is read-only. Confirmed imports create sources in short transactions,
+then publish them in exam-sized batches. A failed exam never rolls back successful
+exams, and re-submitting the same CSV can safely finish missing publications.
 """
 import csv
 import io
@@ -10,7 +11,7 @@ from django.db import transaction
 
 from .models import PassageSource
 from .scheduling import apply_schedule, plan_schedule
-from .services import auto_target_and_publish
+from .services import publish_sources_to_matching_exams
 
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 500
@@ -70,35 +71,62 @@ def parse_passage_csv(uploaded):
     return rows, errors
 
 
-@transaction.atomic
 def import_passages(rows, user, publish, start_date):
-    """Create draft sources, publish to matching exams, and optionally schedule from start_date."""
+    """Create sources and distribute them with per-exam transaction boundaries.
+
+    If a previous request was interrupted after creating the source or publishing
+    to only some exams, the same CSV can be submitted again. Exact same-user rows
+    are resumed; unrelated existing title/language pairs remain skipped.
+    """
     from exams.models import ExamConfiguration
 
     created = 0
     published = 0
+    reactivated = 0
     scheduled = 0
     skipped = []
     problems = []
+    sources_to_publish = []
+
     for item in rows:
-        if PassageSource.objects.filter(title=item["title"], language=item["language"]).exists():
-            skipped.append(f"Row {item['row']}: \"{item['title']}\" already exists for {item['language']}.")
-            continue
-        source = PassageSource.objects.create(
-            title=item["title"],
-            content=item["content"],
-            language=item["language"],
-            script=item["script"],
-            source_reference=item["source_reference"],
-            created_by=user,
-            status=PassageSource.Status.DRAFT,
-        )
-        created += 1
-        if publish:
-            try:
-                published += len(auto_target_and_publish(source))
-            except ValueError as error:
-                problems.append(f"{source.title}: {error}")
+        with transaction.atomic():
+            existing = PassageSource.objects.filter(
+                title=item["title"], language=item["language"]
+            ).first()
+            if existing:
+                same_imported_source = (
+                    existing.created_by_id == user.pk
+                    and existing.content == item["content"]
+                    and existing.script == item["script"]
+                    and existing.source_reference == item["source_reference"]
+                    and existing.status != PassageSource.Status.ARCHIVED
+                )
+                if publish and same_imported_source:
+                    sources_to_publish.append(existing)
+                    continue
+                skipped.append(
+                    f"Row {item['row']}: \"{item['title']}\" already exists for {item['language']}."
+                )
+                continue
+
+            source = PassageSource.objects.create(
+                title=item["title"],
+                content=item["content"],
+                language=item["language"],
+                script=item["script"],
+                source_reference=item["source_reference"],
+                created_by=user,
+                status=PassageSource.Status.DRAFT,
+            )
+            created += 1
+            if publish:
+                sources_to_publish.append(source)
+
+    if publish and sources_to_publish:
+        result = publish_sources_to_matching_exams(sources_to_publish)
+        published = result["created"]
+        reactivated = result["reactivated"]
+        problems.extend(result["failures"])
 
     if publish and start_date:
         for exam in ExamConfiguration.objects.filter(is_active=True).order_by("code"):
@@ -108,6 +136,19 @@ def import_passages(rows, user, publish, start_date):
                 problems.append(f"{exam.name}: {error}")
                 continue
             if plan:
-                scheduled += apply_schedule(plan)
+                try:
+                    scheduled += apply_schedule(plan)
+                except Exception as error:
+                    problems.append(
+                        f"{exam.name}: scheduling failed ({error.__class__.__name__}). "
+                        "Retry the import after checking this exam's release queue."
+                    )
 
-    return {"created": created, "published": published, "scheduled": scheduled, "skipped": skipped, "problems": problems}
+    return {
+        "created": created,
+        "published": published,
+        "reactivated": reactivated,
+        "scheduled": scheduled,
+        "skipped": skipped,
+        "problems": problems,
+    }
