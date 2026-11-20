@@ -53,7 +53,7 @@ class BulkUploadTests(TestCase):
         first = SimulatorPassage.objects.get(exam=self.exam, serial_number=1)
         self.assertEqual(first.release_date, start)
 
-    def test_ten_passages_publish_to_many_exams_with_independent_sequences(self):
+    def test_ten_passages_publish_to_118_exams_with_independent_sequences(self):
         self.exam.is_active = False
         self.exam.save(update_fields=["is_active"])
         exams = [
@@ -65,7 +65,7 @@ class BulkUploadTests(TestCase):
                 duration_seconds=600,
                 allow_backspace=False,
             )
-            for index in range(12)
+            for index in range(118)
         ]
         csv_rows = ["title,content,language,script"]
         csv_rows.extend(
