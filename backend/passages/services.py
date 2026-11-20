@@ -29,6 +29,16 @@ def publish_source_to_exam(source: PassageSource, exam) -> SimulatorPassage:
     sequence, _ = ExamPassageSequence.objects.get_or_create(exam=exam)
     sequence = ExamPassageSequence.objects.select_for_update().get(pk=sequence.pk)
 
+    # Another publisher may have created this source/exam publication while
+    # this transaction waited for the sequence lock. Re-check under the lock
+    # before allocating a serial number.
+    existing = SimulatorPassage.objects.filter(exam=exam, source=source).first()
+    if existing:
+        if existing.status != SimulatorPassage.Status.PUBLISHED:
+            existing.status = SimulatorPassage.Status.PUBLISHED
+            existing.save(update_fields=("status",))
+        return existing
+
     serial = sequence.next_number
     sequence.next_number = serial + 1
     sequence.save(update_fields=("next_number", "updated_at"))
@@ -40,7 +50,6 @@ def publish_source_to_exam(source: PassageSource, exam) -> SimulatorPassage:
     )
 
 
-@transaction.atomic
 def publish_source_to_selected_exams(source: PassageSource):
     if source.status != PassageSource.Status.PUBLISHED:
         source.status = PassageSource.Status.PUBLISHED
@@ -61,7 +70,6 @@ def matching_exams(source: PassageSource):
     return queryset.order_by("id")
 
 
-@transaction.atomic
 def auto_target_and_publish(source: PassageSource):
     """Set every matching exam as a target, then publish to all of them."""
     source.target_exams.set(list(matching_exams(source)))
