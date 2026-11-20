@@ -51,6 +51,9 @@ class ScheduledReleaseTests(TestCase):
         self.passage.release_slot = "MORNING"
         self.passage.release_position = 1
         self.passage.save()
+        from django.contrib.auth import get_user_model
+        student = get_user_model().objects.create_user(email="scheduled-student@example.com", password="SafePassword123!", is_active=True, is_email_verified=True)
+        self.client.force_login(student)
         response = self.client.get(reverse("passages:simulator-detail", args=[self.exam.code, self.passage.passage_id]))
         self.assertEqual(response.status_code, 404)
 
