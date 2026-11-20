@@ -46,7 +46,7 @@ class ExamCatalogueTests(TestCase):
     def test_exam_detail_shows_todays_passage(self):
         response = self.client.get(reverse("exams:exam_detail", args=["ssc-cgl-test"]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Today&#x27;s passages")
+        self.assertContains(response, "Today's passages")
         self.assertContains(response, "Daily English passage")
 
     def test_inactive_exam_detail_is_not_found(self):

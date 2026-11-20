@@ -1,3 +1,10 @@
-{% extends "passages/base.html" %}
-{% block title %}Typing Test | TypingSkillZone{% endblock %}
-{% block content %}<section class="panel"><h1>Unable to start test</h1><p>{{ message }}</p><a class="back" href="/">Return</a></section>{% endblock %}
+{% extends "passages/site_base.html" %}
+{% block title %}Something went wrong · TypingSkillZone{% endblock %}
+{% block content %}
+<section class="auth-wrap"><div class="auth-panel">
+  <span class="eyebrow">Typing test</span>
+  <h1>We could not open this test</h1>
+  <p class="intro">{{ message }}</p>
+  <div class="auth-links"><a href="{% url 'exams:catalogue' %}">Back to the exam catalogue</a></div>
+</div></section>
+{% endblock %}

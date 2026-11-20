@@ -1,20 +1,21 @@
-{% extends "passages/base.html" %}
-{% block title %}{{ exam.name }} Passages | TypingSkillZone{% endblock %}
+{% extends "passages/site_base.html" %}
+{% block title %}{{ exam.name }} passages · TypingSkillZone{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="eyebrow">Exam simulator · {{ exam.get_language_display|default:exam.language }}</div>
-  <h1>{{ exam.name }}</h1>
-  <p>Published passages for this simulator. Passage numbering is independent for each exam.</p>
-  <div class="grid">
-    {% for passage in passages %}
-      <a class="item" href="{% url 'passages:simulator-detail' exam.code passage.passage_id %}">
-        <div class="id">{{ passage.passage_id }}</div>
-        <strong>{{ passage.source.title }}</strong>
-        <div class="muted">{{ passage.source.language }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %}</div>
-      </a>
-    {% empty %}
-      <div class="item"><strong>No passages published yet</strong><div class="muted">The administrator can publish passages from the central Passage Studio.</div></div>
-    {% endfor %}
-  </div>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'exams:catalogue' %}">Exam catalogue</a> <span aria-hidden="true">/</span> <a href="{% url 'exams:exam_detail' exam.code %}">{{ exam.name }}</a> <span aria-hidden="true">/</span> Passages</nav>
+<section class="page-head">
+  <span class="eyebrow">{{ exam.get_language_display }}</span>
+  <h1>{{ exam.name }} passages</h1>
+  <p class="lead">Choose a passage to open its test page.</p>
+</section>
+<section class="passage-grid">
+  {% for passage in passages %}
+  <article class="passage-card">
+    <div class="passage-card-top"><span class="exam-chip">Passage {{ passage.passage_id }}</span><span class="muted">{{ passage.source.language|title }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %}</span></div>
+    <h3>{{ passage.source.title }}</h3>
+    <a class="btn btn-primary btn-small" href="{% url 'passages:simulator-detail' exam.code passage.passage_id %}">Open</a>
+  </article>
+  {% empty %}
+  <div class="empty-state card"><h2>No passages yet</h2><p class="muted">Passages for this exam will appear here once they are published.</p></div>
+  {% endfor %}
 </section>
 {% endblock %}
