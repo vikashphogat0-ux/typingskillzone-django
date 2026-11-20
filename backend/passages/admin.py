@@ -1,6 +1,8 @@
 from datetime import date
+import logging
 
 from django.contrib import admin, messages
+from django.db import DatabaseError
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path
@@ -11,6 +13,9 @@ from .models import ExamPassageSequence, PassageSource, SimulatorPassage
 from .bulk import import_passages, parse_passage_csv
 from .scheduling import apply_schedule, default_start_date, plan_schedule
 from .services import auto_target_and_publish, matching_exams, publish_source_to_selected_exams
+
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(PassageSource)
@@ -148,6 +153,13 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
                 total += len(auto_target_and_publish(source))
             except ValueError as exc:
                 failures.append(f"{source.title}: {exc}")
+            except DatabaseError:
+                logger.exception("Bulk publication stopped for passage source %s", source.pk)
+                failures.append(
+                    f"{source.title}: a database error stopped publication. Earlier exam publications, "
+                    "if any, were saved. Retry this action to finish the remaining exams."
+                )
+                break
         if total:
             self.message_user(request, f"Published to {total} matching exam(s).", messages.SUCCESS)
         for failure in failures:
@@ -184,6 +196,13 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
                 count += len(publish_source_to_selected_exams(source))
             except ValueError as exc:
                 failures.append(f"{source.title}: {exc}")
+            except DatabaseError:
+                logger.exception("Selected publication stopped for passage source %s", source.pk)
+                failures.append(
+                    f"{source.title}: a database error stopped publication. Earlier exam publications, "
+                    "if any, were saved. Retry this action to finish the remaining exams."
+                )
+                break
         if count:
             self.message_user(request, f"Published or confirmed {count} simulator publication(s).", messages.SUCCESS)
         for failure in failures:
