@@ -1,4 +1,5 @@
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from .models import ExamPassageSequence, PassageSource, SimulatorPassage
 
@@ -48,3 +49,20 @@ def publish_source_to_selected_exams(source: PassageSource):
     for exam in source.target_exams.filter(is_active=True).order_by("id"):
         publications.append(publish_source_to_exam(source, exam))
     return publications
+
+
+def matching_exams(source: PassageSource):
+    """Active exams that accept this passage's language, and script where both sides specify one."""
+    from exams.models import ExamConfiguration
+
+    queryset = ExamConfiguration.objects.filter(is_active=True, language__iexact=source.language)
+    if source.script:
+        queryset = queryset.filter(Q(script__iexact=source.script) | Q(script=""))
+    return queryset.order_by("id")
+
+
+@transaction.atomic
+def auto_target_and_publish(source: PassageSource):
+    """Set every matching exam as a target, then publish to all of them."""
+    source.target_exams.set(list(matching_exams(source)))
+    return publish_source_to_selected_exams(source)

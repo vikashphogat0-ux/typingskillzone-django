@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Preview: {{ source.title }} | TypingSkillZone Admin{% endblock %}
+{% block content %}
+<div class="tsz-dashboard">
+  <section class="tsz-hero">
+    <div>
+      <span class="tsz-eyebrow">Passage preview</span>
+      <h2>{{ source.title }}</h2>
+      <p>{{ source.language|title }}{% if source.script %} · {{ source.script }}{% endif %}. Each exam shows the passage in its own format. Nothing is changed by this page.</p>
+    </div>
+  </section>
+  {% if rows %}
+  <div class="tsz-preview-grid">
+    {% for row in rows %}
+    <section class="tsz-app tsz-preview">
+      <header>
+        <h3>{{ row.exam.name }}</h3>
+        <span class="tsz-pill {% if row.configured %}ok{% else %}warn{% endif %}">{{ row.layout }}</span>
+        {% if row.targeted %}<span class="tsz-pill ok">Targeted</span>{% else %}<span class="tsz-pill">Not targeted</span>{% endif %}
+      </header>
+      <div class="tsz-sheet" style="font-family:{{ row.exam.passage_font_family|default:'Arial'|escape }};font-size:{{ row.exam.passage_font_size_pt|default:12 }}pt;line-height:{{ row.exam.passage_line_height|default:'1.6' }};text-align:{{ row.exam.passage_alignment|default:'left' }};">
+        {% for paragraph in row.paragraphs %}<p style="margin:0 0 {{ row.exam.passage_paragraph_spacing_pt|default:12 }}pt;text-indent:{{ row.exam.passage_first_line_indent_em|default:0 }}em;">{{ paragraph }}</p>{% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="tsz-app"><ul><li><span>No active exam matches this passage's language and script.</span></li></ul></section>
+  {% endif %}
+</div>
+{% endblock %}

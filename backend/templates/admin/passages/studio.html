@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Passage studio | TypingSkillZone Admin{% endblock %}
+{% block content %}
+<div class="tsz-dashboard">
+  <section class="tsz-hero">
+    <div>
+      <span class="tsz-eyebrow">Passage studio</span>
+      <h2>Passage management</h2>
+      <p>Layout status and publication counts for every active exam, with the drafts ready for each one.</p>
+    </div>
+  </section>
+  <div class="tsz-stats">
+    <div class="tsz-stat"><span>Draft passages</span><strong>{{ draft_count }}</strong><small>Waiting to publish</small></div>
+    <div class="tsz-stat"><span>Published sources</span><strong>{{ published_count }}</strong><small>Central passages</small></div>
+    <div class="tsz-stat"><span>Layout not verified</span><strong>{{ unconfigured_count }}</strong><small>Exams pending format check</small></div>
+    <div class="tsz-stat"><span>Exams with no passages</span><strong>{{ empty_count }}</strong><small>Need passages</small></div>
+  </div>
+  <section class="tsz-app">
+    <header><h3>Exams</h3></header>
+    <div class="tsz-table-wrap">
+      <table class="tsz-table">
+        <thead><tr><th>Exam</th><th>Language</th><th>Layout</th><th>Published</th><th>Latest</th><th>Drafts ready</th></tr></thead>
+        <tbody>
+        {% for row in exams %}
+          <tr>
+            <td><a href="{% url 'admin:exams_examconfiguration_change' row.exam.pk %}">{{ row.exam.name }}</a></td>
+            <td>{{ row.exam.language|title }}</td>
+            <td><span class="tsz-pill {% if row.configured %}ok{% else %}warn{% endif %}">{{ row.layout }}</span></td>
+            <td>{{ row.published }}</td>
+            <td>{% if row.latest %}{{ row.latest|date:"d M Y, H:i" }}{% else %}–{% endif %}</td>
+            <td>{{ row.ready_drafts }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">No active exams.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
