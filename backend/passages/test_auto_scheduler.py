@@ -50,6 +50,11 @@ class AutoSchedulerTests(TestCase):
 
     def test_overlapping_start_is_refused(self):
         apply_schedule(plan_schedule(self.exam, self.start))
+        extra = PassageSource.objects.create(
+            title="Late upload", content="Text.", language="ENGLISH", script="LATIN",
+            status=PassageSource.Status.PUBLISHED,
+        )
+        publish_source_to_exam(extra, self.exam)
         with self.assertRaises(ValueError):
             plan_schedule(self.exam, self.start)
 
