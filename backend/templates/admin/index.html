@@ -22,7 +22,7 @@
   </div>
   {% endif %}
 
-  <p class="tsz-quick"><a class="tsz-btn" href="{% url 'admin:passages_studio' %}">Open passage studio →</a></p>
+  <p class="tsz-quick"><a class="tsz-btn" href="{% url 'admin:passages_studio' %}">Open passage studio →</a> <a class="tsz-btn" href="{% url 'admin:passages_autoschedule' %}">Auto-schedule queue →</a></p>
   <div class="tsz-apps">
     {% for app in app_list %}
     <section class="tsz-app">

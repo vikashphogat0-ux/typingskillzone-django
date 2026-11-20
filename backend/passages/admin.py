@@ -1,11 +1,14 @@
+from datetime import date
+
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path
 from django.utils.html import format_html
 
 from accounts.admin_permissions import SuperAdminOnlyAdminMixin
 from .models import ExamPassageSequence, PassageSource, SimulatorPassage
+from .scheduling import apply_schedule, default_start_date, plan_schedule
 from .services import auto_target_and_publish, matching_exams, publish_source_to_selected_exams
 
 
@@ -155,6 +158,58 @@ class SimulatorPassageAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
     ordering = ("exam", "serial_number")
 
     actions = ("archive_publications",)
+
+    def get_urls(self):
+        custom = [
+            path("autoschedule/", self.admin_site.admin_view(self.autoschedule_view), name="passages_autoschedule"),
+        ]
+        return custom + super().get_urls()
+
+    def autoschedule_view(self, request):
+        """Preview and confirm automatic release schedules for every exam's unscheduled queue."""
+        from django.urls import reverse
+        from exams.models import ExamConfiguration
+
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        raw = request.POST.get("start") if request.method == "POST" else request.GET.get("start")
+        try:
+            start = date.fromisoformat(raw) if raw else default_start_date()
+        except ValueError:
+            start = default_start_date()
+            messages.error(request, "That start date was not valid, so tomorrow is used.")
+
+        rows = []
+        for exam in ExamConfiguration.objects.filter(is_active=True).order_by("name"):
+            row = {"exam": exam, "count": 0, "first": None, "last": None, "days": 0, "blocked": ""}
+            try:
+                plan = plan_schedule(exam, start)
+            except ValueError as error:
+                row["blocked"] = str(error)
+                rows.append(row)
+                continue
+            if plan:
+                row.update(count=len(plan), first=plan[0][1], last=plan[-1][1], days=len({item[1] for item in plan}))
+            rows.append(row)
+
+        if request.method == "POST" and request.POST.get("confirm") == "yes":
+            total = 0
+            for row in rows:
+                if row["blocked"] or not row["count"]:
+                    continue
+                total += apply_schedule(plan_schedule(row["exam"], start))
+            messages.success(request, f"Scheduled {total} passage(s) starting {start:%d %b %Y}.")
+            return redirect(reverse("admin:passages_autoschedule") + f"?start={start.isoformat()}")
+
+        context = dict(
+            self.admin_site.each_context(request),
+            rows=rows,
+            start=start,
+            total=sum(row["count"] for row in rows),
+            title="Auto-schedule",
+        )
+        return render(request, "admin/passages/autoschedule.html", context)
 
     @admin.action(description="Archive selected simulator publications (IDs are retained)")
     def archive_publications(self, request, queryset):

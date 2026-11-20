@@ -1,0 +1,56 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Auto-schedule | TypingSkillZone Admin{% endblock %}
+{% block content %}
+<div class="tsz-dashboard">
+  <section class="tsz-hero">
+    <div>
+      <span class="tsz-eyebrow">Automatic release</span>
+      <h2>Auto-schedule the passage queue</h2>
+      <p>Each exam's unscheduled passages are placed in upload order: 5 at 07:00, 5 at 13:00 and 2 at 19:00 each day. Passages already scheduled are not moved.</p>
+    </div>
+  </section>
+
+  <form method="get" class="tsz-form-row">
+    <label for="start">First release date</label>
+    <input id="start" type="date" name="start" value="{{ start|date:'Y-m-d' }}">
+    <button class="tsz-btn" type="submit">Preview</button>
+  </form>
+
+  <div class="tsz-stats">
+    <div class="tsz-stat"><span>Passages to schedule</span><strong>{{ total }}</strong><small>Across all exams</small></div>
+    <div class="tsz-stat"><span>Starting</span><strong>{{ start|date:"d M" }}</strong><small>{{ start|date:"Y" }}</small></div>
+  </div>
+
+  <section class="tsz-app">
+    <header><h3>Exam queues</h3></header>
+    <div class="tsz-table-wrap">
+      <table class="tsz-table">
+        <thead><tr><th>Exam</th><th>Queued</th><th>Days needed</th><th>First day</th><th>Last day</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.exam.name }}</td>
+            <td>{{ row.count }}</td>
+            <td>{{ row.days }}</td>
+            <td>{% if row.first %}{{ row.first|date:"d M Y" }}{% else %}–{% endif %}</td>
+            <td>{% if row.last %}{{ row.last|date:"d M Y" }}{% else %}–{% endif %}</td>
+            <td>{% if row.blocked %}<span class="tsz-pill warn">{{ row.blocked }}</span>{% elif row.count %}<span class="tsz-pill ok">Ready</span>{% else %}<span class="tsz-pill">Queue empty</span>{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">No active exams.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if total %}
+  <form method="post" class="tsz-form-row">{% csrf_token %}
+    <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+    <input type="hidden" name="confirm" value="yes">
+    <button class="tsz-btn" type="submit">Schedule {{ total }} passage(s) from {{ start|date:"d M Y" }}</button>
+    <span class="tsz-muted">This writes the release dates. Review the preview first.</span>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

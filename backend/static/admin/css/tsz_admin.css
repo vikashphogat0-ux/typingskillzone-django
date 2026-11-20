@@ -107,3 +107,9 @@ input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, sel
 .tsz-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--body-quiet-color); padding: 10px 14px; border-bottom: 1px solid var(--hairline-color); background: var(--darkened-bg); }
 .tsz-table td { padding: 12px 14px; border-bottom: 1px solid var(--hairline-color); }
 .tsz-table tr:hover td { background: var(--selected-row); }
+
+.tsz-form-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+.tsz-form-row label { font-weight: 700; }
+.tsz-form-row input[type=date] { padding: 9px 12px; border-radius: 10px; border: 1px solid #CBD5E1; }
+.tsz-form-row button { cursor: pointer; border: none; font: inherit; }
+.tsz-muted { color: var(--body-quiet-color); font-size: 13px; }
