@@ -1,0 +1,9 @@
+{% extends "passages/site_base.html" %}
+{% block content %}
+<nav class="app-nav" aria-label="Owner">
+  <a href="{% url 'institutes:owner_dashboard' %}">Dashboard</a>
+  <a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
+  <form method="post" action="{% url 'institutes:owner_logout' %}" class="signout">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-small">Sign out</button></form>
+</nav>
+{% block app %}{% endblock %}
+{% endblock %}

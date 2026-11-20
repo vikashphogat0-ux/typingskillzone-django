@@ -1,0 +1,9 @@
+{% extends "passages/site_base.html" %}
+{% block content %}
+<nav class="app-nav" aria-label="Staff">
+  <a href="{% url 'institutes:staff_dashboard' %}">Dashboard</a>
+  <a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
+  <form method="post" action="{% url 'institutes:staff_logout' %}" class="signout">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-small">Sign out</button></form>
+</nav>
+{% block app %}{% endblock %}
+{% endblock %}
