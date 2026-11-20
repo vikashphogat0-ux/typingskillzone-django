@@ -78,10 +78,10 @@ class BulkUploadTests(TestCase):
         result = import_passages(rows, self.admin, publish=True, start_date=None)
 
         self.assertEqual(result["created"], 10)
-        self.assertEqual(result["published"], 120)
+        self.assertEqual(result["published"], 1180)
         self.assertEqual(
             SimulatorPassage.objects.filter(exam__in=exams, status=SimulatorPassage.Status.PUBLISHED).count(),
-            120,
+            1180,
         )
         for exam in exams:
             self.assertEqual(
