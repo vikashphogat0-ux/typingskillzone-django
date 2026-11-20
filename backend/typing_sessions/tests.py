@@ -527,6 +527,43 @@ class TypingSessionViewTests(TestCase):
         )
         self.publication = publish_source_to_exam(self.source, self.exam)
 
+
+    def test_start_view_returns_403_for_non_student_role(self):
+        from django.urls import reverse
+
+        owner = get_user_model().objects.create_user(
+            email="view-owner@example.test",
+            password="SafePassword123!",
+            role=get_user_model().Roles.INSTITUTE_OWNER,
+        )
+        self.client.force_login(owner)
+        response = self.client.post(
+            reverse("typing_sessions:start", kwargs={
+                "exam_code": self.exam.code,
+                "passage_id": self.publication.passage_id,
+            })
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "An active student account is required.", status_code=403)
+
+    def test_start_view_returns_conflict_not_forbidden_for_unreleased_passage(self):
+        from datetime import timedelta
+        from django.urls import reverse
+
+        self.publication.release_date = timezone.localdate() + timedelta(days=1)
+        self.publication.release_slot = "MORNING"
+        self.publication.release_position = 1
+        self.publication.save()
+        self.client.force_login(self.learner)
+        response = self.client.post(
+            reverse("typing_sessions:start", kwargs={
+                "exam_code": self.exam.code,
+                "passage_id": self.publication.passage_id,
+            })
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(response, "This passage is not released yet.", status_code=409)
+
     def test_opening_expired_attempt_marks_it_expired(self):
         from django.urls import reverse
 
