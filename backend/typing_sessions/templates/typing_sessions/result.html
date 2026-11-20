@@ -3,7 +3,7 @@
 {% block app %}
 <section class="page-head">
   <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
-  <h1>Your result</h1>
+  <h1>Test result</h1>
   <p class="lead">{{ attempt.get_state_display }}{% if attempt.completed_at %} · {{ attempt.completed_at|date:"d M Y, H:i" }}{% endif %}</p>
 </section>
 <div class="metrics">
