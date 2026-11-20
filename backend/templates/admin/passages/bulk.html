@@ -1,0 +1,64 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Bulk upload | TypingSkillZone Admin{% endblock %}
+{% block content %}
+<div class="tsz-dashboard">
+  <section class="tsz-hero">
+    <div>
+      <span class="tsz-eyebrow">Bulk upload</span>
+      <h2>Upload up to 500 passages at once</h2>
+      <p>Upload a CSV with the columns <strong>title, content, language</strong> and optionally <strong>script, source_reference</strong>. Review every row first. Nothing is saved until you confirm.</p>
+    </div>
+  </section>
+
+  {% if result %}
+  <section class="tsz-app">
+    <header><h3>Import complete</h3></header>
+    <ul>
+      <li><span>Passages created</span><strong>{{ result.created }}</strong></li>
+      <li><span>Publications created</span><strong>{{ result.published }}</strong></li>
+      <li><span>Passages scheduled</span><strong>{{ result.scheduled }}</strong></li>
+    </ul>
+    {% for line in result.skipped %}<p class="tsz-muted">Skipped: {{ line }}</p>{% endfor %}
+    {% for line in result.problems %}<p class="tsz-warn">{{ line }}</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="tsz-app tsz-form-card">{% csrf_token %}
+    <header><h3>1. Choose the file</h3></header>
+    <div class="tsz-form-body">
+      <input type="file" name="file" accept=".csv,text/csv" required>
+      <label class="tsz-check"><input type="checkbox" name="publish" value="1" {% if publish %}checked{% endif %}> Publish to all matching exams</label>
+      <label class="tsz-check">Schedule each exam's queue from <input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></label>
+      <button class="tsz-btn" type="submit" name="action" value="preview">Check file</button>
+      <p class="tsz-muted">Header line example: <code>title,content,language,script,source_reference</code></p>
+    </div>
+  </form>
+
+  {% if errors %}
+  <section class="tsz-app">
+    <header><h3>Rows with problems ({{ errors|length }})</h3></header>
+    <ul>{% for line in errors %}<li><span class="tsz-warn">{{ line }}</span></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  {% if rows is not None and rows %}
+  <section class="tsz-app">
+    <header><h3>2. Review {{ rows|length }} valid passage(s)</h3></header>
+    <div class="tsz-table-wrap">
+      <table class="tsz-table">
+        <thead><tr><th>Row</th><th>Title</th><th>Language</th><th>Script</th><th>Characters</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr><td>{{ row.row }}</td><td>{{ row.title }}</td><td>{{ row.language|title }}</td><td>{{ row.script|default:"–" }}</td><td>{{ row.content|length }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <form method="post" class="tsz-form-row">{% csrf_token %}
+    <button class="tsz-btn" type="submit" name="action" value="import">Import {{ rows|length }} passage(s)</button>
+    <span class="tsz-muted">Rows with the same title and language as an existing passage are skipped.</span>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -113,3 +113,8 @@ input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, sel
 .tsz-form-row input[type=date] { padding: 9px 12px; border-radius: 10px; border: 1px solid #CBD5E1; }
 .tsz-form-row button { cursor: pointer; border: none; font: inherit; }
 .tsz-muted { color: var(--body-quiet-color); font-size: 13px; }
+
+.tsz-form-card .tsz-form-body { display: grid; gap: 14px; padding: 16px; }
+.tsz-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.tsz-check input[type=date] { padding: 8px 10px; border-radius: 10px; border: 1px solid #CBD5E1; }
+.tsz-warn { color: #B45309; font-weight: 600; }

@@ -8,6 +8,7 @@ from django.utils.html import format_html
 
 from accounts.admin_permissions import SuperAdminOnlyAdminMixin
 from .models import ExamPassageSequence, PassageSource, SimulatorPassage
+from .bulk import import_passages, parse_passage_csv
 from .scheduling import apply_schedule, default_start_date, plan_schedule
 from .services import auto_target_and_publish, matching_exams, publish_source_to_selected_exams
 
@@ -41,8 +42,48 @@ class PassageSourceAdmin(SuperAdminOnlyAdminMixin, admin.ModelAdmin):
         custom = [
             path("studio/", self.admin_site.admin_view(self.studio_view), name="passages_studio"),
             path("<int:object_id>/preview/", self.admin_site.admin_view(self.preview_view), name="passages_preview"),
+            path("bulk/", self.admin_site.admin_view(self.bulk_view), name="passages_bulk"),
         ]
         return custom + super().get_urls()
+
+    def bulk_view(self, request):
+        """Upload a CSV, review every row, then import on confirmation. Super-admin only."""
+        self._require_superuser(request)
+        rows_key, options_key = "passages_bulk_rows", "passages_bulk_options"
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Bulk upload",
+            rows=None,
+            errors=[],
+            result=None,
+            start=default_start_date(),
+            publish=True,
+        )
+        if request.method == "POST" and request.POST.get("action") == "preview":
+            upload = request.FILES.get("file")
+            if not upload:
+                messages.error(request, "Choose a CSV file to upload.")
+            else:
+                rows, errors = parse_passage_csv(upload)
+                try:
+                    start = date.fromisoformat(request.POST.get("start", "")) if request.POST.get("start") else None
+                except ValueError:
+                    start = None
+                    messages.error(request, "That start date was not valid, so no schedule will be created.")
+                publish = bool(request.POST.get("publish"))
+                request.session[rows_key] = rows
+                request.session[options_key] = {"publish": publish, "start": start.isoformat() if start else ""}
+                context.update(rows=rows, errors=errors, publish=publish, start=start or context["start"])
+        elif request.method == "POST" and request.POST.get("action") == "import":
+            rows = request.session.pop(rows_key, None)
+            options = request.session.pop(options_key, {})
+            if not rows:
+                messages.error(request, "Nothing to import. Upload the file again.")
+            else:
+                start = date.fromisoformat(options["start"]) if options.get("start") else None
+                context["result"] = import_passages(rows, request.user, options.get("publish", False), start)
+                messages.success(request, f"Imported {context['result']['created']} passage(s).")
+        return render(request, "admin/passages/bulk.html", context)
 
     def _require_superuser(self, request):
         if not request.user.is_superuser:
