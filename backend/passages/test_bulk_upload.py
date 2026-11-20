@@ -54,6 +54,8 @@ class BulkUploadTests(TestCase):
         self.assertEqual(first.release_date, start)
 
     def test_ten_passages_publish_to_many_exams_with_independent_sequences(self):
+        self.exam.is_active = False
+        self.exam.save(update_fields=["is_active"])
         exams = [
             ExamConfiguration.objects.create(
                 code=f"bulk-wide-{index:03d}",
