@@ -1,50 +1,80 @@
 {% extends "passages/student_base.html" %}
-{% block title %}Passage library · TypingSkillZone{% endblock %}
+{% block title %}Passage Library · TypingSkillZone{% endblock %}
+{% block dashboard_heading %}{% if exam %}{{ exam.name }} passages{% else %}Choose an examination{% endif %}{% endblock %}
 {% block app %}
 <section class="page-head">
-  <span class="eyebrow">Passage library</span>
-  <h1>Choose a passage to practise</h1>
-  <p class="lead">Search published passages or browse by exam. Each passage opens with its exam's rules.</p>
+  <span class="eyebrow">Student workspace · Passage library</span>
+  {% if exam_selection %}
+    <h1>Choose an examination</h1>
+    <p class="lead">Select an exam first. The library will then show only passages published for that simulator.</p>
+  {% else %}
+    <a class="library-back" href="{% url 'accounts:passage_library' %}">← All examinations</a>
+    <h1>{{ exam.name }} passages</h1>
+    <p class="lead">{{ exam.passage_count|default:passage_options|length }} available passages · Choose a passage to preview, practise or download.</p>
+  {% endif %}
 </section>
-<section class="card filters">
-  <form method="get" action="{% url 'accounts:passage_library' %}" class="filter-form">
-    <div class="filter-group grow">
-      <span class="field-label">Search passage</span>
-      <input type="search" name="search" id="id_search" placeholder="Search by title or content" value="{{ search_query }}">
-    </div>
-    <div class="filter-group">
-      <span class="field-label">Language</span>
-      <div class="chip-row" role="group" aria-label="Language">
-        <a class="chip{% if not selected_language %} active{% endif %}" href="{% url 'accounts:passage_library' %}">All</a>
-        {% for lang in available_languages %}
-        <a class="chip{% if selected_language == lang %} active{% endif %}" href="?language={{ lang|urlencode }}">{{ lang|title }}</a>
-        {% endfor %}
-      </div>
-    </div>
-    <div class="filter-group">
-      <span class="field-label">Exam</span>
-      <a class="chip" href="{% url 'exams:catalogue' %}">Browse by exam →</a>
-    </div>
-    <button type="submit" class="btn btn-primary">Apply search</button>
-  </form>
-</section>
-<section class="passage-grid">
-  {% for passage in passages %}
-  <article class="passage-card">
-    <div class="passage-card-top"><span class="exam-chip">{{ passage.exam.name }}</span><span class="muted">{{ passage.source.language|title }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %}</span></div>
-    <h3>{{ passage.source.title }}</h3>
-    <p class="muted">Passage {{ passage.passage_id }}</p>
-    <a class="btn btn-primary btn-small" href="{% url 'passages:simulator-detail' passage.exam.code passage.passage_id %}">Practise</a>
-  </article>
+
+{% if exam_selection %}
+<section class="library-exam-grid">
+  {% for item in exams %}
+  <a class="library-exam-card" href="{% url 'accounts:passage_library' %}?exam={{ item.code|urlencode }}">
+    <span class="library-exam-kicker">{{ item.get_category_display }}</span>
+    <h2>{{ item.name }}</h2>
+    <p>{{ item.passage_count }} available passage{{ item.passage_count|pluralize }}</p>
+    <span class="library-exam-action">Open passage library →</span>
+  </a>
   {% empty %}
-  <div class="empty-state card"><h2>No passages found</h2><p class="muted">Try another search, or <a href="{% url 'accounts:passage_library' %}">clear the filters</a>.</p></div>
+  <div class="empty-state card"><h2>No passage libraries available</h2><p class="muted">Published passages will appear here when an examination is ready.</p></div>
   {% endfor %}
 </section>
-{% if page_obj.has_other_pages %}
-<nav class="pager" aria-label="Pages">
-  {% if page_obj.has_previous %}<a class="btn btn-ghost btn-small" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}{% if selected_language %}&amp;language={{ selected_language|urlencode }}{% endif %}">Previous</a>{% endif %}
-  <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-  {% if page_obj.has_next %}<a class="btn btn-ghost btn-small" href="?page={{ page_obj.next_page_number }}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}{% if selected_language %}&amp;language={{ selected_language|urlencode }}{% endif %}">Next</a>{% endif %}
-</nav>
+{% else %}
+<section class="card library-controls">
+  <form method="get" action="{% url 'accounts:passage_library' %}" class="library-filter-form">
+    <input type="hidden" name="exam" value="{{ exam.code }}">
+    <label class="filter-group grow"><span class="field-label">Search passages</span><input type="search" name="search" value="{{ search_query }}" placeholder="Search title or passage text"></label>
+    <label class="filter-group"><span class="field-label">Language</span>
+      <select name="language"><option value="">All languages</option>{% for lang in available_languages %}<option value="{{ lang }}"{% if selected_language == lang %} selected{% endif %}>{{ lang|title }}</option>{% endfor %}</select>
+    </label>
+    <button class="btn btn-primary" type="submit">Apply filters</button>
+  </form>
+  <form method="get" action="{% url 'accounts:passage_library' %}" class="library-select-form">
+    <input type="hidden" name="exam" value="{{ exam.code }}">
+    <label class="filter-group grow"><span class="field-label">Select a passage</span>
+      <select name="passage" onchange="this.form.submit()">
+        {% for item in passage_options %}
+        <option value="{{ item.serial_number }}"{% if selected_passage.serial_number == item.serial_number %} selected{% endif %}>Passage {{ item.serial_number|stringformat:"02d" }} · {{ item.source__title }} · {{ item.source__language|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button class="btn btn-ghost" type="submit">Open passage</button></noscript>
+  </form>
+</section>
+
+<section class="library-workspace">
+  <div class="library-list-panel">
+    <div class="library-panel-heading"><h2>Passage list</h2><span>{{ page_obj.paginator.count }} total</span></div>
+    {% for passage in passages %}
+    <a class="library-passage-row{% if selected_passage.pk == passage.pk %} active{% endif %}" href="?exam={{ exam.code|urlencode }}&amp;passage={{ passage.serial_number }}{% if selected_language %}&amp;language={{ selected_language|urlencode }}{% endif %}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}">
+      <span class="library-passage-number">{{ passage.passage_id }}</span>
+      <span class="library-passage-meta"><strong>{{ passage.source.title }}</strong><small>{{ passage.source.language|title }} · {{ passage.source.content|wordcount }} words</small></span>
+    </a>
+    {% empty %}<p class="muted library-empty">No passages match these filters.</p>{% endfor %}
+    {% if page_obj.has_other_pages %}<nav class="pager" aria-label="Passage pages">{% if page_obj.has_previous %}<a class="btn btn-ghost btn-small" href="?exam={{ exam.code|urlencode }}&amp;page={{ page_obj.previous_page_number }}&amp;search={{ search_query|urlencode }}&amp;language={{ selected_language|urlencode }}">Previous</a>{% endif %}<span class="muted">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="btn btn-ghost btn-small" href="?exam={{ exam.code|urlencode }}&amp;page={{ page_obj.next_page_number }}&amp;search={{ search_query|urlencode }}&amp;language={{ selected_language|urlencode }}">Next</a>{% endif %}</nav>{% endif %}
+  </div>
+
+  {% if selected_passage %}
+  <article class="library-preview-panel">
+    <div class="library-preview-heading"><div><span class="eyebrow">Passage {{ selected_passage.passage_id }}</span><h2>{{ selected_passage.source.title }}</h2><p class="muted">{{ exam.name }} · {{ selected_passage.source.language|title }} · {{ selected_passage.rendered_content|wordcount }} words</p></div></div>
+    <div class="library-preview-text">{{ selected_passage.rendered_content }}</div>
+    <div class="library-preview-actions">
+      <a class="btn btn-primary" href="{% url 'passages:simulator-detail' exam.code selected_passage.passage_id %}">Practise this passage</a>
+      <a class="btn btn-ghost" href="{% url 'accounts:download_library_passage' exam.code selected_passage.passage_id 'txt' %}">Download TXT</a>
+      <a class="btn btn-ghost" href="{% url 'accounts:download_library_passage' exam.code selected_passage.passage_id 'pdf' %}">Download PDF</a>
+    </div>
+  </article>
+  {% else %}
+  <article class="library-preview-panel empty-state"><h2>No passage selected</h2><p>Select a published passage from the list.</p></article>
+  {% endif %}
+</section>
 {% endif %}
 {% endblock %}
