@@ -13,7 +13,7 @@
     <tbody>
     {% for session in page_obj.object_list %}
       <tr>
-        <td>Passage {{ session.publication.serial_number }}</td>
+        <td><a href="{% url 'exams:exam_detail' exam.code %}?passage={{ session.publication.serial_number }}">Passage {{ session.publication.serial_number }}</a></td>
         <td><span class="status-pill">{{ session.get_state_display }}</span></td>
         <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
         <td>{{ session.result_snapshot.net_wpm|default:"–" }}</td>
