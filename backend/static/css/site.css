@@ -415,3 +415,18 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .dashboard-menu-toggle{display:none;grid-row:1/4;align-self:center;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px;font-weight:750}
 @media(max-width:900px){.dashboard-sidebar{display:none}.dashboard-sidebar.is-open{display:flex}.dashboard-menu-toggle{display:inline-flex}.dashboard-topbar{align-items:center;flex-direction:row}.dashboard-title-group{min-width:0}.dashboard-account{margin-left:auto}}
 @media(max-width:560px){.dashboard-topbar{align-items:flex-start;flex-direction:column}.dashboard-account{width:100%;margin-left:0}.dashboard-title-group{width:100%}}
+
+/* Typing modes: each mode has its own layout */
+.typing-engine[data-mode="normal"] .typing-workspace,
+.typing-engine[data-mode="highlighted"] .typing-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.typing-engine[data-mode="offscreen"] .typing-workspace { display: block; max-width: 840px; margin: 0 auto; }
+.typing-engine[data-mode="normal"] .reference-panel,
+.typing-engine[data-mode="highlighted"] .reference-panel { max-height: 62vh; overflow-y: auto; border-radius: 14px; }
+.typing-engine .word { border-radius: 4px; }
+.typing-engine[data-mode="highlighted"] .word.ok { background: #DCFCE7; color: #14532D; }
+.typing-engine[data-mode="highlighted"] .word.bad { background: #FEE2E2; color: #991B1B; text-decoration: underline wavy #DC2626; }
+.typing-engine[data-mode="highlighted"] .word.miss { background: #FEF3C7; color: #92400E; text-decoration: line-through; }
+.typing-engine[data-mode="highlighted"] .word.current { box-shadow: 0 0 0 2px #2563EB; }
+.typing-engine[data-mode="normal"] .word.ok, .typing-engine[data-mode="normal"] .word.bad,
+.typing-engine[data-mode="normal"] .word.miss, .typing-engine[data-mode="normal"] .word.current { background: none; color: inherit; text-decoration: none; box-shadow: none; }
+@media (max-width: 880px) { .typing-engine[data-mode="normal"] .typing-workspace, .typing-engine[data-mode="highlighted"] .typing-workspace { grid-template-columns: minmax(0, 1fr); } }

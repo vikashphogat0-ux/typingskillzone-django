@@ -16,6 +16,8 @@ from .drafts import load_draft_text
 from .models import TypingSession
 from .services import activate_session, expire_session, save_draft, start_session, submit_session
 
+DISPLAY_MODES = {"normal", "highlighted", "offscreen"}
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +38,15 @@ def start_typing_session(request, exam_code, passage_id):
     )
     try:
         attempt = start_session(learner=request.user, publication=publication)
-        requested_mode = request.POST.get("display_mode", "normal").strip().lower()
-        if requested_mode not in {"normal", "highlighted", "offscreen"}:
-            requested_mode = "normal"
-        if not attempt.rules_snapshot.get("display_mode"):
+        # The mode chosen at start is saved. It can still change until typing begins
+        # (the server clock starts on the first keystroke); after that it stays fixed.
+        requested_mode = (request.POST.get("display_mode") or "").strip().lower()
+        current_mode = attempt.rules_snapshot.get("display_mode")
+        if requested_mode in DISPLAY_MODES and attempt.deadline_at is None and requested_mode != current_mode:
             attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": requested_mode}
+            attempt.save(update_fields=("rules_snapshot",))
+        elif not current_mode:
+            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": "normal"}
             attempt.save(update_fields=("rules_snapshot",))
     except PermissionDenied as error:
         logger.warning(

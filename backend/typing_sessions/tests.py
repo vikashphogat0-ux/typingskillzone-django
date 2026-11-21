@@ -51,22 +51,27 @@ class TypingSessionTests(TestCase):
         )
         self.assertTrue(activated.rules_snapshot["timer_started"])
 
-    def test_selected_exam_start_saves_and_locks_display_mode(self):
+    def test_selected_mode_is_saved_and_changeable_until_typing_starts(self):
         self.client.force_login(self.learner)
-        response = self.client.post(
-            reverse("typing_sessions:start_selected", args=[self.exam.code]),
-            {"passage_id": str(self.publication.serial_number), "display_mode": "highlighted"},
-        )
-        self.assertEqual(response.status_code, 302)
+        url = reverse("typing_sessions:start_selected", args=[self.exam.code])
+        self.client.post(url, {"passage_id": str(self.publication.serial_number), "display_mode": "highlighted"})
         attempt = TypingSession.objects.get(learner=self.learner, publication=self.publication)
         self.assertEqual(attempt.rules_snapshot["display_mode"], "highlighted")
-
-        self.client.post(
-            reverse("typing_sessions:start_selected", args=[self.exam.code]),
-            {"passage_id": str(self.publication.serial_number), "display_mode": "offscreen"},
-        )
+        self.client.post(url, {"passage_id": str(self.publication.serial_number), "display_mode": "offscreen"})
         attempt.refresh_from_db()
-        self.assertEqual(attempt.rules_snapshot["display_mode"], "highlighted")
+        self.assertEqual(attempt.rules_snapshot["display_mode"], "offscreen")
+
+    def test_mode_is_locked_once_typing_has_started(self):
+        from datetime import timedelta
+        from django.utils import timezone as dj_timezone
+        self.client.force_login(self.learner)
+        url = reverse("typing_sessions:start_selected", args=[self.exam.code])
+        self.client.post(url, {"passage_id": str(self.publication.serial_number), "display_mode": "normal"})
+        attempt = TypingSession.objects.get(learner=self.learner, publication=self.publication)
+        TypingSession.objects.filter(pk=attempt.pk).update(deadline_at=dj_timezone.now() + timedelta(minutes=10))
+        self.client.post(url, {"passage_id": str(self.publication.serial_number), "display_mode": "highlighted"})
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.rules_snapshot["display_mode"], "normal")
 
     def test_timer_activation_endpoint_starts_server_deadline(self):
         attempt = start_session(learner=self.learner, publication=self.publication)

@@ -21,6 +21,15 @@
       {% if exam.passage_layout %}<li>Layout: {{ exam.get_passage_layout_display }}</li>{% endif %}
     </ul>
     <form method="post" action="{% url 'typing_sessions:start' exam.code passage.passage_id %}">{% csrf_token %}
+      <fieldset class="mode-options">
+        <legend>Choose a mode</legend>
+        <label class="mode-option"><input type="radio" name="display_mode" value="normal" checked>
+          <span><strong>Normal</strong><small>Passage and your typing area side by side.</small></span></label>
+        <label class="mode-option"><input type="radio" name="display_mode" value="highlighted">
+          <span><strong>Highlighted</strong><small>Side by side. Each passage word turns green when correct, red when wrong, amber when skipped.</small></span></label>
+        <label class="mode-option"><input type="radio" name="display_mode" value="offscreen">
+          <span><strong>Off-screen</strong><small>Only the typing area is shown. Type from memory.</small></span></label>
+      </fieldset>
       <button type="submit" class="btn btn-primary btn-block">Start typing test</button>
     </form>
   </aside>

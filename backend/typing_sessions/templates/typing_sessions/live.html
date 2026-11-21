@@ -164,12 +164,53 @@
   function escapeHtml(value) {
     return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
+  // Word-level alignment (longest common subsequence). Each passage word is coloured by its result,
+  // so one mistake only colours that word and does not shift the colours of the words after it.
+  function alignWords(ref, typed) {
+    const n = ref.length, m = typed.length, table = [];
+    for (let i = 0; i <= n; i++) table.push(new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      table[i][j] = ref[i] === typed[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+    const ops = []; let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (ref[i] === typed[j]) { ops.push(["equal", i, j]); i++; j++; }
+      else if (table[i + 1][j] >= table[i][j + 1]) { ops.push(["delete", i, j]); i++; }
+      else { ops.push(["insert", i, j]); j++; }
+    }
+    while (i < n) { ops.push(["delete", i, j]); i++; }
+    while (j < m) { ops.push(["insert", i, j]); j++; }
+    return ops;
+  }
   function renderHighlightedReference(typed) {
     if (mode !== "highlighted" || !referenceElement) return;
-    const original = Array.from(reference), entered = Array.from(typed);
-    referenceElement.innerHTML = original.map((character,index) => {
-      const state = index >= entered.length ? "char-pending" : (entered[index] === character ? "char-correct" : "char-wrong");
-      return '<span class="' + state + '">' + escapeHtml(character) + '</span>';
+    const refWords = reference.match(/\S+/g) || [];
+    const typedWords = typed.match(/\S+/g) || [];
+    const m = typedWords.length;
+    const status = new Array(refWords.length).fill("");
+    const blocks = []; let current = null; let next = 0;
+    for (const [kind, i, j] of alignWords(refWords, typedWords)) {
+      if (kind === "equal") {
+        if (current) { blocks.push(current); current = null; }
+        status[i] = "ok"; next = i + 1; continue;
+      }
+      if (!current) current = { dels: [], ins: [], start: j };
+      if (kind === "delete") current.dels.push(i); else { current.ins.push(j); next = i; }
+    }
+    if (current) blocks.push(current);
+    for (const block of blocks) {
+      const k = block.ins.length;
+      if (k === 0 && block.start >= m) continue; // untyped passage text is not marked
+      const reachesEnd = k > 0 && block.start + k === m;
+      const marked = reachesEnd ? block.dels.slice(0, k) : block.dels;
+      marked.forEach((i) => { status[i] = k ? "bad" : "miss"; });
+    }
+    let wordIndex = 0;
+    referenceElement.innerHTML = reference.split(/(\s+)/).map((token) => {
+      if (!token) return "";
+      if (/^\s+$/.test(token)) return escapeHtml(token);
+      const k = wordIndex++;
+      const classes = ["word", status[k], k === next ? "current" : ""].filter(Boolean).join(" ");
+      return '<span class="' + classes + '">' + escapeHtml(token) + '</span>';
     }).join("");
   }
   function updateStats() {
