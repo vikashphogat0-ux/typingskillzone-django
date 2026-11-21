@@ -477,6 +477,31 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 }
 
 
+/* Live reference feedback: highlighted mode marks each character against the typed input. */
+.typing-engine[data-mode="highlighted"] .passage-text .char-correct {
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 2px;
+}
+.typing-engine[data-mode="highlighted"] .passage-text .char-wrong {
+  background: #fee2e2;
+  color: #991b1b;
+  text-decoration: underline wavy #dc2626;
+  border-radius: 2px;
+}
+.typing-engine[data-mode="highlighted"] .passage-text .char-pending {
+  color: var(--ink);
+}
+
+/* Normal mode deliberately keeps the reference unmarked; offscreen hides it. */
+.typing-engine[data-mode="normal"] .passage-text .char-correct,
+.typing-engine[data-mode="normal"] .passage-text .char-wrong,
+.typing-engine[data-mode="normal"] .passage-text .char-pending {
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+}
+
 /* Result review: both columns use the same word alignment and semantic states. */
 .word-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .word-comparison-text { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 180px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fbfdff; color: var(--ink); font: 14px/1.9 ui-monospace, SFMono-Regular, Consolas, monospace; }
