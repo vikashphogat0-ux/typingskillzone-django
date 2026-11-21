@@ -20,7 +20,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         )
 
     def test_engine_version_is_pinned(self):
-        self.assertEqual(SCORING_VERSION, "tsz-char-word-v3")
+        self.assertEqual(SCORING_VERSION, "tsz-word-unit-v4")
 
     def test_generic_metrics_are_stable(self):
         result = self.calculate()
