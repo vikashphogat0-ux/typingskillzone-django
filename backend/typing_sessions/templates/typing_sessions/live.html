@@ -176,7 +176,7 @@
     const typed=input.value;
     const nextCharacter = Array.from(reference)[Array.from(typed).length] || "✓";
     if (currentTarget) currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
-    const elapsed=Math.max(1,((startedAt || Date.now())-(startedAt || Date.now()) + (startedAt ? Date.now()-startedAt : 0))/60000);
+    const elapsed = startedAt ? Math.max(1/60, (Date.now()-startedAt)/60000) : 1;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
     let correct=0;
     const entered=Array.from(typed), original=Array.from(reference);
@@ -192,7 +192,7 @@
   updateStats();
   let activationPromise = null;
   async function ensureTimerStarted() {
-    if (deadline !== null || !clock.duration_ms || activationPromise) return activationPromise;
+    if (deadline !== null || activationPromise) return activationPromise;
     const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
     activationPromise = fetch(activateUrl, {
       method: "POST",
