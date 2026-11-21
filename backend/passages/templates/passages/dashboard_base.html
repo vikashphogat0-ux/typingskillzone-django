@@ -1,7 +1,7 @@
 {% extends "passages/site_base.html" %}
 {% block content %}
 <div class="dashboard-shell">
-  <aside class="dashboard-sidebar" aria-label="Workspace navigation">
+  <aside class="dashboard-sidebar" id="dashboard-sidebar" aria-label="Workspace navigation">
     <div class="dashboard-sidebar-heading"><span class="dashboard-brand-mark">TS</span><span><strong>TypingSkillZone</strong><small>{% block dashboard_role_label %}Workspace{% endblock %}</small></span></div>
     <nav class="dashboard-links" aria-label="Dashboard">
       {% block dashboard_nav %}{% endblock %}
@@ -10,7 +10,7 @@
   </aside>
   <section class="dashboard-main">
     <header class="dashboard-topbar">
-      <div><span class="dashboard-context">{% block dashboard_role_context %}Workspace{% endblock %}</span><strong>{% block dashboard_heading %}Workspace{% endblock %}</strong></div>
+      <div class="dashboard-title-group"><button type="button" class="dashboard-menu-toggle" id="dashboard-menu-toggle" aria-controls="dashboard-sidebar" aria-expanded="false">Menu</button><span class="dashboard-context">{% block dashboard_role_context %}Workspace{% endblock %}</span><strong>{% block dashboard_heading %}Workspace{% endblock %}</strong><small class="dashboard-breadcrumb">Home / {{ request.resolver_match.url_name|default:"workspace"|title }}</small></div>
       <div class="dashboard-account"><span>{{ request.user.get_full_name|default:request.user.email }}</span>{% block dashboard_account_action %}{% endblock %}</div>
     </header>
     <main class="dashboard-content">
@@ -19,4 +19,15 @@
     <footer class="dashboard-footer"><span>TypingSkillZone</span><span>Practice with consistency.</span></footer>
   </section>
 </div>
+<script>
+(() => {
+  const toggle = document.getElementById("dashboard-menu-toggle");
+  const sidebar = document.getElementById("dashboard-sidebar");
+  if (!toggle || !sidebar) return;
+  toggle.addEventListener("click", () => {
+    const open = sidebar.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+})();
+</script>
 {% endblock %}
