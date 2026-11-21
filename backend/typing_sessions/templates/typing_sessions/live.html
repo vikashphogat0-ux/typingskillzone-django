@@ -33,7 +33,7 @@
     {% csrf_token %}
     <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
     <input type="hidden" id="policy-events" name="policy_events" value="0">
-    <label for="typed-text"><strong>Type the passage above</strong></label>
+    <label for="typed-text"><strong>Type the selected passage</strong></label>
     <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
     <div class="finish-row">
       <button id="finish-button" type="submit" class="btn btn-primary">Finish test</button>
