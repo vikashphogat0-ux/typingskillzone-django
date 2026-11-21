@@ -10,7 +10,7 @@ from passages.models import PassageSource
 from passages.services import publish_source_to_exam
 
 from .models import TypingSession
-from .services import expire_session, start_session, submit_session
+from .services import activate_session, expire_session, start_session, submit_session
 from .mistake_classification import classify_typing_mistakes
 
 class TypingSessionTests(TestCase):
@@ -34,7 +34,21 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
         self.assertEqual(attempt.rules_snapshot["allow_backspace"], False)
         self.assertEqual(attempt.duration_seconds, 600)
-        self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
+        self.assertIsNone(attempt.deadline_at)
+
+
+    def test_exam_clock_starts_on_first_input_activation(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        original_started_at = attempt.started_at
+        self.assertIsNone(attempt.deadline_at)
+        activated = activate_session(session_id=attempt.pk, learner=self.learner)
+        self.assertIsNotNone(activated.deadline_at)
+        self.assertGreaterEqual(activated.started_at, original_started_at)
+        self.assertEqual(
+            activated.deadline_at,
+            activated.started_at + timedelta(seconds=600),
+        )
+        self.assertTrue(activated.rules_snapshot["timer_started"])
 
     def test_exam_configuration_edits_do_not_change_started_specification_snapshot(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
