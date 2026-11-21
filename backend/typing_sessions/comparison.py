@@ -5,7 +5,7 @@ import unicodedata
 
 
 def _tokens(text):
-    return re.findall(r"\\s+|\\S+", text or "")
+    return re.findall(r"\s+|\S+", text or "")
 
 
 def build_word_comparison(reference, typed):
