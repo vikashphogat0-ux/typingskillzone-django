@@ -1,7 +1,7 @@
 {% extends "passages/simulator_base.html" %}
 {% block title %}Typing test · {{ attempt.rules_snapshot.exam_name }} | TypingSkillZone{% endblock %}
 {% block simulator_content %}
-<section class="exam-shell typing-engine" id="typing-engine" data-mode="{{ attempt.rules_snapshot.display_mode|default:'normal' }}">
+<section class="exam-shell typing-engine" id="typing-engine" data-mode="{{ attempt.rules_snapshot.display_mode|default:'normal'|lower }}">
   <header class="exam-header">
     <div>
       <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
@@ -29,7 +29,7 @@
     <div class="stat-card"><strong id="live-accuracy">100%</strong><span>Live accuracy (estimate)</span></div>
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="practice-note">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
-  <div class="typing-workspace" id="typing-workspace">{% if attempt.rules_snapshot.display_mode != "offscreen" %}<section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>{% endif %}
+  <div class="typing-workspace{% if attempt.rules_snapshot.display_mode|lower == 'offscreen' %} is-offscreen{% endif %}" id="typing-workspace">{% if attempt.rules_snapshot.display_mode|lower != "offscreen" %}<section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>{% endif %}
   <section class="typing-panel"><div class="typing-panel-heading"><strong>Your typing area</strong><span>Scroll independently</span></div><form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
     <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
