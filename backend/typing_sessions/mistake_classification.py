@@ -167,19 +167,10 @@ def classify_typing_mistakes(reference, typed):
                 len(ref_spaces) - len(typed_spaces)
             )
 
-    # Categories describe detected defect types and may overlap within one
-    # word. The penalty unit is the affected word, counted only once.
-    ref_words_for_count = re.findall(r"\S+", _attempted_reference_prefix(reference, typed_words, typed))
-    word_matcher = SequenceMatcher(
-        None,
-        ref_words_for_count,
-        typed_words,
-        autojunk=False,
-    )
-    total = 0
-    for tag, i1, i2, j1, j2 in word_matcher.get_opcodes():
-        if tag != "equal":
-            total += max(i2 - i1, j2 - j1)
+    # Each category is counted once per detected word/spacing defect.
+    # This preserves internal-spacing, word-spacing and paragraph-break errors,
+    # which cannot be represented by a plain token substitution diff.
+    total = sum(categories.values())
 
     return {
         "categories": categories,
