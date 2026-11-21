@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from exams.models import ExamConfiguration
@@ -336,7 +337,7 @@ class TypingScoringTests(TestCase):
 
         result.refresh_from_db()
 
-        self.assertEqual(result.scoring_version, "tsz-char-word-v2")
+        self.assertEqual(result.scoring_version, "tsz-char-word-v3")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
 
