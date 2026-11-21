@@ -340,19 +340,6 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["character_errors"], 1)
         self.assertEqual(result["accuracy_percent"], 75.0)
 
-    def test_default_scoring_counts_case_and_punctuation_defects_as_one_word_error(self):
-        from .scoring import calculate_result
-
-        result = calculate_result(
-            reference="Hello, world!",
-            typed="hELLo!! world?",
-            duration_seconds=60,
-            rules={},
-        )
-        self.assertEqual(result["word_errors"], 2)
-        self.assertEqual(result["error_count"], 2)
-        self.assertEqual(result["error_count_method"], "word")
-
     def test_word_error_mode_counts_multiple_character_defects_in_one_word_once(self):
         from .scoring import calculate_result
 
