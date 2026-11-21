@@ -42,7 +42,7 @@ class IndependentStudentLoginTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("accounts:student_dashboard"),
+            reverse("exams:catalogue"),
             fetch_redirect_response=False,
         )
         self.assertEqual(
@@ -50,7 +50,7 @@ class IndependentStudentLoginTests(TestCase):
             self.student.pk,
         )
 
-    def test_independent_student_signs_in_to_account_dashboard(self):
+    def test_independent_student_signs_in_to_exam_catalogue(self):
         response = self.client.post(self.url, {"username": "independent@example.com", "password": "SafePassword123!"})
         self.assertRedirects(response, reverse("accounts:student_dashboard"), fetch_redirect_response=False)
 

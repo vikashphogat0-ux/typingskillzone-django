@@ -19,10 +19,10 @@ class DashboardRoutingTests(TestCase):
         )
         self.admin = User.objects.create_superuser(email="route-admin@example.com", password="AdminStrong123!")
 
-    def test_student_registration_page_sends_student_to_own_dashboard(self):
+    def test_student_registration_page_sends_student_to_exam_catalogue(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse("accounts:student_register"))
-        self.assertRedirects(response, reverse("accounts:student_dashboard"), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
 
     def test_owner_is_sent_to_owner_dashboard_not_student_portal(self):
         self.client.force_login(self.owner)

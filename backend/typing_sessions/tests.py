@@ -10,7 +10,7 @@ from passages.models import PassageSource
 from passages.services import publish_source_to_exam
 
 from .models import TypingSession
-from .services import expire_session, start_session, submit_session
+from .services import activate_session, expire_session, start_session, submit_session
 from .mistake_classification import classify_typing_mistakes
 
 class TypingSessionTests(TestCase):
@@ -34,7 +34,47 @@ class TypingSessionTests(TestCase):
         self.assertEqual(attempt.reference_text, self.publication.rendered_content)
         self.assertEqual(attempt.rules_snapshot["allow_backspace"], False)
         self.assertEqual(attempt.duration_seconds, 600)
-        self.assertEqual(attempt.deadline_at, attempt.started_at + timedelta(seconds=600))
+        self.assertIsNone(attempt.deadline_at)
+
+
+    def test_exam_clock_starts_on_first_input_activation(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        original_started_at = attempt.started_at
+        self.assertIsNone(attempt.deadline_at)
+        activated = activate_session(session_id=attempt.pk, learner=self.learner)
+        self.assertIsNotNone(activated.deadline_at)
+        self.assertGreaterEqual(activated.started_at, original_started_at)
+        self.assertEqual(
+            activated.deadline_at,
+            activated.started_at + timedelta(seconds=600),
+        )
+        self.assertTrue(activated.rules_snapshot["timer_started"])
+
+    def test_selected_exam_start_saves_and_locks_display_mode(self):
+        self.client.force_login(self.learner)
+        response = self.client.post(
+            reverse("typing_sessions:start_selected", args=[self.exam.code]),
+            {"passage_id": str(self.publication.serial_number), "display_mode": "highlighted"},
+        )
+        self.assertEqual(response.status_code, 302)
+        attempt = TypingSession.objects.get(learner=self.learner, publication=self.publication)
+        self.assertEqual(attempt.rules_snapshot["display_mode"], "highlighted")
+
+        self.client.post(
+            reverse("typing_sessions:start_selected", args=[self.exam.code]),
+            {"passage_id": str(self.publication.serial_number), "display_mode": "offscreen"},
+        )
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.rules_snapshot["display_mode"], "highlighted")
+
+    def test_timer_activation_endpoint_starts_server_deadline(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        self.client.force_login(self.learner)
+        response = self.client.post(reverse("typing_sessions:activate", args=[attempt.pk]))
+        self.assertEqual(response.status_code, 200)
+        attempt.refresh_from_db()
+        self.assertIsNotNone(attempt.deadline_at)
+        self.assertTrue(attempt.rules_snapshot["timer_started"])
 
     def test_exam_configuration_edits_do_not_change_started_specification_snapshot(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
@@ -145,6 +185,44 @@ class TypingSessionTests(TestCase):
 
 
 class TypingScoringTests(TestCase):
+    def test_untyped_trailing_passage_words_are_pending_not_errors(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="one two three",
+            typed="one",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "GENERIC",
+                "error_rules": {"count_word_errors": True},
+                "verification_status": "UNVERIFIED",
+            },
+        )
+        self.assertEqual(result["word_errors"], 0)
+        self.assertEqual(result["character_errors"], 0)
+        self.assertEqual(result["deletion_errors"], 0)
+        self.assertEqual(result["accuracy_percent"], 100.0)
+
+        analysis = classify_typing_mistakes("one two three", "one")
+        self.assertEqual(analysis["total_detected_errors"], 0)
+
+        attempted_error = calculate_result(
+            reference="one two three",
+            typed="one wrong",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "GENERIC",
+                "error_rules": {"count_word_errors": True},
+                "verification_status": "UNVERIFIED",
+            },
+        )
+        self.assertEqual(attempted_error["word_errors"], 1)
+        self.assertEqual(attempted_error["error_count"], 1)
+        self.assertEqual(
+            classify_typing_mistakes("one two three", "one wrong")["total_detected_errors"],
+            1,
+        )
+
     def setUp(self):
         User = get_user_model()
         self.learner = User.objects.create_user(email="scoring@example.com", password="SafePassword123!")

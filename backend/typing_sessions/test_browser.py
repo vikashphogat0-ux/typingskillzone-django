@@ -228,10 +228,9 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
                 self.live_server_url + f"/simulators/{self.exam.code}/passages/"
             )
             page.wait_for_load_state("networkidle", timeout=10000)
-            assert (
-                f"/simulators/{self.exam.code}/passages/" in page.url
-            )
-            expect(page.locator("text=Browser passage")).to_be_visible(timeout=10000)
+            assert f"/exams/{self.exam.code}/" in page.url
+            expect(page.locator("#passage_id")).to_be_visible(timeout=10000)
+            assert page.locator("#passage_id option").count() == 1
 
         self._run_playwright(flow)
 
@@ -239,14 +238,16 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
     def test_typing_start_to_result_flow(self):
         def flow(page):
             self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
-            # Open the simulator passage detail page.
+            # Legacy passage URLs resolve into the selected exam workspace.
             detail_url = (
                 f"/simulators/{self.exam.code}/passages/"
                 f"{self.publication.passage_id}/"
             )
             page.goto(self.live_server_url + detail_url)
-            expect(page.locator("text=Browser passage")).to_be_visible(timeout=10000)
-            # Start the attempt via the POST form on the detail page.
+            expect(page.locator("#passage_id")).to_be_visible(timeout=10000)
+            page.locator("#passage_id").select_option(str(self.publication.serial_number))
+            page.locator('input[name="display_mode"][value="normal"]').check()
+            # Start the selected passage with the chosen fixed display mode.
             page.click('button[type="submit"]')
             page.wait_for_load_state("networkidle", timeout=10000)
             assert "/typing/" in page.url

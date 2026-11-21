@@ -66,7 +66,7 @@ def dashboard_url_for(user):
         return reverse("institutes:owner_dashboard")
     if user.role == User.Roles.INSTITUTE_STAFF:
         return reverse("institutes:staff_dashboard")
-    return reverse("accounts:student_dashboard")
+    return reverse("exams:catalogue")
 
 
 @require_http_methods(["GET", "POST"])
@@ -89,7 +89,7 @@ def student_login(request):
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ):
                 return redirect(next_url)
-            return redirect("accounts:student_dashboard")
+            return redirect("exams:catalogue")
     return render(request, "accounts/student_login.html", {"form": form})
 
 
@@ -181,10 +181,7 @@ def verify_student_email(request, token):
     user.email_verification_sent_at = None
     user.save(update_fields=["is_email_verified", "is_active", "email_verification_sent_at"])
     login(request, user)
-    return render(request, "accounts/verification_result.html", {
-        "success": True,
-        "message": "Your email is verified. Your student account is now active.",
-    })
+    return redirect("exams:catalogue")
 
 
 @login_required
@@ -323,6 +320,15 @@ def student_result_history(request):
         "selected_date_from": date_from,
         "selected_date_to": date_to,
     }
+
+    if exam_code:
+        selected_exam_object = get_object_or_404(
+            ExamConfiguration,
+            code=exam_code,
+            is_active=True,
+        )
+        context["exam"] = selected_exam_object
+        return render(request, "accounts/exam_result_history.html", context)
 
     return render(
         request,

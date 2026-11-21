@@ -1,7 +1,7 @@
-{% extends "passages/site_base.html" %}
+{% extends "passages/simulator_base.html" %}
 {% block title %}Typing test · {{ attempt.rules_snapshot.exam_name }} | TypingSkillZone{% endblock %}
-{% block content %}
-<section class="exam-shell typing-engine" id="typing-engine" data-mode="normal">
+{% block simulator_content %}
+<section class="exam-shell typing-engine" id="typing-engine" data-mode="{{ attempt.rules_snapshot.display_mode|default:'normal' }}">
   <header class="exam-header">
     <div>
       <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
@@ -12,13 +12,9 @@
       <span>Time remaining</span>
     </div>
   </header>
-  <div class="typing-toolbar" role="toolbar" aria-label="Typing display controls">
-    <div class="typing-mode-group" role="group" aria-label="Display mode">
-      <button type="button" class="mode-button active" data-mode="normal" aria-pressed="true">Normal</button>
-      <button type="button" class="mode-button" data-mode="highlighted" aria-pressed="false">Highlighted</button>
-      <button type="button" class="mode-button" data-mode="offscreen" aria-pressed="false">Off-Screen</button>
-    </div>
-    <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" hidden>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
+  <div class="typing-toolbar">
+    <span class="mode-label">Practice mode: <strong>{{ attempt.rules_snapshot.display_mode|default:"normal"|title }}</strong></span>
+    <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" {% if attempt.rules_snapshot.display_mode != "highlighted" %}hidden{% endif %}>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
   </div>
   <div class="rule-strip">
     {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
@@ -32,12 +28,12 @@
     <div class="stat-card"><strong id="live-accuracy">100%</strong><span>Live accuracy (estimate)</span></div>
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="practice-note">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
-  <div class="typing-workspace" id="typing-workspace"><section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>
+  <div class="typing-workspace" id="typing-workspace">{% if attempt.rules_snapshot.display_mode != "offscreen" %}<section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>{% endif %}
   <section class="typing-panel"><div class="typing-panel-heading"><strong>Your typing area</strong><span>Scroll independently</span></div><form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
     <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
     <input type="hidden" id="policy-events" name="policy_events" value="0">
-    <label for="typed-text"><strong>Type the passage above</strong></label>
+    <label for="typed-text"><strong>Type the selected passage</strong></label>
     <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
     <div class="finish-row">
       <button id="finish-button" type="submit" class="btn btn-primary">Finish test</button>
@@ -46,6 +42,7 @@
   </form></section></div>
 </section>
 {{ attempt.rules_snapshot|json_script:"typing-rules" }}
+{{ attempt.reference_text|json_script:"reference-data" }}
 {{ clock|json_script:"typing-clock" }}
 
 <script>
@@ -53,14 +50,17 @@
   const rules = JSON.parse(document.getElementById("typing-rules").textContent);
   const input = document.getElementById("typed-text");
   const form = document.getElementById("typing-form");
-  const reference = document.getElementById("reference").innerText;
+  const reference = JSON.parse(document.getElementById("reference-data").textContent);
+  const referenceElement = document.getElementById("reference");
+  const mode = rules.display_mode || "normal";
+  const activateUrl = "{% url 'typing_sessions:activate' attempt.pk %}";
   const countdown = document.getElementById("countdown");
   const clock = JSON.parse(document.getElementById("typing-clock").textContent);
-  const startedAt = Date.now();
-  const deadline = clock.deadline_ms;
+  let startedAt = null;
+  let deadline = clock.deadline_ms;
   let submitting = false;
   let policyEvents = 0;
-  const clockOffset = clock.server_now_ms - Date.now();
+  let clockOffset = clock.server_now_ms - Date.now();
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
@@ -142,25 +142,13 @@
   });
   input.addEventListener("beforeinput", countBlocked);
   input.addEventListener("paste", countBlocked);
-  document.getElementById("reference").addEventListener("copy", event => {
+  if (referenceElement) referenceElement.addEventListener("copy", event => {
     if (rules.allow_copy === false) { event.preventDefault(); policyEvents = Math.min(1000, policyEvents + 1); }
   });
   const engine = document.getElementById("typing-engine");
   const currentTargetWrap = document.getElementById("current-target-wrap");
   const currentTarget = document.getElementById("current-target");
-  function updateDisplayMode(mode) {
-    engine.dataset.mode = mode;
-    document.querySelectorAll(".mode-button").forEach(button => {
-      const active = button.dataset.mode === mode;
-      button.classList.toggle("active", active);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-    currentTargetWrap.hidden = mode !== "highlighted";
-    document.getElementById("reference-panel").hidden = mode === "offscreen";
-  }
-  document.querySelectorAll(".mode-button").forEach(button => {
-    button.addEventListener("click", () => updateDisplayMode(button.dataset.mode));
-  });
+  engine.dataset.mode = mode;
   const fullscreenButton = document.getElementById("fullscreen-button");
   fullscreenButton.addEventListener("click", async () => {
     try {
@@ -173,19 +161,61 @@
   document.addEventListener("fullscreenchange", () => {
     fullscreenButton.textContent = document.fullscreenElement ? "Exit full screen" : "Enter full screen";
   });
+  function escapeHtml(value) {
+    return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  function renderHighlightedReference(typed) {
+    if (mode !== "highlighted" || !referenceElement) return;
+    const original = Array.from(reference), entered = Array.from(typed);
+    referenceElement.innerHTML = original.map((character,index) => {
+      const state = index >= entered.length ? "char-pending" : (entered[index] === character ? "char-correct" : "char-wrong");
+      return '<span class="' + state + '">' + escapeHtml(character) + '</span>';
+    }).join("");
+  }
   function updateStats() {
-    const nextCharacter = Array.from(reference)[Array.from(input.value).length] || "✓";
-    currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
-    const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
+    const typed=input.value;
+    const nextCharacter = Array.from(reference)[Array.from(typed).length] || "✓";
+    if (currentTarget) currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
+    const elapsed = startedAt ? Math.max(1/60, (Date.now()-startedAt)/60000) : 1;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
     let correct=0;
-    for(let i=0;i<Math.min(typed.length,reference.length);i++) if(typed[i]===reference[i]) correct++;
-    document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/typed.length*100):100)+"%";
+    const entered=Array.from(typed), original=Array.from(reference);
+    for(let i=0;i<Math.min(entered.length,original.length);i++) if(entered[i]===original[i]) correct++;
+    document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/entered.length*100):100)+"%";
+    renderHighlightedReference(typed);
   }
-  input.addEventListener("input",updateStats);
+  input.addEventListener("input",() => {
+    if (!startedAt) startedAt = Date.now();
+    ensureTimerStarted();
+    updateStats();
+  });
   updateStats();
+  let activationPromise = null;
+  async function ensureTimerStarted() {
+    if (deadline !== null || activationPromise) return activationPromise;
+    const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    activationPromise = fetch(activateUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"X-CSRFToken": csrf},
+    }).then(response => {
+      if (!response.ok) throw new Error("Unable to start exam timer");
+      return response.json();
+    }).then(data => {
+      deadline = data.deadline_ms;
+      clockOffset = data.server_now_ms - Date.now();
+      tick();
+    }).catch(() => {
+      activationPromise = null;
+    });
+    return activationPromise;
+  }
   function tick() {
     if(submitting)return;
+    if(deadline === null){
+      countdown.textContent = clock.duration_ms ? "Starts on first key" : "No limit";
+      return;
+    }
     if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
     const remaining=Math.max(0,Math.ceil((deadline-(Date.now()+clockOffset))/1000));
     countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
@@ -212,6 +242,7 @@
     }
   }
   window.setInterval(saveDraft, 15000);
+  engine.dataset.mode = mode;
   tick(); window.setInterval(tick,250); input.focus();
 })();
 </script>

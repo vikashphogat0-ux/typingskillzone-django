@@ -1,0 +1,40 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dedicated TypingSkillZone examination workspace.">
+  <title>{% block title %}Exam workspace · TypingSkillZone{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  <style>
+    .simulator-topbar{background:#fff;border-bottom:1px solid var(--line)}
+    .simulator-topbar-inner{width:min(100% - 32px,1320px);min-height:64px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .simulator-brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:800}
+    .simulator-brand-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--brand);color:#fff}
+    .simulator-context{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:14px}
+    .simulator-exit{font-weight:700}
+    .simulator-main{width:min(100% - 32px,1320px);margin:28px auto 64px}
+    .workspace-select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:var(--ink)}
+    .mode-options{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+    .mode-option{display:flex;align-items:center;gap:8px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+    .simulator-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .simulator-comparison pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;padding:16px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;font:14px/1.7 ui-monospace,monospace}
+    .char-correct{background:#dcfce7;color:#166534}
+    .char-wrong{background:#fee2e2;color:#991b1b;text-decoration:underline}
+    .char-pending{color:#64748b}
+    @media(max-width:760px){.simulator-comparison{grid-template-columns:1fr}.simulator-context{gap:8px}}
+  </style>
+</head>
+<body>
+  <header class="simulator-topbar">
+    <div class="simulator-topbar-inner">
+      <a class="simulator-brand" href="{% url 'exams:catalogue' %}"><span class="simulator-brand-mark">TS</span><span>TypingSkillZone</span></a>
+      <div class="simulator-context">
+        <strong>{% if exam %}{{ exam.name }}{% elif attempt %}{{ attempt.publication.exam.name }}{% else %}Exam workspace{% endif %}</strong>
+        <a class="simulator-exit" href="{% url 'exams:catalogue' %}">Exit exam</a>
+      </div>
+    </div>
+  </header>
+  <main class="simulator-main">{% block simulator_content %}{% endblock %}</main>
+</body>
+</html>

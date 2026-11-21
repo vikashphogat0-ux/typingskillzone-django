@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from .drafts import load_draft_text
 from .models import TypingSession
-from .services import expire_session, save_draft, start_session, submit_session
+from .services import activate_session, expire_session, save_draft, start_session, submit_session
 
 
 logger = logging.getLogger(__name__)
@@ -36,13 +36,19 @@ def start_typing_session(request, exam_code, passage_id):
     )
     try:
         attempt = start_session(learner=request.user, publication=publication)
+        requested_mode = request.POST.get("display_mode", "normal").strip().lower()
+        if requested_mode not in {"normal", "highlighted", "offscreen"}:
+            requested_mode = "normal"
+        if not attempt.rules_snapshot.get("display_mode"):
+            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": requested_mode}
+            attempt.save(update_fields=("rules_snapshot",))
     except PermissionDenied as error:
         logger.warning(
             "Typing session start denied: user_id=%s role=%s active=%s exam=%s passage=%s reason=%s",
             request.user.pk, request.user.role, request.user.is_active,
             exam.code, passage_id, error,
         )
-        return render(request, "typing_sessions/error.html", {"message": str(error)}, status=403)
+        return render(request, "typing_sessions/error.html", {"message": str(error), "exam": exam}, status=403)
     except ValidationError as error:
         # The account is authorized; the requested publication is unavailable
         # under its current publication/release state. Do not misreport this as
@@ -51,8 +57,16 @@ def start_typing_session(request, exam_code, passage_id):
             "Typing session unavailable: user_id=%s role=%s exam=%s passage=%s reason=%s",
             request.user.pk, request.user.role, exam.code, passage_id, error,
         )
-        return render(request, "typing_sessions/error.html", {"message": str(error)}, status=409)
+        return render(request, "typing_sessions/error.html", {"message": str(error), "exam": exam}, status=409)
     return redirect("typing_sessions:session", session_id=attempt.pk)
+
+
+@login_required
+@require_POST
+def start_selected_typing_session(request, exam_code):
+    """Start the passage selected inside one exam's dedicated workspace."""
+    passage_id = request.POST.get("passage_id", "").strip()
+    return start_typing_session(request, exam_code, passage_id)
 
 
 @login_required
@@ -72,11 +86,27 @@ def typing_session(request, session_id):
     clock = {
         "server_now_ms": int(timezone.now().timestamp() * 1000),
         "deadline_ms": int(attempt.deadline_at.timestamp() * 1000) if attempt.deadline_at else None,
+        "duration_ms": int(attempt.duration_seconds * 1000) if attempt.duration_seconds else None,
     }
     return render(request, "typing_sessions/live.html", {
         "attempt": attempt,
         "clock": clock,
         "draft_text": load_draft_text(attempt.pk),
+    })
+
+
+@login_required
+@require_POST
+def activate_typing_session(request, session_id):
+    try:
+        attempt = activate_session(session_id=session_id, learner=request.user)
+    except TypingSession.DoesNotExist:
+        return JsonResponse({"error": "Session not found."}, status=404)
+    except (PermissionDenied, ValidationError) as error:
+        return JsonResponse({"error": str(error)}, status=403)
+    return JsonResponse({
+        "server_now_ms": int(timezone.now().timestamp() * 1000),
+        "deadline_ms": int(attempt.deadline_at.timestamp() * 1000) if attempt.deadline_at else None,
     })
 
 

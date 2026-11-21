@@ -1,38 +1,65 @@
-{% extends "passages/student_base.html" %}
-{% block title %}Your result · TypingSkillZone{% endblock %}
-{% block app %}
+{% extends "passages/simulator_base.html" %}
+{% block title %}{{ attempt.rules_snapshot.exam_name }} result · TypingSkillZone{% endblock %}
+{% block simulator_content %}
 <section class="page-head">
   <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
   <h1>Test result</h1>
   <p class="lead">{{ attempt.get_state_display }}{% if attempt.completed_at %} · {{ attempt.completed_at|date:"d M Y, H:i" }}{% endif %}</p>
 </section>
-<div class="metrics">
-  <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default:"–" }}</strong><small>Gross {{ attempt.result_snapshot.gross_wpm|default:"–" }}</small></article>
-  <article class="metric-card"><span>Accuracy</span><strong>{{ attempt.result_snapshot.accuracy_percent|default:"–" }}{% if attempt.result_snapshot.accuracy_percent %}%{% endif %}</strong><small>{{ attempt.result_snapshot.correct_characters|default:"–" }} correct characters</small></article>
-  <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default:"–" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
-  <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default:"–" }}</strong><small>seconds</small></article>
-</div>
-<section class="card">
-  <h2>Breakdown</h2>
+
+{% if attempt.result_snapshot %}
+<section class="card" id="comparison-card">
+  <h2>Original vs typed text</h2>
+  <p class="muted" style="margin:6px 0 16px">Review the original passage beside the text you submitted.</p>
+  <details id="text-comparison" open>
+    <summary style="cursor:pointer;font-weight:700;margin-bottom:12px">Show text comparison</summary>
+    <div class="simulator-comparison">
+      <div><h3>Original passage</h3><pre>{{ attempt.reference_text }}</pre></div>
+      <div><h3>Your typed text</h3><pre>{{ attempt.submitted_text }}</pre></div>
+    </div>
+  </details>
+</section>
+
+<section class="card" id="result-statistics">
+  <h2>Performance statistics</h2>
+  <div class="metrics">
+    <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default_if_none:"–" }}</strong><small>Gross {{ attempt.result_snapshot.gross_wpm|default_if_none:"–" }}</small></article>
+    <article class="metric-card"><span>Accuracy</span><strong>{{ attempt.result_snapshot.accuracy_percent|default_if_none:"–" }}{% if attempt.result_snapshot.accuracy_percent != None %}%{% endif %}</strong><small>{{ attempt.result_snapshot.correct_characters|default_if_none:"0" }} correct characters</small></article>
+    <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
+    <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default_if_none:"–" }}</strong><small>seconds</small></article>
+    <article class="metric-card"><span>Characters typed</span><strong>{{ attempt.submitted_text|length }}</strong><small>{{ attempt.result_snapshot.correct_words|default_if_none:"0" }} correct words</small></article>
+    {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}</strong><small>Exam scoring result</small></article>{% endif %}
+    {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
+  </div>
+  <h3 style="margin-top:22px">Error breakdown</h3>
   <dl class="pattern-grid">
-    <div><dt>Word errors</dt><dd>{{ attempt.result_snapshot.word_errors|default:"–" }}</dd></div>
-    <div><dt>Character errors</dt><dd>{{ attempt.result_snapshot.character_errors|default:"–" }}</dd></div>
-    <div><dt>Substitutions</dt><dd>{{ attempt.result_snapshot.substitution_errors|default:"–" }}</dd></div>
-    <div><dt>Insertions</dt><dd>{{ attempt.result_snapshot.insertion_errors|default:"–" }}</dd></div>
-    <div><dt>Deletions</dt><dd>{{ attempt.result_snapshot.deletion_errors|default:"–" }}</dd></div>
-    <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default:"–" }}</dd></div>
+    <div><dt>Word errors</dt><dd>{{ attempt.result_snapshot.word_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Character errors</dt><dd>{{ attempt.result_snapshot.character_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Substitutions</dt><dd>{{ attempt.result_snapshot.substitution_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Insertions</dt><dd>{{ attempt.result_snapshot.insertion_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Deletions</dt><dd>{{ attempt.result_snapshot.deletion_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default_if_none:"0" }}</dd></div>
     {% if attempt.result_snapshot.required_keystrokes %}<div><dt>Required keystrokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}{% if attempt.result_snapshot.required_keystrokes_met %} · met{% else %} · not met{% endif %}</dd></div>{% endif %}
   </dl>
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
 </section>
+<script>
+window.setTimeout(() => {
+  const comparison = document.getElementById("text-comparison");
+  if (comparison) comparison.open = false;
+  document.getElementById("result-statistics").scrollIntoView({behavior:"smooth",block:"start"});
+}, 12000);
+</script>
+{% else %}
 <section class="card">
-  <h2>Your typed text</h2>
-  <div class="passage-text small">{{ attempt.submitted_text|default:"" }}</div>
+  <h2>Time expired — no submission received</h2>
+  <p>Your attempt ended without submitted text, so no score was generated.</p>
 </section>
+{% endif %}
+
 <div class="quick-actions">
-  <a class="btn btn-primary" href="{% url 'passages:simulator-detail' attempt.publication.exam.code attempt.publication.serial_number %}">Retake this passage</a>
-  <a class="btn btn-ghost" href="{% url 'passages:simulator-list' attempt.publication.exam.code %}">Similar passages</a>
-  <a class="btn btn-ghost" href="{% url 'accounts:student_result_history' %}">Result history</a>
-  <a class="btn btn-ghost" href="{% url 'accounts:student_dashboard' %}">Dashboard</a>
+  <a class="btn btn-primary" href="{% url 'exams:exam_detail' attempt.publication.exam.code %}?passage={{ attempt.publication.serial_number }}">Practise this passage again</a>
+  <a class="btn btn-ghost" href="{% url 'accounts:student_result_history' %}?exam={{ attempt.publication.exam.code|urlencode }}">This exam's result history</a>
+  <a class="btn btn-ghost" href="{% url 'exams:exam_detail' attempt.publication.exam.code %}">Back to {{ attempt.publication.exam.name }}</a>
 </div>
 {% endblock %}

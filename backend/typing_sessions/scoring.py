@@ -3,11 +3,30 @@ from difflib import SequenceMatcher
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
-SCORING_VERSION = "tsz-char-word-v2"
+SCORING_VERSION = "tsz-char-word-v3"
+
+
+
+def _attempted_reference_prefix(reference, typed):
+    """Limit comparison to the reference words the learner actually reached."""
+    reference = reference or ""
+    typed = typed or ""
+    typed_words = re.findall(r"\S+", typed)
+    reference_spans = list(re.finditer(r"\S+", reference))
+    if not typed_words or not reference_spans:
+        return ""
+    reached = min(len(typed_words), len(reference_spans))
+    end = reference_spans[reached - 1].end()
+    if typed and typed[-1].isspace():
+        trailing = re.match(r"\s*", reference[end:])
+        if trailing:
+            end += len(trailing.group(0))
+    return reference[:end]
 
 
 def _count_character_errors(reference, typed):
-    matcher = SequenceMatcher(a=reference, b=typed, autojunk=False)
+    attempted_reference = _attempted_reference_prefix(reference, typed)
+    matcher = SequenceMatcher(a=attempted_reference, b=typed, autojunk=False)
     correct = substitutions = insertions = deletions = 0
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
@@ -33,7 +52,7 @@ def _count_character_errors(reference, typed):
 
 
 def _count_word_errors(reference, typed):
-    ref_words = re.findall(r"\S+", reference)
+    ref_words = re.findall(r"\S+", _attempted_reference_prefix(reference, typed))
     typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     errors = 0
@@ -46,7 +65,7 @@ def _count_word_errors(reference, typed):
 
 
 def _count_correct_words(reference, typed):
-    ref_words = re.findall(r"\S+", reference)
+    ref_words = re.findall(r"\S+", _attempted_reference_prefix(reference, typed))
     typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
@@ -98,7 +117,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     duration = max(1, int(duration_seconds))
     minutes = duration / 60
     chars = _count_character_errors(reference, typed)
-    denominator = max(len(reference), len(typed), 1)
+    denominator = max(len(typed), 1)
     accuracy = round(chars["correct_characters"] * 100 / denominator, 2)
     gross_wpm = round(len(typed) / 5 / minutes, 2)
     correct_wpm = round(chars["correct_characters"] / 5 / minutes, 2)

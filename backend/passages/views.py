@@ -1,28 +1,16 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 
 from exams.models import ExamConfiguration
-from .models import SimulatorPassage, released_queryset
+from .models import SimulatorPassage
 
 
 @login_required
 def simulator_passage_list(request, exam_code):
     exam = get_object_or_404(ExamConfiguration, code=exam_code, is_active=True)
-    passages = (
-        SimulatorPassage.objects.filter(
-            exam=exam,
-            status=SimulatorPassage.Status.PUBLISHED,
-        )
-        .select_related("source", "exam")
-        .order_by("serial_number")
-    )
-    passages = released_queryset(passages)
-    return render(
-        request,
-        "passages/simulator_list.html",
-        {"exam": exam, "passages": passages},
-    )
+    return redirect("exams:exam_detail", code=exam.code)
 
 
 @login_required
@@ -40,4 +28,5 @@ def simulator_passage_detail(request, exam_code, passage_id):
     )
     if not passage.is_released():
         raise Http404("This passage is not released yet.")
-    return render(request, "passages/simulator_detail.html", {"exam": exam, "passage": passage})
+    workspace_url = reverse("exams:exam_detail", kwargs={"code": exam.code})
+    return redirect(f"{workspace_url}?passage={passage.serial_number}")
