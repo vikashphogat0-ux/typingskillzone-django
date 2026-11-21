@@ -1,4 +1,6 @@
+from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 
 from exams.models import ExamConfiguration
@@ -33,8 +35,11 @@ def catalogue(request):
     })
 
 
+@login_required
 def exam_detail(request, code):
-    """Pattern, rules and today's passages for one exam."""
+    """Pattern, rules and passages for one authenticated student's exam."""
+    if request.user.role != "STUDENT":
+        return HttpResponseForbidden("Student account required.")
     exam = get_object_or_404(ExamConfiguration, code=code, is_active=True)
     passages = (
         SimulatorPassage.objects.filter(exam=exam, status=SimulatorPassage.Status.PUBLISHED)
