@@ -48,7 +48,7 @@ def start_typing_session(request, exam_code, passage_id):
             request.user.pk, request.user.role, request.user.is_active,
             exam.code, passage_id, error,
         )
-        return render(request, "typing_sessions/error.html", {"message": str(error)}, status=403)
+        return render(request, "typing_sessions/error.html", {"message": str(error), "exam": exam}, status=403)
     except ValidationError as error:
         # The account is authorized; the requested publication is unavailable
         # under its current publication/release state. Do not misreport this as
@@ -57,7 +57,7 @@ def start_typing_session(request, exam_code, passage_id):
             "Typing session unavailable: user_id=%s role=%s exam=%s passage=%s reason=%s",
             request.user.pk, request.user.role, exam.code, passage_id, error,
         )
-        return render(request, "typing_sessions/error.html", {"message": str(error)}, status=409)
+        return render(request, "typing_sessions/error.html", {"message": str(error), "exam": exam}, status=409)
     return redirect("typing_sessions:session", session_id=attempt.pk)
 
 
