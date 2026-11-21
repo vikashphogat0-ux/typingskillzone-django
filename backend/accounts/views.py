@@ -321,6 +321,15 @@ def student_result_history(request):
         "selected_date_to": date_to,
     }
 
+    if exam_code:
+        selected_exam_object = get_object_or_404(
+            ExamConfiguration,
+            code=exam_code,
+            is_active=True,
+        )
+        context["exam"] = selected_exam_object
+        return render(request, "accounts/exam_result_history.html", context)
+
     return render(
         request,
         "accounts/student_result_history.html",
