@@ -1,6 +1,7 @@
 {% extends "passages/dashboard_base.html" %}
 {% block dashboard_role %}Institute owner{% endblock %}
 {% block dashboard_role_label %}Institute owner{% endblock %}
+{% block dashboard_role_context %}Institute owner{% endblock %}
 {% block dashboard_heading %}Institute workspace{% endblock %}
 {% block dashboard_nav %}
 <a href="{% url 'institutes:owner_dashboard' %}"{% if request.resolver_match.url_name == 'owner_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
