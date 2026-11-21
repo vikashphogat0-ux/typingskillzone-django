@@ -166,7 +166,7 @@ def classify_typing_mistakes(reference, typed):
 
     # Categories describe detected defect types and may overlap within one
     # word. The penalty unit is the affected word, counted only once.
-    ref_words_for_count = re.findall(r"\\S+", _attempted_reference_prefix(reference, typed_words, typed))
+    ref_words_for_count = re.findall(r"\S+", _attempted_reference_prefix(reference, typed_words, typed))
     word_matcher = SequenceMatcher(
         None,
         ref_words_for_count,
