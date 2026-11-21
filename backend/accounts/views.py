@@ -400,6 +400,7 @@ def passage_library(request):
         "page_obj": page_obj,
         "passage_options": passage_options,
         "selected_passage": selected_passage,
+        "passage_count": base_passages.filter(exam=exam).count(),
     }
     return render(request, "accounts/passage_library.html", context)
 
