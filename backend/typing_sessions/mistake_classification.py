@@ -169,8 +169,8 @@ def classify_typing_mistakes(reference, typed):
     ref_words_for_count = re.findall(r"\\S+", _attempted_reference_prefix(reference, typed_words, typed))
     word_matcher = SequenceMatcher(
         None,
-        [_clean_word(word) for word in ref_words_for_count],
-        typed_clean,
+        ref_words_for_count,
+        typed_words,
         autojunk=False,
     )
     total = 0
