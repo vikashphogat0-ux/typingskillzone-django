@@ -48,7 +48,17 @@ def classify_typing_mistakes(reference, typed):
 
     aligned_pairs = []
 
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    opcodes = matcher.get_opcodes()
+    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
+        # The reference suffix after the final submitted word is pending,
+        # not an omission. Omissions before later typed words still count.
+        if (
+            tag == "delete"
+            and opcode_index == len(opcodes) - 1
+            and j1 == j2 == len(typed_words)
+            and i2 == len(ref_words)
+        ):
+            continue
         expected = ref_words[i1:i2]
         actual = typed_words[j1:j2]
 
