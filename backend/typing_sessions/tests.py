@@ -11,7 +11,7 @@ from passages.models import PassageSource
 from passages.services import publish_source_to_exam
 
 from .models import TypingSession
-from .services import activate_session, expire_session, start_session, submit_session
+from .services import activate_session, expire_session, restart_session, start_session, submit_session
 from .mistake_classification import classify_typing_mistakes
 
 class TypingSessionTests(TestCase):
@@ -92,6 +92,43 @@ class TypingSessionTests(TestCase):
         self.assertContains(response, 'class="typing-workspace is-offscreen"')
         self.assertContains(response, 'id="typed-text"')
         self.assertNotContains(response, 'id="reference-panel"')
+
+    def test_restart_creates_clean_attempt_and_keeps_old_attempt_unscored(self):
+        from .drafts import load_draft_text, save_draft_text
+
+        previous = start_session(learner=self.learner, publication=self.publication)
+        previous.rules_snapshot = {**previous.rules_snapshot, "display_mode": "highlighted"}
+        previous.save(update_fields=("rules_snapshot",))
+        save_draft_text(previous.pk, "partially typed", 3600)
+
+        fresh = restart_session(session_id=previous.pk, learner=self.learner)
+
+        previous.refresh_from_db()
+        self.assertEqual(previous.state, TypingSession.State.EXPIRED)
+        self.assertEqual(previous.scoring_version, "")
+        self.assertEqual(previous.result_snapshot, {})
+        self.assertEqual(fresh.publication_id, previous.publication_id)
+        self.assertNotEqual(fresh.pk, previous.pk)
+        self.assertEqual(fresh.rules_snapshot["display_mode"], "highlighted")
+        self.assertFalse(fresh.rules_snapshot.get("timer_started", False))
+        self.assertIsNone(fresh.deadline_at)
+        self.assertEqual(load_draft_text(previous.pk), "")
+
+    def test_other_learner_cannot_restart_attempt(self):
+        previous = start_session(learner=self.learner, publication=self.publication)
+        with self.assertRaises(TypingSession.DoesNotExist):
+            restart_session(session_id=previous.pk, learner=self.other)
+        previous.refresh_from_db()
+        self.assertEqual(previous.state, TypingSession.State.ACTIVE)
+
+    def test_restart_endpoint_returns_new_attempt_url(self):
+        previous = start_session(learner=self.learner, publication=self.publication)
+        self.client.force_login(self.learner)
+        response = self.client.post(reverse("typing_sessions:restart", args=[previous.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("redirect_url", response.json())
+        previous.refresh_from_db()
+        self.assertEqual(previous.state, TypingSession.State.EXPIRED)
 
     def test_timer_activation_endpoint_starts_server_deadline(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
@@ -303,6 +340,31 @@ class TypingScoringTests(TestCase):
         self.assertEqual(result["character_errors"], 1)
         self.assertEqual(result["accuracy_percent"], 75.0)
 
+    def test_default_scoring_counts_case_and_punctuation_defects_as_one_word_error(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="Hello, world!",
+            typed="hELLo!! world?",
+            duration_seconds=60,
+            rules={},
+        )
+        self.assertEqual(result["word_errors"], 2)
+        self.assertEqual(result["error_count"], 2)
+        self.assertEqual(result["error_count_method"], "word")
+
+    def test_word_error_mode_counts_multiple_character_defects_in_one_word_once(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="Hello, world!",
+            typed="hELLo!! world!",
+            duration_seconds=60,
+            rules={"error_rules": {"count_word_errors": True}},
+        )
+        self.assertEqual(result["word_errors"], 1)
+        self.assertEqual(result["error_count"], 1)
+
     def test_word_error_mode_counts_a_misspelled_word_once(self):
         from .scoring import calculate_result
 
@@ -362,7 +424,7 @@ class TypingScoringTests(TestCase):
 
         result.refresh_from_db()
 
-        self.assertEqual(result.scoring_version, "tsz-char-word-v3")
+        self.assertEqual(result.scoring_version, "tsz-word-unit-v4")
         self.assertEqual(result.result_snapshot["accuracy_percent"], 100.0)
         self.assertEqual(result.result_snapshot["character_errors"], 0)
 
