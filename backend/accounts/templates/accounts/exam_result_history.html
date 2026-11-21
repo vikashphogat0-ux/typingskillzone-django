@@ -1,0 +1,38 @@
+{% extends "passages/simulator_base.html" %}
+{% block title %}{{ exam.name }} results · TypingSkillZone{% endblock %}
+{% block simulator_content %}
+<section class="page-head">
+  <span class="eyebrow">Selected examination</span>
+  <h1>{{ exam.name }} · Result history</h1>
+  <p class="lead">Your saved attempts for this examination only.</p>
+</section>
+<section class="card">
+  {% if page_obj.object_list %}
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Passage</th><th>Status</th><th>Started</th><th>Net WPM</th><th>Accuracy</th><th></th></tr></thead>
+    <tbody>
+    {% for session in page_obj.object_list %}
+      <tr>
+        <td>Passage {{ session.publication.serial_number }}</td>
+        <td><span class="status-pill">{{ session.get_state_display }}</span></td>
+        <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
+        <td>{{ session.result_snapshot.net_wpm|default:"–" }}</td>
+        <td>{% if session.result_snapshot.accuracy_percent %}{{ session.result_snapshot.accuracy_percent }}%{% else %}–{% endif %}</td>
+        <td><a href="{% url 'typing_sessions:session' session.pk %}">View result</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">No saved results for this examination yet.</p>
+  {% endif %}
+</section>
+{% if page_obj.has_other_pages %}
+<nav class="pager" aria-label="Pages">
+  {% if page_obj.has_previous %}<a class="btn btn-ghost btn-small" href="?exam={{ exam.code|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn btn-ghost btn-small" href="?exam={{ exam.code|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+<div class="quick-actions"><a class="btn btn-primary" href="{% url 'exams:exam_detail' exam.code %}">Back to this examination</a></div>
+{% endblock %}
