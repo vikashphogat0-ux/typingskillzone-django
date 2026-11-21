@@ -256,7 +256,13 @@
   function tick() {
     if(submitting)return;
     if(deadline === null){
-      countdown.textContent = clock.duration_ms ? "Starts on first key" : "No limit";
+      if (clock.duration_ms) {
+        const initialSeconds = Math.ceil(clock.duration_ms / 1000);
+        countdown.textContent = String(Math.floor(initialSeconds / 60)).padStart(2,"0") + ":" +
+          String(initialSeconds % 60).padStart(2,"0");
+      } else {
+        countdown.textContent = "No limit";
+      }
       return;
     }
     if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
