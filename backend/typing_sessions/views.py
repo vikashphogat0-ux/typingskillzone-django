@@ -13,6 +13,7 @@ from passages.models import SimulatorPassage
 
 from django.utils import timezone
 
+from .comparison import build_word_comparison
 from .drafts import load_draft_text
 from .models import TypingSession
 from .services import activate_session, expire_session, restart_session, save_draft, start_session, submit_session
@@ -78,10 +79,18 @@ def typing_session(request, session_id):
         learner=request.user,
     )
     if attempt.state != TypingSession.State.ACTIVE:
-        return render(request, "typing_sessions/result.html", {"attempt": attempt})
+        return render(request, "typing_sessions/result.html", {
+            "attempt": attempt,
+            "comparison": build_word_comparison(attempt.reference_text, attempt.submitted_text)
+            if attempt.result_snapshot else None,
+        })
     if attempt.has_expired:
         attempt = expire_session(session_id=attempt.pk, learner=request.user)
-        return render(request, "typing_sessions/result.html", {"attempt": attempt})
+        return render(request, "typing_sessions/result.html", {
+            "attempt": attempt,
+            "comparison": build_word_comparison(attempt.reference_text, attempt.submitted_text)
+            if attempt.result_snapshot else None,
+        })
     # Server clock and deadline are sent as epoch milliseconds so the countdown does not
     # depend on the device clock.
     clock = {
@@ -150,7 +159,11 @@ def submit_typing_session(request, session_id):
         return JsonResponse({"error": "Session not found."}, status=404)
     except (PermissionDenied, ValidationError) as error:
         return JsonResponse({"error": str(error)}, status=403)
-    return render(request, "typing_sessions/result.html", {"attempt": attempt})
+    return render(request, "typing_sessions/result.html", {
+        "attempt": attempt,
+        "comparison": build_word_comparison(attempt.reference_text, attempt.submitted_text)
+        if attempt.result_snapshot else None,
+    })
 
 
 @login_required
