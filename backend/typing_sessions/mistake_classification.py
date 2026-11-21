@@ -20,6 +20,20 @@ def _clean_word(word):
     ).casefold()
 
 
+
+def _attempted_reference_prefix(reference, typed_words, typed):
+    reference_spans = list(re.finditer(r"\S+", reference or ""))
+    if not typed_words or not reference_spans:
+        return ""
+    reached = min(len(typed_words), len(reference_spans))
+    end = reference_spans[reached - 1].end()
+    if typed and typed[-1].isspace():
+        trailing = re.match(r"\s*", (reference or "")[end:])
+        if trailing:
+            end += len(trailing.group(0))
+    return (reference or "")[:end]
+
+
 def classify_typing_mistakes(reference, typed):
     reference = reference or ""
     typed = typed or ""
@@ -35,9 +49,11 @@ def classify_typing_mistakes(reference, typed):
         "paragraph_breaks": 0,
     }
 
-    # Preserve paragraph structure while comparing word content.
-    ref_words = re.findall(r"\S+", reference)
+    # Compare only words the learner reached; the remaining reference
+    # suffix is pending text, not a series of omissions.
     typed_words = re.findall(r"\S+", typed)
+    reference = _attempted_reference_prefix(reference, typed_words, typed)
+    ref_words = re.findall(r"\S+", reference)
 
     ref_clean = [_clean_word(word) for word in ref_words]
     typed_clean = [_clean_word(word) for word in typed_words]
@@ -48,17 +64,7 @@ def classify_typing_mistakes(reference, typed):
 
     aligned_pairs = []
 
-    opcodes = matcher.get_opcodes()
-    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
-        # The reference suffix after the final submitted word is pending,
-        # not an omission. Omissions before later typed words still count.
-        if (
-            tag == "delete"
-            and opcode_index == len(opcodes) - 1
-            and j1 == j2 == len(typed_words)
-            and i2 == len(ref_words)
-        ):
-            continue
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         expected = ref_words[i1:i2]
         actual = typed_words[j1:j2]
 
