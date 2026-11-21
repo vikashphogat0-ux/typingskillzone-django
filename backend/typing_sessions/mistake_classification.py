@@ -22,16 +22,32 @@ def _clean_word(word):
 
 
 def _attempted_reference_prefix(reference, typed_words, typed):
-    reference_spans = list(re.finditer(r"\S+", reference or ""))
+    """Keep internal omissions but exclude reference words after the final typed word."""
+    reference = reference or ""
+    reference_spans = list(re.finditer(r"\S+", reference))
     if not typed_words or not reference_spans:
         return ""
-    reached = min(len(typed_words), len(reference_spans))
-    end = reference_spans[reached - 1].end()
+
+    reference_words = [match.group(0) for match in reference_spans]
+    reference_clean = [_clean_word(word) for word in reference_words]
+    typed_clean = [_clean_word(word) for word in typed_words]
+    matcher = SequenceMatcher(None, reference_clean, typed_clean, autojunk=False)
+    last_typed_opcode = next(
+        (opcode for opcode in reversed(matcher.get_opcodes()) if opcode[0] != "delete"),
+        None,
+    )
+    if last_typed_opcode is None:
+        return ""
+
+    reached_reference_words = last_typed_opcode[2]
+    if reached_reference_words <= 0:
+        return ""
+    end = reference_spans[reached_reference_words - 1].end()
     if typed and typed[-1].isspace():
-        trailing = re.match(r"\s*", (reference or "")[end:])
+        trailing = re.match(r"\s*", reference[end:])
         if trailing:
             end += len(trailing.group(0))
-    return (reference or "")[:end]
+    return reference[:end]
 
 
 def classify_typing_mistakes(reference, typed):
