@@ -504,6 +504,7 @@ def download_library_passage(request, exam_code, passage_id, file_format):
     return response
 
 
+@login_required(login_url="accounts:student_login")
 def student_dashboard(request):
     """Student dashboard with progress, speed, accuracy, and statistics."""
     if request.user.role != User.Roles.STUDENT:
