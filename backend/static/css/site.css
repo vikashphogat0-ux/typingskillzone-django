@@ -402,3 +402,8 @@ p { margin: 0; color: var(--ink-2); }
 .typing-engine:fullscreen .typing-workspace{min-height:calc(100vh - 270px)}
 @media(max-width:850px){.typing-engine{padding:14px}.typing-workspace{grid-template-columns:1fr}.reference-scroll{height:280px}.typing-panel .typing-input{min-height:260px}.typing-toolbar{align-items:flex-start;flex-direction:column}}
 @media(max-width:520px){.typing-engine{margin:10px auto;padding:10px;border-radius:12px}.typing-engine .exam-header{align-items:flex-start;gap:12px}.typing-engine .timer-card{min-width:90px}.typing-engine .rule-strip{flex-wrap:wrap}.typing-engine .live-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.typing-panel .finish-row{align-items:stretch;flex-direction:column}.typing-panel .finish-row .btn{width:100%}}
+
+/* Keep public navigation out of authenticated workspaces; the dashboard shell owns navigation. */
+body:has(.dashboard-shell) .site-header .nav,body:has(.dashboard-shell) .site-footer{display:none}
+body:has(.dashboard-shell) .site-main{padding-bottom:24px}
+body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer{display:none}
