@@ -1,9 +1,9 @@
-{% extends "passages/site_base.html" %}
-{% block content %}
-<nav class="app-nav" aria-label="Staff">
-  <a href="{% url 'institutes:staff_dashboard' %}">Dashboard</a>
-  <a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
-  <form method="post" action="{% url 'institutes:staff_logout' %}" class="signout">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-small">Sign out</button></form>
-</nav>
-{% block app %}{% endblock %}
+{% extends "passages/dashboard_base.html" %}
+{% block dashboard_role %}Institute staff{% endblock %}
+{% block dashboard_role_label %}Institute staff{% endblock %}
+{% block dashboard_heading %}Staff workspace{% endblock %}
+{% block dashboard_nav %}
+<a href="{% url 'institutes:staff_dashboard' %}"{% if request.resolver_match.url_name == 'staff_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
+<a href="{% url 'exams:catalogue' %}">Exam Catalogue</a>
 {% endblock %}
+{% block dashboard_account_action %}<form method="post" action="{% url 'institutes:staff_logout' %}">{% csrf_token %}<button class="dashboard-signout" type="submit">Sign out</button></form>{% endblock %}
