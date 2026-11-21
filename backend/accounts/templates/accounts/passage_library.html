@@ -10,7 +10,7 @@
   {% else %}
     <a class="library-back" href="{% url 'accounts:passage_library' %}">← All examinations</a>
     <h1>{{ exam.name }} passages</h1>
-    <p class="lead">{{ exam.passage_count|default:passage_options|length }} available passages · Choose a passage to preview, practise or download.</p>
+    <p class="lead">{{ passage_count }} available passages · Choose a passage to preview, practise or download.</p>
   {% endif %}
 </section>
 
