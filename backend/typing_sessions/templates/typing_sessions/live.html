@@ -1,7 +1,7 @@
 {% extends "passages/site_base.html" %}
 {% block title %}Typing test · {{ attempt.rules_snapshot.exam_name }} | TypingSkillZone{% endblock %}
 {% block content %}
-<section class="exam-shell">
+<section class="exam-shell typing-engine" id="typing-engine" data-mode="normal">
   <header class="exam-header">
     <div>
       <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
@@ -12,6 +12,14 @@
       <span>Time remaining</span>
     </div>
   </header>
+  <div class="typing-toolbar" role="toolbar" aria-label="Typing display controls">
+    <div class="typing-mode-group" role="group" aria-label="Display mode">
+      <button type="button" class="mode-button active" data-mode="normal" aria-pressed="true">Normal</button>
+      <button type="button" class="mode-button" data-mode="highlighted" aria-pressed="false">Highlighted</button>
+      <button type="button" class="mode-button" data-mode="offscreen" aria-pressed="false">Off-Screen</button>
+    </div>
+    <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" hidden>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
+  </div>
   <div class="rule-strip">
     {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
     {% if attempt.rules_snapshot.text_encoding %}<span><strong>Encoding</strong> {{ attempt.rules_snapshot.text_encoding }}</span>{% endif %}
@@ -24,8 +32,8 @@
     <div class="stat-card"><strong id="live-accuracy">100%</strong><span>Live accuracy (estimate)</span></div>
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="practice-note">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
-  <article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article>
-  <form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
+  <div class="typing-workspace" id="typing-workspace"><section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>
+  <section class="typing-panel"><div class="typing-panel-heading"><strong>Your typing area</strong><span>Scroll independently</span></div><form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
     {% csrf_token %}
     <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
     <input type="hidden" id="policy-events" name="policy_events" value="0">
@@ -35,7 +43,7 @@
       <button id="finish-button" type="submit" class="btn btn-primary">Finish test</button>
       <span class="muted">The server checks the deadline and calculates the final score.</span>
     </div>
-  </form>
+  </form></section></div>
 </section>
 {{ attempt.rules_snapshot|json_script:"typing-rules" }}
 {{ clock|json_script:"typing-clock" }}
@@ -47,11 +55,11 @@
   const form = document.getElementById("typing-form");
   const reference = document.getElementById("reference").innerText;
   const countdown = document.getElementById("countdown");
+  const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   const startedAt = Date.now();
   const deadline = clock.deadline_ms;
   let submitting = false;
   let policyEvents = 0;
-  const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   const clockOffset = clock.server_now_ms - Date.now();
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
@@ -137,7 +145,37 @@
   document.getElementById("reference").addEventListener("copy", event => {
     if (rules.allow_copy === false) { event.preventDefault(); policyEvents = Math.min(1000, policyEvents + 1); }
   });
+  const engine = document.getElementById("typing-engine");
+  const currentTargetWrap = document.getElementById("current-target-wrap");
+  const currentTarget = document.getElementById("current-target");
+  function updateDisplayMode(mode) {
+    engine.dataset.mode = mode;
+    document.querySelectorAll(".mode-button").forEach(button => {
+      const active = button.dataset.mode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    currentTargetWrap.hidden = mode !== "highlighted";
+    document.getElementById("reference-panel").hidden = mode === "offscreen";
+  }
+  document.querySelectorAll(".mode-button").forEach(button => {
+    button.addEventListener("click", () => updateDisplayMode(button.dataset.mode));
+  });
+  const fullscreenButton = document.getElementById("fullscreen-button");
+  fullscreenButton.addEventListener("click", async () => {
+    try {
+      if (!document.fullscreenElement) await engine.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (error) {
+      fullscreenButton.textContent = "Full screen unavailable";
+    }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    fullscreenButton.textContent = document.fullscreenElement ? "Exit full screen" : "Enter full screen";
+  });
   function updateStats() {
+    const nextCharacter = reference[input.value.length] || "✓";
+    currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
     const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
     let correct=0;
