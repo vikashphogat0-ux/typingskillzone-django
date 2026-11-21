@@ -831,3 +831,32 @@ class TypingMistakeClassificationTests(TestCase):
         result = classify_typing_mistakes("भारत बहुत महान है", "भारत है")
         self.assertEqual(result["categories"]["omission"], 2)
         self.assertEqual(result["total_detected_errors"], 2)
+
+
+class TypingWordComparisonTests(TestCase):
+    def test_comparison_marks_same_word_wrong_in_both_columns(self):
+        from .comparison import build_word_comparison
+
+        comparison = build_word_comparison("The quick fox.", "The quik fox.")
+        reference = [item for item in comparison["reference"] if not item["text"].isspace()]
+        typed = [item for item in comparison["typed"] if not item["text"].isspace()]
+        self.assertEqual([item["status"] for item in reference], ["correct", "incorrect", "correct"])
+        self.assertEqual([item["status"] for item in typed], ["correct", "incorrect", "correct"])
+
+    def test_comparison_marks_omitted_and_added_words(self):
+        from .comparison import build_word_comparison
+
+        comparison = build_word_comparison("one two three", "one extra three")
+        reference = [item for item in comparison["reference"] if not item["text"].isspace()]
+        typed = [item for item in comparison["typed"] if not item["text"].isspace()]
+        self.assertEqual([item["status"] for item in reference], ["correct", "omitted", "correct"])
+        self.assertEqual([item["status"] for item in typed], ["correct", "added", "correct"])
+
+    def test_comparison_supports_hindi_words(self):
+        from .comparison import build_word_comparison
+
+        comparison = build_word_comparison("भारत बहुत महान है", "भारत बहुत अच्छा है")
+        reference = [item for item in comparison["reference"] if not item["text"].isspace()]
+        typed = [item for item in comparison["typed"] if not item["text"].isspace()]
+        self.assertEqual(reference[2]["status"], "incorrect")
+        self.assertEqual(typed[2]["status"], "incorrect")
