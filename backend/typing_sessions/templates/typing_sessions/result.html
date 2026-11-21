@@ -10,18 +10,14 @@
 {% if attempt.result_snapshot %}
 <section class="card" id="comparison-card">
   <h2>Original vs typed text</h2>
-  <p class="muted" style="margin:6px 0 16px">The comparison is shown first. Correct characters are green, mismatches are red, and untyped reference text is muted.</p>
+  <p class="muted" style="margin:6px 0 16px">Review the original passage beside the text you submitted.</p>
   <details id="text-comparison" open>
     <summary style="cursor:pointer;font-weight:700;margin-bottom:12px">Show text comparison</summary>
     <div class="simulator-comparison">
-      <div><h3>Original passage</h3><pre id="original-comparison"></pre></div>
-      <div><h3>Your typed text</h3><pre id="typed-comparison"></pre></div>
+      <div><h3>Original passage</h3><pre>{{ attempt.reference_text }}</pre></div>
+      <div><h3>Your typed text</h3><pre>{{ attempt.submitted_text }}</pre></div>
     </div>
   </details>
-  <div id="comparison-source" hidden>
-    <span id="original-source">{{ attempt.reference_text }}</span>
-    <span id="typed-source">{{ attempt.submitted_text }}</span>
-  </div>
 </section>
 
 <section class="card" id="result-statistics">
@@ -45,26 +41,11 @@
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
 </section>
 <script>
-(() => {
-  const original = Array.from(document.getElementById("original-source").textContent);
-  const typed = Array.from(document.getElementById("typed-source").textContent);
-  const originalNode = document.getElementById("original-comparison");
-  const typedNode = document.getElementById("typed-comparison");
-  const escapeHtml = value => value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-  originalNode.innerHTML = original.map((character,index) => {
-    const cls = index >= typed.length ? "char-pending" : (typed[index] === character ? "char-correct" : "char-wrong");
-    return '<span class="' + cls + '">' + escapeHtml(character) + '</span>';
-  }).join("");
-  typedNode.innerHTML = typed.map((character,index) => {
-    const cls = index < original.length && original[index] === character ? "char-correct" : "char-wrong";
-    return '<span class="' + cls + '">' + escapeHtml(character) + '</span>';
-  }).join("");
-  window.setTimeout(() => {
-    const comparison = document.getElementById("text-comparison");
-    if (comparison) comparison.open = false;
-    document.getElementById("result-statistics").scrollIntoView({behavior:"smooth",block:"start"});
-  }, 12000);
-})();
+window.setTimeout(() => {
+  const comparison = document.getElementById("text-comparison");
+  if (comparison) comparison.open = false;
+  document.getElementById("result-statistics").scrollIntoView({behavior:"smooth",block:"start"});
+}, 12000);
 </script>
 {% else %}
 <section class="card">
