@@ -13,9 +13,21 @@
   <p class="muted" style="margin:6px 0 16px">Review the original passage beside the text you submitted.</p>
   <details id="text-comparison" open>
     <summary style="cursor:pointer;font-weight:700;margin-bottom:12px">Show text comparison</summary>
-    <div class="simulator-comparison">
-      <div><h3>Original passage</h3><pre>{{ attempt.reference_text }}</pre></div>
-      <div><h3>Your typed text</h3><pre>{{ attempt.submitted_text }}</pre></div>
+    <div class="simulator-comparison word-comparison">
+      <div>
+        <h3>Original passage</h3>
+        <pre class="word-comparison-text">{% for token in comparison.reference %}<span class="word-state word-{{ token.status }}">{{ token.text }}</span>{% endfor %}</pre>
+      </div>
+      <div>
+        <h3>Your typed text</h3>
+        <pre class="word-comparison-text">{% for token in comparison.typed %}<span class="word-state word-{{ token.status }}">{{ token.text }}</span>{% endfor %}</pre>
+      </div>
+    </div>
+    <div class="comparison-legend" aria-label="Comparison legend">
+      <span class="word-correct">Correct</span>
+      <span class="word-incorrect">Incorrect word</span>
+      <span class="word-omitted">Omitted from typing</span>
+      <span class="word-added">Extra typed word</span>
     </div>
   </details>
 </section>
