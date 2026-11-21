@@ -6,21 +6,29 @@ from .mistake_classification import classify_typing_mistakes
 SCORING_VERSION = "tsz-char-word-v2"
 
 
+
+def _attempted_reference_prefix(reference, typed):
+    """Limit comparison to the reference words the learner actually reached."""
+    reference = reference or ""
+    typed = typed or ""
+    typed_words = re.findall(r"\S+", typed)
+    reference_spans = list(re.finditer(r"\S+", reference))
+    if not typed_words or not reference_spans:
+        return ""
+    reached = min(len(typed_words), len(reference_spans))
+    end = reference_spans[reached - 1].end()
+    if typed and typed[-1].isspace():
+        trailing = re.match(r"\s*", reference[end:])
+        if trailing:
+            end += len(trailing.group(0))
+    return reference[:end]
+
+
 def _count_character_errors(reference, typed):
-    matcher = SequenceMatcher(a=reference, b=typed, autojunk=False)
+    attempted_reference = _attempted_reference_prefix(reference, typed)
+    matcher = SequenceMatcher(a=attempted_reference, b=typed, autojunk=False)
     correct = substitutions = insertions = deletions = 0
-    opcodes = matcher.get_opcodes()
-    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
-        # A trailing reference suffix was never reached by the typist. It is
-        # pending text, not a deletion/error. Deletions inside the attempted
-        # portion remain countable.
-        if (
-            tag == "delete"
-            and opcode_index == len(opcodes) - 1
-            and j1 == j2 == len(typed)
-            and i2 == len(reference)
-        ):
-            continue
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             correct += i2 - i1
         elif tag == "replace":
@@ -44,19 +52,11 @@ def _count_character_errors(reference, typed):
 
 
 def _count_word_errors(reference, typed):
-    ref_words = re.findall(r"\S+", reference)
+    ref_words = re.findall(r"\S+", _attempted_reference_prefix(reference, typed))
     typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     errors = 0
-    opcodes = matcher.get_opcodes()
-    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
-        if (
-            tag == "delete"
-            and opcode_index == len(opcodes) - 1
-            and j1 == j2 == len(typed_words)
-            and i2 == len(ref_words)
-        ):
-            continue
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             continue
         errors += max(i2 - i1, j2 - j1)
@@ -65,7 +65,7 @@ def _count_word_errors(reference, typed):
 
 
 def _count_correct_words(reference, typed):
-    ref_words = re.findall(r"\S+", reference)
+    ref_words = re.findall(r"\S+", _attempted_reference_prefix(reference, typed))
     typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
