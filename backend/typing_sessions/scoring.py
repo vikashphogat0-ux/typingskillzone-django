@@ -155,9 +155,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
     else:
-        # A word is the scoring unit by default: spelling, case and punctuation
-        # defects inside that word must not multiply the penalty.
-        count_word_errors = error_rules.get("count_word_errors", True) is not False
+        # Preserve the exam's configured error unit. Exams that enable word
+        # scoring count spelling, case and punctuation defects once per word.
+        count_word_errors = bool(error_rules.get("count_word_errors", False))
         error_count = word_errors if count_word_errors else chars["character_errors"]
     penalty_per_error = error_rules.get("penalty_wpm_per_error", 0)
     try:
