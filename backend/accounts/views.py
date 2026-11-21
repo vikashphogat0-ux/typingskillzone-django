@@ -431,6 +431,7 @@ def download_library_passage(request, exam_code, passage_id, file_format):
     if file_format == "txt":
         response = HttpResponse(content, content_type="text/plain; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="passage-{passage.passage_id}.txt"'
+        response["Cache-Control"] = "private, no-store"
         return response
 
     try:
@@ -493,6 +494,7 @@ def download_library_passage(request, exam_code, passage_id, file_format):
     document.build(story)
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="passage-{passage.passage_id}.pdf"'
+    response["Cache-Control"] = "private, no-store"
     return response
 
 
