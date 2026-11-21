@@ -55,11 +55,26 @@ def start_session(*, learner, publication):
         learner=learner,
         publication=publication,
         started_at=now,
-        deadline_at=now + timedelta(seconds=duration) if duration else None,
+        deadline_at=None,
         duration_seconds=duration,
         reference_text=publication.rendered_content,
         rules_snapshot=snapshot,
     )
+
+
+@transaction.atomic
+def activate_session(*, session_id, learner):
+    """Start the server-owned exam clock on the learner's first input."""
+    _require_active_student(learner)
+    session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
+    if session.state != TypingSession.State.ACTIVE:
+        raise ValidationError("This session has already ended.")
+    if session.deadline_at is None and session.duration_seconds:
+        now = timezone.now()
+        session.started_at = now
+        session.deadline_at = now + timedelta(seconds=session.duration_seconds)
+        session.save(update_fields=("started_at", "deadline_at"))
+    return session
 
 
 @transaction.atomic
@@ -83,6 +98,10 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
         raise ValidationError("Keystroke count is outside the allowed range.")
 
     now = timezone.now()
+    if session.deadline_at is None and session.duration_seconds:
+        session.started_at = now
+        session.deadline_at = now + timedelta(seconds=session.duration_seconds)
+        session.save(update_fields=("started_at", "deadline_at"))
     expired = bool(session.deadline_at and now >= session.deadline_at)
     effective_end = min(now, session.deadline_at) if session.deadline_at else now
     elapsed = max(1, int((effective_end - session.started_at).total_seconds()))
