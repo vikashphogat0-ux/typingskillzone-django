@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 import logging
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from exams.models import ExamConfiguration
@@ -14,7 +15,7 @@ from django.utils import timezone
 
 from .drafts import load_draft_text
 from .models import TypingSession
-from .services import activate_session, expire_session, save_draft, start_session, submit_session
+from .services import activate_session, expire_session, restart_session, save_draft, start_session, submit_session
 
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,20 @@ def typing_session(request, session_id):
         "attempt": attempt,
         "clock": clock,
         "draft_text": load_draft_text(attempt.pk),
+    })
+
+
+@login_required
+@require_POST
+def restart_typing_session(request, session_id):
+    try:
+        attempt = restart_session(session_id=session_id, learner=request.user)
+    except TypingSession.DoesNotExist:
+        return JsonResponse({"error": "Session not found."}, status=404)
+    except (PermissionDenied, ValidationError) as error:
+        return JsonResponse({"error": str(error)}, status=403)
+    return JsonResponse({
+        "redirect_url": reverse("typing_sessions:session", args=[attempt.pk]),
     })
 
 
