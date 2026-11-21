@@ -3,7 +3,7 @@ from difflib import SequenceMatcher
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
-SCORING_VERSION = "tsz-char-word-v3"
+SCORING_VERSION = "tsz-word-unit-v4"
 
 
 
@@ -155,7 +155,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
     else:
-        count_word_errors = bool(error_rules.get("count_word_errors", False))
+        # A word is the scoring unit by default: spelling, case and punctuation
+        # defects inside that word must not multiply the penalty.
+        count_word_errors = error_rules.get("count_word_errors", True) is not False
         error_count = word_errors if count_word_errors else chars["character_errors"]
     penalty_per_error = error_rules.get("penalty_wpm_per_error", 0)
     try:
