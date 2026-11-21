@@ -229,7 +229,8 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
             )
             page.wait_for_load_state("networkidle", timeout=10000)
             assert f"/exams/{self.exam.code}/" in page.url
-            expect(page.locator("text=Browser passage")).to_be_visible(timeout=10000)
+            expect(page.locator("#passage_id")).to_be_visible(timeout=10000)
+            assert page.locator("#passage_id option").count() == 1
 
         self._run_playwright(flow)
 
@@ -243,7 +244,9 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
                 f"{self.publication.passage_id}/"
             )
             page.goto(self.live_server_url + detail_url)
-            expect(page.locator("text=Browser passage")).to_be_visible(timeout=10000)
+            expect(page.locator("#passage_id")).to_be_visible(timeout=10000)
+            page.locator("#passage_id").select_option(str(self.publication.serial_number))
+            page.locator('input[name="display_mode"][value="normal"]').check()
             # Start the selected passage with the chosen fixed display mode.
             page.click('button[type="submit"]')
             page.wait_for_load_state("networkidle", timeout=10000)
