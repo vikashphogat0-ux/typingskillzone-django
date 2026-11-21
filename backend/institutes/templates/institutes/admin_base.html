@@ -1,9 +1,9 @@
-{% extends "passages/site_base.html" %}
-{% block content %}
-<nav class="app-nav" aria-label="Administration">
-  <a href="{% url 'institutes:super_admin_dashboard' %}">Overview</a>
-  <a href="{% url 'institutes:institute_list' %}">Institutes</a>
-  <a href="/admin/">Django admin</a>
-</nav>
-{% block app %}{% endblock %}
+{% extends "passages/dashboard_base.html" %}
+{% block dashboard_role %}Platform admin{% endblock %}
+{% block dashboard_role_label %}Platform admin{% endblock %}
+{% block dashboard_heading %}Administration workspace{% endblock %}
+{% block dashboard_nav %}
+<a href="{% url 'institutes:super_admin_dashboard' %}"{% if request.resolver_match.url_name == 'super_admin_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
+<a href="{% url 'institutes:institute_list' %}"{% if request.resolver_match.url_name == 'institute_list' %} class="active" aria-current="page"{% endif %}>Institutes</a>
+<a href="/admin/">Django admin</a>
 {% endblock %}
