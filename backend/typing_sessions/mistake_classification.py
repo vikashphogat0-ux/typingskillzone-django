@@ -32,14 +32,19 @@ def _attempted_reference_prefix(reference, typed_words, typed):
     reference_clean = [_clean_word(word) for word in reference_words]
     typed_clean = [_clean_word(word) for word in typed_words]
     matcher = SequenceMatcher(None, reference_clean, typed_clean, autojunk=False)
-    last_typed_opcode = next(
-        (opcode for opcode in reversed(matcher.get_opcodes()) if opcode[0] != "delete"),
-        None,
-    )
-    if last_typed_opcode is None:
-        return ""
-
-    reached_reference_words = last_typed_opcode[2]
+    # Do not let a final typo absorb the entire untyped reference suffix.
+    blocks = [block for block in matcher.get_matching_blocks() if block.size]
+    if blocks:
+        last_block = max(blocks, key=lambda block: block.b + block.size)
+        matched_reference_end = max(block.a + block.size for block in blocks)
+        matched_typed_end = last_block.b + last_block.size
+        trailing_typed_words = len(typed_words) - matched_typed_end
+        reached_reference_words = min(
+            len(reference_words),
+            matched_reference_end + trailing_typed_words,
+        )
+    else:
+        reached_reference_words = min(len(reference_words), len(typed_words))
     if reached_reference_words <= 0:
         return ""
     end = reference_spans[reached_reference_words - 1].end()

@@ -18,15 +18,21 @@ def _attempted_reference_prefix(reference, typed):
 
     reference_words = [match.group(0) for match in reference_spans]
     matcher = SequenceMatcher(a=reference_words, b=typed_words, autojunk=False)
-    opcodes = matcher.get_opcodes()
-    last_typed_opcode = next(
-        (opcode for opcode in reversed(opcodes) if opcode[0] != "delete"),
-        None,
-    )
-    if last_typed_opcode is None:
-        return ""
-
-    reached_reference_words = last_typed_opcode[2]
+    # SequenceMatcher can group a final typo and all later reference words
+    # into one replace opcode. Use matching blocks plus the number of typed
+    # words after the last match so only actually attempted words are included.
+    blocks = [block for block in matcher.get_matching_blocks() if block.size]
+    if blocks:
+        last_block = max(blocks, key=lambda block: block.b + block.size)
+        matched_reference_end = max(block.a + block.size for block in blocks)
+        matched_typed_end = last_block.b + last_block.size
+        trailing_typed_words = len(typed_words) - matched_typed_end
+        reached_reference_words = min(
+            len(reference_words),
+            matched_reference_end + trailing_typed_words,
+        )
+    else:
+        reached_reference_words = min(len(reference_words), len(typed_words))
     if reached_reference_words <= 0:
         return ""
     end = reference_spans[reached_reference_words - 1].end()

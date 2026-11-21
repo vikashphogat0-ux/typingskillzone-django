@@ -692,7 +692,7 @@ class TypingSessionViewTests(TestCase):
 class TypingMistakeClassificationTests(TestCase):
     def test_mistake_categories(self):
         cases = [
-            ("Omission", "hello world", "hello", "omission"),
+            ("Omission", "hello brave world", "hello world", "omission"),
             ("Substitution", "hello world", "hello word", "substitution"),
             ("Addition", "hello world", "hello x world", "addition"),
             ("Capitalization", "Hello world", "hello world", "capitalization"),
@@ -701,7 +701,7 @@ class TypingMistakeClassificationTests(TestCase):
             ("Word spacing", "hello world", "hello  world", "word_spacing"),
             ("Paragraph break", "hello\nworld", "hello world", "paragraph_breaks"),
             ("Hindi substitution", "भारत महान है", "भारत विशाल है", "substitution"),
-            ("Hindi omission", "भारत महान है", "भारत है", "omission"),
+            ("Hindi omission", "भारत बहुत है", "भारत है", "omission"),
             ("Hindi addition", "भारत महान है", "भारत बहुत महान है", "addition"),
             ("Hindi spacing", "भारत महान है", "भा रत महान है", "internal_spacing"),
             ("Hindi punctuation", "भारत महान है।", "भारत महान है", "punctuation"),
@@ -724,3 +724,8 @@ class TypingMistakeClassificationTests(TestCase):
                 result = classify_typing_mistakes(reference, typed)
                 self.assertEqual(result["categories"][expected_category], 1)
                 self.assertEqual(result["total_detected_errors"], 1)
+
+    def test_multiple_consecutive_hindi_omissions_count_each_missing_word(self):
+        result = classify_typing_mistakes("भारत बहुत महान है", "भारत है")
+        self.assertEqual(result["categories"]["omission"], 2)
+        self.assertEqual(result["total_detected_errors"], 2)
