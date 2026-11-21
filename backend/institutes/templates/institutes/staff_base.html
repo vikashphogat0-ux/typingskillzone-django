@@ -1,6 +1,7 @@
 {% extends "passages/dashboard_base.html" %}
 {% block dashboard_role %}Institute staff{% endblock %}
 {% block dashboard_role_label %}Institute staff{% endblock %}
+{% block dashboard_role_context %}Institute staff{% endblock %}
 {% block dashboard_heading %}Staff workspace{% endblock %}
 {% block dashboard_nav %}
 <a href="{% url 'institutes:staff_dashboard' %}"{% if request.resolver_match.url_name == 'staff_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
