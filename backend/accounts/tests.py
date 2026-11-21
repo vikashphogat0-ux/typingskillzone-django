@@ -49,7 +49,8 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("accounts:student_dashboard"),
+            reverse("exams:catalogue"),
+            fetch_redirect_response=False,
     )
 
     def setUp(self):
@@ -161,7 +162,7 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
         response = self.client.post(
             reverse("accounts:verify_email", kwargs={"token": token})
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
         student.refresh_from_db()
         self.assertTrue(student.is_active)
         self.assertTrue(student.is_email_verified)
@@ -319,7 +320,7 @@ class StudentRegistrationAndEnrollmentTests(TestCase):
             salt="typingskillzone.student.email-verification",
         )
         first = self.client.post(reverse("accounts:verify_email", kwargs={"token": token}))
-        self.assertEqual(first.status_code, 200)
+        self.assertRedirects(first, reverse("exams:catalogue"), fetch_redirect_response=False)
         replay_client = self.client_class()
         replay = replay_client.post(reverse("accounts:verify_email", kwargs={"token": token}))
         self.assertEqual(replay.status_code, 400)
@@ -593,9 +594,9 @@ class PassageLibraryViewTests(TestCase):
         response = self.client.get(reverse("accounts:passage_library"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/passage_library.html")
-        passage_ids = [p.passage_id for p in response.context["passages"]]
-        self.assertIn("01", passage_ids)
-        self.assertNotIn("02", passage_ids)
+        self.assertTrue(response.context["exam_selection"])
+        self.assertContains(response, self.exam.name)
+        self.assertNotIn("passages", response.context)
 
     def test_passage_library_filters_by_exam(self):
         self.client.force_login(self.student)
@@ -608,7 +609,7 @@ class PassageLibraryViewTests(TestCase):
     def test_passage_library_filters_by_language(self):
         self.client.force_login(self.student)
         response = self.client.get(
-            reverse("accounts:passage_library") + "?language=ENGLISH"
+            reverse("accounts:passage_library") + "?exam=LIB-EXAM&language=ENGLISH"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["passages"]), 1)
@@ -616,7 +617,7 @@ class PassageLibraryViewTests(TestCase):
     def test_passage_library_search(self):
         self.client.force_login(self.student)
         response = self.client.get(
-            reverse("accounts:passage_library") + "?search=Alpha"
+            reverse("accounts:passage_library") + "?exam=LIB-EXAM&search=Alpha"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["passages"]), 1)
@@ -624,7 +625,7 @@ class PassageLibraryViewTests(TestCase):
     def test_passage_library_empty_state(self):
         self.client.force_login(self.student)
         response = self.client.get(
-            reverse("accounts:passage_library") + "?language=HINDI"
+            reverse("accounts:passage_library") + "?exam=LIB-EXAM&language=HINDI"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["passages"]), 0)
@@ -634,8 +635,5 @@ class PassageLibraryViewTests(TestCase):
         response = self.client.get(reverse("accounts:passage_library"))
         self.assertContains(
             response,
-            reverse(
-                "passages:simulator-detail",
-                kwargs={"exam_code": self.exam.code, "passage_id": "01"},
-            ),
+            reverse("accounts:passage_library") + f"?exam={self.exam.code}",
         )
