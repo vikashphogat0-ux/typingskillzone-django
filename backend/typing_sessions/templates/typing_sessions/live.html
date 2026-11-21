@@ -11,6 +11,7 @@
       <strong id="countdown">--:--</strong>
       <span>Time remaining</span>
     </div>
+    <p id="timer-status" role="status" aria-live="polite" hidden></p>
   </header>
   <div class="typing-toolbar">
     <span class="mode-label">Practice mode: <strong>{{ attempt.rules_snapshot.display_mode|default:"normal"|title }}</strong></span>
@@ -58,6 +59,7 @@
   const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   let startedAt = null;
   let deadline = clock.deadline_ms;
+  let timerActivated = Boolean(rules.timer_started) || deadline !== null;
   let submitting = false;
   let policyEvents = 0;
   let clockOffset = clock.server_now_ms - Date.now();
@@ -184,29 +186,50 @@
     document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/entered.length*100):100)+"%";
     renderHighlightedReference(typed);
   }
+  const timerStatus = document.getElementById("timer-status");
+  let activationPromise = null;
   input.addEventListener("input",() => {
-    if (!startedAt) startedAt = Date.now();
-    ensureTimerStarted();
+    if (!startedAt) {
+      startedAt = Date.now();
+      if (!timerActivated) {
+        input.readOnly = true;
+        timerStatus.hidden = false;
+        timerStatus.textContent = "Starting your exam timer…";
+        ensureTimerStarted().then(activated => {
+          if (activated && !submitting) {
+            startedAt = Date.now();
+            input.readOnly = false;
+            timerStatus.hidden = true;
+            updateStats();
+          }
+        });
+      }
+    }
     updateStats();
   });
   updateStats();
-  let activationPromise = null;
   async function ensureTimerStarted() {
-    if (deadline !== null || activationPromise) return activationPromise;
+    if (timerActivated) return true;
+    if (activationPromise) return activationPromise;
     const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
     activationPromise = fetch(activateUrl, {
       method: "POST",
       credentials: "same-origin",
       headers: {"X-CSRFToken": csrf},
     }).then(response => {
-      if (!response.ok) throw new Error("Unable to start exam timer");
+      if (!response.ok) throw new Error("The server could not start your exam timer.");
       return response.json();
     }).then(data => {
+      timerActivated = true;
       deadline = data.deadline_ms;
       clockOffset = data.server_now_ms - Date.now();
       tick();
+      return true;
     }).catch(() => {
+      timerStatus.hidden = false;
+      timerStatus.textContent = "Your exam timer could not be started. Check your internet connection and reload this attempt before continuing.";
       activationPromise = null;
+      return false;
     });
     return activationPromise;
   }

@@ -51,6 +51,17 @@ class TypingSessionTests(TestCase):
         )
         self.assertTrue(activated.rules_snapshot["timer_started"])
 
+    def test_repeated_timer_activation_does_not_restart_deadline(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        first_activation = activate_session(session_id=attempt.pk, learner=self.learner)
+        first_started_at = first_activation.started_at
+        first_deadline = first_activation.deadline_at
+
+        second_activation = activate_session(session_id=attempt.pk, learner=self.learner)
+
+        self.assertEqual(second_activation.started_at, first_started_at)
+        self.assertEqual(second_activation.deadline_at, first_deadline)
+
     def test_selected_exam_start_saves_and_locks_display_mode(self):
         self.client.force_login(self.learner)
         response = self.client.post(
@@ -672,6 +683,21 @@ class TypingSessionViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertContains(response, "This passage is not released yet.", status_code=409)
+
+    def test_other_learner_cannot_activate_typing_session(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        other = get_user_model().objects.create_user(
+            email="different-viewer@example.com",
+            password="SafePassword123!",
+        )
+        self.client.force_login(other)
+        response = self.client.post(
+            reverse("typing_sessions:activate", args=[attempt.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+        attempt.refresh_from_db()
+        self.assertIsNone(attempt.deadline_at)
+        self.assertFalse(attempt.rules_snapshot.get("timer_started", False))
 
     def test_opening_expired_attempt_marks_it_expired(self):
         from django.urls import reverse
