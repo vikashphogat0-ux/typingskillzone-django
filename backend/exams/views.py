@@ -1,6 +1,5 @@
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 
 from exams.models import ExamConfiguration
 from passages.models import SimulatorPassage, released_queryset
@@ -42,7 +41,6 @@ def exam_detail(request, code):
         .select_related("source")
         .order_by("-published_at", "serial_number")
     )
-    today = timezone.localdate()
     passages = released_queryset(passages)
     not_published = exam.scoring_mode == "GENERIC" and not exam.rule_notes
     available_passages = passages
@@ -54,7 +52,6 @@ def exam_detail(request, code):
         "duration_minutes": (exam.duration_seconds // 60) if exam.duration_seconds else None,
         "recent_passages": available_passages,
         "published_count": passages.count(),
-        "today": today,
         "not_published": not_published,
         "selected_passage_id": selected_passage_id,
     })
