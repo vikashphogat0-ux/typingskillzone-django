@@ -779,6 +779,12 @@ class TypingSessionViewTests(TestCase):
         self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
         self.assertEqual(attempt.result_snapshot, {})
 class TypingMistakeClassificationTests(TestCase):
+    def test_multiple_defect_types_in_one_word_count_as_one_error(self):
+        analysis = classify_typing_mistakes("Hello, world!", "hELLo!! world!")
+        self.assertEqual(analysis["total_detected_errors"], 1)
+        self.assertGreaterEqual(analysis["categories"]["capitalization"], 1)
+        self.assertGreaterEqual(analysis["categories"]["punctuation"], 1)
+
     def test_mistake_categories(self):
         cases = [
             ("Omission", "hello brave world", "hello world", "omission"),
