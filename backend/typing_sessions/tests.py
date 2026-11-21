@@ -79,6 +79,20 @@ class TypingSessionTests(TestCase):
         attempt.refresh_from_db()
         self.assertEqual(attempt.rules_snapshot["display_mode"], "highlighted")
 
+    def test_offscreen_mode_hides_reference_and_keeps_full_width_typing_area(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": "offscreen"}
+        attempt.save(update_fields=("rules_snapshot",))
+        self.client.force_login(self.learner)
+
+        response = self.client.get(reverse("typing_sessions:session", args=[attempt.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-mode="offscreen"')
+        self.assertContains(response, 'class="typing-workspace is-offscreen"')
+        self.assertContains(response, 'id="typed-text"')
+        self.assertNotContains(response, 'id="reference-panel"')
+
     def test_timer_activation_endpoint_starts_server_deadline(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         self.client.force_login(self.learner)
