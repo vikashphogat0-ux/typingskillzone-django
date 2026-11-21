@@ -8,15 +8,28 @@ SCORING_VERSION = "tsz-char-word-v3"
 
 
 def _attempted_reference_prefix(reference, typed):
-    """Limit comparison to the reference words the learner actually reached."""
+    """Ignore only the untyped trailing suffix, retaining omissions inside typed work."""
     reference = reference or ""
     typed = typed or ""
     typed_words = re.findall(r"\S+", typed)
     reference_spans = list(re.finditer(r"\S+", reference))
     if not typed_words or not reference_spans:
         return ""
-    reached = min(len(typed_words), len(reference_spans))
-    end = reference_spans[reached - 1].end()
+
+    reference_words = [match.group(0) for match in reference_spans]
+    matcher = SequenceMatcher(a=reference_words, b=typed_words, autojunk=False)
+    opcodes = matcher.get_opcodes()
+    last_typed_opcode = next(
+        (opcode for opcode in reversed(opcodes) if opcode[0] != "delete"),
+        None,
+    )
+    if last_typed_opcode is None:
+        return ""
+
+    reached_reference_words = last_typed_opcode[2]
+    if reached_reference_words <= 0:
+        return ""
+    end = reference_spans[reached_reference_words - 1].end()
     if typed and typed[-1].isspace():
         trailing = re.match(r"\s*", reference[end:])
         if trailing:

@@ -52,7 +52,7 @@ class IndependentStudentLoginTests(TestCase):
 
     def test_independent_student_signs_in_to_exam_catalogue(self):
         response = self.client.post(self.url, {"username": "independent@example.com", "password": "SafePassword123!"})
-        self.assertRedirects(response, reverse("accounts:student_dashboard"), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
 
     def test_wrong_password_is_rejected(self):
         response = self.client.post(self.url, {"username": "independent@example.com", "password": "wrong"})
@@ -69,7 +69,7 @@ class IndependentStudentLoginTests(TestCase):
             f"{self.url}?next=https://evil.example.com/",
             {"username": "independent@example.com", "password": "SafePassword123!"},
         )
-        self.assertRedirects(response, reverse("accounts:student_dashboard"), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
 
     def test_protected_page_redirects_to_account_login(self):
         response = self.client.get(reverse("accounts:student_dashboard"))
