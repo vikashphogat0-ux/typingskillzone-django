@@ -174,7 +174,7 @@
     fullscreenButton.textContent = document.fullscreenElement ? "Exit full screen" : "Enter full screen";
   });
   function updateStats() {
-    const nextCharacter = reference[input.value.length] || "✓";
+    const nextCharacter = Array.from(reference)[Array.from(input.value).length] || "✓";
     currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
     const elapsed=Math.max(1,(Date.now()-startedAt)/60000), typed=input.value;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
