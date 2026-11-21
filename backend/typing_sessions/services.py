@@ -63,6 +63,32 @@ def start_session(*, learner, publication):
 
 
 @transaction.atomic
+def restart_session(*, session_id, learner):
+    """Abandon an unfinished attempt and create a clean attempt for the same passage."""
+    _require_active_student(learner)
+    previous = TypingSession.objects.select_for_update().select_related(
+        "publication__exam", "publication__source"
+    ).get(pk=session_id, learner=learner)
+    if previous.state != TypingSession.State.ACTIVE:
+        raise ValidationError("Only an active attempt can be restarted.")
+    publication = previous.publication
+    display_mode = (previous.rules_snapshot or {}).get("display_mode", "normal")
+    previous.state = TypingSession.State.EXPIRED
+    previous.completed_at = timezone.now()
+    previous.save(update_fields=("state", "completed_at"))
+    clear_draft(previous.pk)
+
+    fresh = start_session(learner=learner, publication=publication)
+    fresh.rules_snapshot = {
+        **fresh.rules_snapshot,
+        "display_mode": display_mode,
+        "timer_started": False,
+    }
+    fresh.save(update_fields=("rules_snapshot",))
+    return fresh
+
+
+@transaction.atomic
 def activate_session(*, session_id, learner):
     """Start the server-owned exam clock on the learner's first input."""
     _require_active_student(learner)
