@@ -3,7 +3,7 @@ from difflib import SequenceMatcher
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
-SCORING_VERSION = "tsz-char-word-v2"
+SCORING_VERSION = "tsz-char-word-v3"
 
 
 
