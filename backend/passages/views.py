@@ -1,24 +1,15 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from exams.models import ExamConfiguration
-from .models import SimulatorPassage, released_queryset
+from .models import SimulatorPassage
 
 
 @login_required
 def simulator_passage_list(request, exam_code):
     exam = get_object_or_404(ExamConfiguration, code=exam_code, is_active=True)
-    passages = (
-        SimulatorPassage.objects.filter(
-            exam=exam,
-            status=SimulatorPassage.Status.PUBLISHED,
-        )
-        .select_related("source", "exam")
-        .order_by("serial_number")
-    )
-    passages = released_queryset(passages)
     return redirect("exams:exam_detail", code=exam.code)
 
 
