@@ -45,7 +45,7 @@ def exam_detail(request, code):
     today = timezone.localdate()
     passages = released_queryset(passages)
     not_published = exam.scoring_mode == "GENERIC" and not exam.rule_notes
-    available_passages = passages[:60]
+    available_passages = passages
     selected_passage_id = request.GET.get("passage", "").strip()
     if not selected_passage_id and available_passages:
         selected_passage_id = str(available_passages[0].serial_number)
