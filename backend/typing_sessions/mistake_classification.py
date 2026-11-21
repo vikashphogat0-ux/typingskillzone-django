@@ -128,20 +128,23 @@ def classify_typing_mistakes(reference, typed):
             # same word also has a punctuation error.
             expected_letters = "".join(char for char in expected if char not in PUNCTUATION)
             actual_letters = "".join(char for char in actual if char not in PUNCTUATION)
-            if (
+            case_error = (
                 expected_letters != actual_letters
                 and expected_letters.casefold() == actual_letters.casefold()
-            ):
-                categories["capitalization"] += 1
-
+            )
             expected_marks = "".join(
                 char for char in expected if char in PUNCTUATION
             )
             actual_marks = "".join(
                 char for char in actual if char in PUNCTUATION
             )
+            punctuation_error = expected_marks != actual_marks
 
-            if expected_marks != actual_marks:
+            # Keep the diagnostic category exclusive: two defects in the
+            # same word still represent one word-level mistake.
+            if case_error:
+                categories["capitalization"] += 1
+            elif punctuation_error:
                 categories["punctuation"] += 1
 
     # Compare whitespace only when the word sequences align.
