@@ -104,9 +104,8 @@ class CentralPassagePublishingTests(TestCase):
         exam = self.make_exam("delhi-police-hcm", "Delhi Police HCM")
         publish_source_to_exam(source, exam)
         response = self.client.get(reverse("passages:simulator-list", args=[exam.code]))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "01")
-        self.assertContains(response, "Central source")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("exams:exam_detail", args=[exam.code]))
 
 
 
