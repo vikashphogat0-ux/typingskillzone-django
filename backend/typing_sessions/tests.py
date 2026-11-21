@@ -159,6 +159,27 @@ class TypingSessionTests(TestCase):
 
 
 class TypingScoringTests(TestCase):
+    def test_untyped_trailing_passage_words_are_pending_not_errors(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="one two three",
+            typed="one",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "GENERIC",
+                "error_rules": {"count_word_errors": True},
+                "verification_status": "UNVERIFIED",
+            },
+        )
+        self.assertEqual(result["word_errors"], 0)
+        self.assertEqual(result["character_errors"], 0)
+        self.assertEqual(result["deletion_errors"], 0)
+        self.assertEqual(result["accuracy_percent"], 100.0)
+
+        analysis = classify_typing_mistakes("one two three", "one")
+        self.assertEqual(analysis["total_detected_errors"], 0)
+
     def setUp(self):
         User = get_user_model()
         self.learner = User.objects.create_user(email="scoring@example.com", password="SafePassword123!")
