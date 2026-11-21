@@ -8,7 +8,7 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.core.mail import send_mail
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
