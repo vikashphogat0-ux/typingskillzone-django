@@ -102,7 +102,7 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
     now = timezone.now()
     if not session.rules_snapshot.get("timer_started"):
         session.started_at = now
-        if session.duration_seconds:
+        if session.duration_seconds and session.deadline_at is None:
             session.deadline_at = now + timedelta(seconds=session.duration_seconds)
         session.rules_snapshot = {**session.rules_snapshot, "timer_started": True}
         session.save(update_fields=("started_at", "deadline_at", "rules_snapshot"))
