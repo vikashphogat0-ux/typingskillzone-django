@@ -692,7 +692,7 @@ class TypingSessionViewTests(TestCase):
 class TypingMistakeClassificationTests(TestCase):
     def test_mistake_categories(self):
         cases = [
-            ("Omission", "hello world", "hello", "omission"),
+            ("Omission", "hello brave world", "hello world", "omission"),
             ("Substitution", "hello world", "hello word", "substitution"),
             ("Addition", "hello world", "hello x world", "addition"),
             ("Capitalization", "Hello world", "hello world", "capitalization"),
@@ -701,7 +701,7 @@ class TypingMistakeClassificationTests(TestCase):
             ("Word spacing", "hello world", "hello  world", "word_spacing"),
             ("Paragraph break", "hello\nworld", "hello world", "paragraph_breaks"),
             ("Hindi substitution", "भारत महान है", "भारत विशाल है", "substitution"),
-            ("Hindi omission", "भारत महान है", "भारत है", "omission"),
+            ("Hindi omission", "भारत बहुत महान है", "भारत है", "omission"),
             ("Hindi addition", "भारत महान है", "भारत बहुत महान है", "addition"),
             ("Hindi spacing", "भारत महान है", "भा रत महान है", "internal_spacing"),
             ("Hindi punctuation", "भारत महान है।", "भारत महान है", "punctuation"),
