@@ -5,6 +5,6 @@
 {% block dashboard_heading %}Administration workspace{% endblock %}
 {% block dashboard_nav %}
 <a href="{% url 'institutes:super_admin_dashboard' %}"{% if request.resolver_match.url_name == 'super_admin_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
-<a href="{% url 'institutes:institute_list' %}"{% if request.resolver_match.url_name == 'institute_list' %} class="active" aria-current="page"{% endif %}>Institutes</a>
+<a href="{% url 'institutes:institute_list' %}"{% if request.resolver_match.url_name == 'institute_list' or request.resolver_match.url_name == 'institute_detail' or request.resolver_match.url_name == 'institute_edit' or request.resolver_match.url_name == 'review_institute' %} class="active" aria-current="page"{% endif %}>Institutes</a>
 <a href="/admin/">Django admin</a>
 {% endblock %}
