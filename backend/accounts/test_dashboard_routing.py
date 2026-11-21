@@ -28,3 +28,18 @@ class DashboardRoutingTests(TestCase):
     def test_student_login_page_links_registration(self):
         response = self.client.get(reverse("accounts:student_login"))
         self.assertContains(response, reverse("accounts:student_register"))
+
+    def test_student_owner_and_superadmin_share_dashboard_shell(self):
+        dashboard_cases = [
+            (self.student, reverse("accounts:student_dashboard")),
+            (self.owner, reverse("institutes:owner_dashboard")),
+            (self.admin, reverse("institutes:super_admin_dashboard")),
+        ]
+        for user, url in dashboard_cases:
+            with self.subTest(role=user.role, url=url):
+                self.client.force_login(user)
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'class="dashboard-shell"')
+                self.assertContains(response, 'class="dashboard-sidebar"')
+                self.assertContains(response, 'class="dashboard-topbar"')
