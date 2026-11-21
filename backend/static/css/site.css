@@ -417,3 +417,61 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .dashboard-menu-toggle{display:none;grid-row:1/4;align-self:center;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px;font-weight:750}
 @media(max-width:900px){.dashboard-sidebar{display:none}.dashboard-sidebar.is-open{display:flex}.dashboard-menu-toggle{display:inline-flex}.dashboard-topbar{align-items:center;flex-direction:row}.dashboard-title-group{min-width:0}.dashboard-account{margin-left:auto}}
 @media(max-width:560px){.dashboard-topbar{align-items:flex-start;flex-direction:column}.dashboard-account{width:100%;margin-left:0}.dashboard-title-group{width:100%}}
+
+
+/* Typing workspace: reference above the input, each panel scrolls independently. */
+.typing-engine .typing-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(220px, 42vh) minmax(300px, 42vh);
+  gap: 14px;
+  min-height: 0;
+}
+.typing-engine .reference-panel,
+.typing-engine .typing-panel {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+.typing-engine .reference-scroll {
+  height: auto;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.typing-engine .typing-panel .typing-form {
+  min-height: 0;
+  flex: 1;
+}
+.typing-engine .typing-panel .typing-input {
+  min-height: 220px;
+  flex: 1;
+  overflow: auto;
+}
+.typing-engine[data-mode="offscreen"] .typing-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(420px, 68vh);
+}
+.typing-engine[data-mode="offscreen"] .reference-panel {
+  display: none !important;
+}
+.typing-engine[data-mode="offscreen"] .typing-panel {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-input {
+  min-height: clamp(400px, 62vh, 760px);
+}
+@media (max-width: 850px) {
+  .typing-engine .typing-workspace {
+    grid-template-rows: minmax(220px, 34vh) minmax(280px, 42vh);
+  }
+  .typing-engine .reference-scroll {
+    height: auto;
+    min-height: 0;
+  }
+  .typing-engine .typing-panel .typing-input {
+    min-height: 240px;
+  }
+}
