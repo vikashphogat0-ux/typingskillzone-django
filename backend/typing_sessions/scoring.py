@@ -9,7 +9,18 @@ SCORING_VERSION = "tsz-char-word-v2"
 def _count_character_errors(reference, typed):
     matcher = SequenceMatcher(a=reference, b=typed, autojunk=False)
     correct = substitutions = insertions = deletions = 0
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    opcodes = matcher.get_opcodes()
+    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
+        # A trailing reference suffix was never reached by the typist. It is
+        # pending text, not a deletion/error. Deletions inside the attempted
+        # portion remain countable.
+        if (
+            tag == "delete"
+            and opcode_index == len(opcodes) - 1
+            and j1 == j2 == len(typed)
+            and i2 == len(reference)
+        ):
+            continue
         if tag == "equal":
             correct += i2 - i1
         elif tag == "replace":
@@ -37,7 +48,15 @@ def _count_word_errors(reference, typed):
     typed_words = re.findall(r"\S+", typed)
     matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
     errors = 0
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    opcodes = matcher.get_opcodes()
+    for opcode_index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
+        if (
+            tag == "delete"
+            and opcode_index == len(opcodes) - 1
+            and j1 == j2 == len(typed_words)
+            and i2 == len(ref_words)
+        ):
+            continue
         if tag == "equal":
             continue
         errors += max(i2 - i1, j2 - j1)
@@ -98,7 +117,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     duration = max(1, int(duration_seconds))
     minutes = duration / 60
     chars = _count_character_errors(reference, typed)
-    denominator = max(len(reference), len(typed), 1)
+    denominator = max(len(typed), 1)
     accuracy = round(chars["correct_characters"] * 100 / denominator, 2)
     gross_wpm = round(len(typed) / 5 / minutes, 2)
     correct_wpm = round(chars["correct_characters"] / 5 / minutes, 2)
