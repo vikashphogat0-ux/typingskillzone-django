@@ -43,11 +43,14 @@ class ExamCatalogueTests(TestCase):
         self.assertContains(response, "Hindi Typing Test")
         self.assertNotContains(response, "SSC CGL Typing Test")
 
-    def test_exam_detail_shows_todays_passage(self):
+    def test_exam_detail_shows_exam_scoped_passage_selector(self):
         response = self.client.get(reverse("exams:exam_detail", args=["ssc-cgl-test"]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Today's passages")
+        self.assertContains(response, "Choose a passage for practice")
         self.assertContains(response, "Daily English passage")
+        self.assertContains(response, 'name="passage_id"')
+        self.assertContains(response, 'name="display_mode"')
+        self.assertContains(response, "Start practice")
 
     def test_inactive_exam_detail_is_not_found(self):
         response = self.client.get(reverse("exams:exam_detail", args=["retired-test"]))
