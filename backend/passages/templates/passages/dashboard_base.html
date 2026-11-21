@@ -2,7 +2,7 @@
 {% block content %}
 <div class="dashboard-shell">
   <aside class="dashboard-sidebar" aria-label="{{ dashboard_role|default:'Account' }} navigation">
-    <div class="dashboard-sidebar-heading"><span class="dashboard-brand-mark">TS</span><span><strong>TypingSkillZone</strong><small>{{ dashboard_role|default:"Workspace" }}</small></span></div>
+    <div class="dashboard-sidebar-heading"><span class="dashboard-brand-mark">TS</span><span><strong>TypingSkillZone</strong><small>{% block dashboard_role_label %}Workspace{% endblock %}</small></span></div>
     <nav class="dashboard-links" aria-label="Dashboard">
       {% block dashboard_nav %}{% endblock %}
     </nav>
