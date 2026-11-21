@@ -206,6 +206,23 @@ class TypingScoringTests(TestCase):
         analysis = classify_typing_mistakes("one two three", "one")
         self.assertEqual(analysis["total_detected_errors"], 0)
 
+        attempted_error = calculate_result(
+            reference="one two three",
+            typed="one wrong",
+            duration_seconds=60,
+            rules={
+                "scoring_mode": "GENERIC",
+                "error_rules": {"count_word_errors": True},
+                "verification_status": "UNVERIFIED",
+            },
+        )
+        self.assertEqual(attempted_error["word_errors"], 1)
+        self.assertEqual(attempted_error["error_count"], 1)
+        self.assertEqual(
+            classify_typing_mistakes("one two three", "one wrong")["total_detected_errors"],
+            1,
+        )
+
     def setUp(self):
         User = get_user_model()
         self.learner = User.objects.create_user(email="scoring@example.com", password="SafePassword123!")
