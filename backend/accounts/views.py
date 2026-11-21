@@ -349,15 +349,15 @@ def passage_library(request):
     )
     exam_code = request.GET.get("exam", "").strip()
     if not exam_code:
-        exams = (
-            ExamConfiguration.objects.filter(
-                is_active=True,
-                published_passages__in=base_passages,
-            ).annotate(passage_count=Count("published_passages", filter=Q(
-                published_passages__status=SimulatorPassage.Status.PUBLISHED,
-                published_passages__source__status=PassageSource.Status.PUBLISHED,
-            ))).distinct().order_by("name")
-        )
+        exam_counts = {
+            row["exam_id"]: row["passage_count"]
+            for row in base_passages.order_by().values("exam_id").annotate(passage_count=Count("pk"))
+        }
+        exams = list(ExamConfiguration.objects.filter(
+            is_active=True, pk__in=exam_counts
+        ).order_by("name"))
+        for available_exam in exams:
+            available_exam.passage_count = exam_counts[available_exam.pk]
         return render(request, "accounts/passage_library.html", {
             "exams": exams,
             "exam_selection": True,
@@ -393,7 +393,7 @@ def passage_library(request):
         "exams": ExamConfiguration.objects.filter(is_active=True),
         "exam_selection": False,
         "exam": exam,
-        "available_languages": passages.order_by().values_list("source__language", flat=True).distinct(),
+        "available_languages": base_passages.filter(exam=exam).order_by().values_list("source__language", flat=True).distinct(),
         "selected_language": language,
         "search_query": search_query,
         "passages": page_obj,
