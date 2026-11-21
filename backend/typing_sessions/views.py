@@ -86,6 +86,7 @@ def typing_session(request, session_id):
     clock = {
         "server_now_ms": int(timezone.now().timestamp() * 1000),
         "deadline_ms": int(attempt.deadline_at.timestamp() * 1000) if attempt.deadline_at else None,
+        "duration_ms": int(attempt.duration_seconds * 1000) if attempt.duration_seconds else None,
     }
     return render(request, "typing_sessions/live.html", {
         "attempt": attempt,
