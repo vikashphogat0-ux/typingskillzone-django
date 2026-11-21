@@ -23,19 +23,22 @@
 <section class="card" id="result-statistics">
   <h2>Performance statistics</h2>
   <div class="metrics">
-    <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default:"–" }}</strong><small>Gross {{ attempt.result_snapshot.gross_wpm|default:"–" }}</small></article>
-    <article class="metric-card"><span>Accuracy</span><strong>{{ attempt.result_snapshot.accuracy_percent|default:"–" }}{% if attempt.result_snapshot.accuracy_percent %}%{% endif %}</strong><small>{{ attempt.result_snapshot.correct_characters|default:"–" }} correct characters</small></article>
-    <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default:"–" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
-    <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default:"–" }}</strong><small>seconds</small></article>
+    <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default_if_none:"–" }}</strong><small>Gross {{ attempt.result_snapshot.gross_wpm|default_if_none:"–" }}</small></article>
+    <article class="metric-card"><span>Accuracy</span><strong>{{ attempt.result_snapshot.accuracy_percent|default_if_none:"–" }}{% if attempt.result_snapshot.accuracy_percent != None %}%{% endif %}</strong><small>{{ attempt.result_snapshot.correct_characters|default_if_none:"0" }} correct characters</small></article>
+    <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
+    <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default_if_none:"–" }}</strong><small>seconds</small></article>
+    <article class="metric-card"><span>Characters typed</span><strong>{{ attempt.submitted_text|length }}</strong><small>{{ attempt.result_snapshot.correct_words|default_if_none:"0" }} correct words</small></article>
+    {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}</strong><small>Exam scoring result</small></article>{% endif %}
+    {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
   </div>
   <h3 style="margin-top:22px">Error breakdown</h3>
   <dl class="pattern-grid">
-    <div><dt>Word errors</dt><dd>{{ attempt.result_snapshot.word_errors|default:"–" }}</dd></div>
-    <div><dt>Character errors</dt><dd>{{ attempt.result_snapshot.character_errors|default:"–" }}</dd></div>
-    <div><dt>Substitutions</dt><dd>{{ attempt.result_snapshot.substitution_errors|default:"–" }}</dd></div>
-    <div><dt>Insertions</dt><dd>{{ attempt.result_snapshot.insertion_errors|default:"–" }}</dd></div>
-    <div><dt>Deletions</dt><dd>{{ attempt.result_snapshot.deletion_errors|default:"–" }}</dd></div>
-    <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default:"–" }}</dd></div>
+    <div><dt>Word errors</dt><dd>{{ attempt.result_snapshot.word_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Character errors</dt><dd>{{ attempt.result_snapshot.character_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Substitutions</dt><dd>{{ attempt.result_snapshot.substitution_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Insertions</dt><dd>{{ attempt.result_snapshot.insertion_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Deletions</dt><dd>{{ attempt.result_snapshot.deletion_errors|default_if_none:"0" }}</dd></div>
+    <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default_if_none:"0" }}</dd></div>
     {% if attempt.result_snapshot.required_keystrokes %}<div><dt>Required keystrokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}{% if attempt.result_snapshot.required_keystrokes_met %} · met{% else %} · not met{% endif %}</dd></div>{% endif %}
   </dl>
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
