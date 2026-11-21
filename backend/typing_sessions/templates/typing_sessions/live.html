@@ -183,6 +183,7 @@
     document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/typed.length*100):100)+"%";
   }
   input.addEventListener("input",updateStats);
+  updateStats();
   function tick() {
     if(submitting)return;
     if(!Number.isFinite(deadline)){countdown.textContent="No limit";return;}
