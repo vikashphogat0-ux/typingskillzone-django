@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.core.mail import send_mail
 from django.http import HttpResponse, HttpResponseForbidden
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -17,16 +17,19 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import InstituteEnrollmentForm, StudentProfileForm, StudentRegistrationForm
 from .security import is_rate_limited
-from django.db.models import Q
+from django.db.models import Q, Count
 
 from exams.models import ExamConfiguration
 from learners.models import LearnerProfile
-from passages.models import PassageSource, SimulatorPassage
+from passages.models import PassageSource, SimulatorPassage, released_queryset
 from typing_sessions.models import TypingSession
 from datetime import datetime, time, timedelta
 
 from django.utils.dateparse import parse_date
 from django.core.paginator import Paginator
+from io import BytesIO
+import os
+from xml.sax.saxutils import escape as xml_escape
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -329,8 +332,7 @@ def student_result_history(request):
 
 @login_required
 def passage_library(request):
-    """Student passage library with exam, language and text search."""
-
+    """Exam-first student passage library; a student must choose an exam first."""
     if request.user.role != User.Roles.STUDENT:
         logger.warning(
             "Student passage library access denied: user_id=%s role=%s active=%s superuser=%s",
@@ -338,56 +340,161 @@ def passage_library(request):
         )
         return HttpResponse("Student account required.", status=403)
 
+    base_passages = released_queryset(
+        SimulatorPassage.objects.filter(
+            status=SimulatorPassage.Status.PUBLISHED,
+            exam__is_active=True,
+            source__status=PassageSource.Status.PUBLISHED,
+        ).select_related("source", "exam")
+    )
     exam_code = request.GET.get("exam", "").strip()
+    if not exam_code:
+        exams = (
+            ExamConfiguration.objects.filter(
+                is_active=True,
+                published_passages__in=base_passages,
+            ).annotate(passage_count=Count("published_passages", filter=Q(
+                published_passages__status=SimulatorPassage.Status.PUBLISHED,
+                published_passages__source__status=PassageSource.Status.PUBLISHED,
+            ))).distinct().order_by("name")
+        )
+        return render(request, "accounts/passage_library.html", {
+            "exams": exams,
+            "exam_selection": True,
+        })
+
+    exam = get_object_or_404(ExamConfiguration, code=exam_code, is_active=True)
+    passages = base_passages.filter(exam=exam)
     language = request.GET.get("language", "").strip()
     search_query = request.GET.get("search", "").strip()
-
-    passages = SimulatorPassage.objects.filter(
-        status=SimulatorPassage.Status.PUBLISHED,
-        exam__is_active=True,
-        source__status=PassageSource.Status.PUBLISHED,
-    ).select_related("source", "exam")
-
-    if exam_code:
-        passages = passages.filter(exam__code=exam_code)
-
     if language:
         passages = passages.filter(source__language=language)
-
     if search_query:
         passages = passages.filter(
             Q(source__title__icontains=search_query)
             | Q(source__content__icontains=search_query)
         )
 
-    page_obj = Paginator(
-        passages.distinct().order_by("exam__code", "serial_number", "pk"),
-        20,
-    ).get_page(request.GET.get("page"))
+    page_obj = Paginator(passages.order_by("serial_number", "pk"), 20).get_page(request.GET.get("page"))
+    selected_id = request.GET.get("passage", "").strip()
+    selected_passage = None
+    if selected_id:
+        try:
+            selected_passage = passages.get(serial_number=int(selected_id))
+        except (ValueError, SimulatorPassage.DoesNotExist):
+            selected_passage = None
+    if selected_passage is None and page_obj.object_list:
+        selected_passage = page_obj.object_list[0]
 
+    passage_options = base_passages.filter(exam=exam).order_by("serial_number").values(
+        "serial_number", "source__title", "source__language"
+    )
     context = {
         "exams": ExamConfiguration.objects.filter(is_active=True),
-        "available_languages": PassageSource.objects.filter(
-            simulator_publications__status=SimulatorPassage.Status.PUBLISHED,
-            simulator_publications__exam__is_active=True,
-            status=PassageSource.Status.PUBLISHED,
-        ).values_list("language", flat=True).distinct(),
-        "selected_exam": exam_code,
+        "exam_selection": False,
+        "exam": exam,
+        "available_languages": passages.order_by().values_list("source__language", flat=True).distinct(),
         "selected_language": language,
         "search_query": search_query,
         "passages": page_obj,
         "page_obj": page_obj,
+        "passage_options": passage_options,
+        "selected_passage": selected_passage,
     }
-
     return render(request, "accounts/passage_library.html", context)
 
 
-
-
-
-
-
 @login_required
+def download_library_passage(request, exam_code, passage_id, file_format):
+    """Download a released passage only after the same student access check as the library."""
+    if request.user.role != User.Roles.STUDENT:
+        return HttpResponse("Student account required.", status=403)
+    if file_format not in {"txt", "pdf"}:
+        return HttpResponse("Unsupported download format.", status=404)
+
+    exam = get_object_or_404(ExamConfiguration, code=exam_code, is_active=True)
+    try:
+        serial_number = int(passage_id)
+    except (TypeError, ValueError):
+        raise Http404("Passage not found.")
+    passage = get_object_or_404(
+        released_queryset(SimulatorPassage.objects.select_related("source", "exam")),
+        exam=exam,
+        serial_number=serial_number,
+        status=SimulatorPassage.Status.PUBLISHED,
+        source__status=PassageSource.Status.PUBLISHED,
+    )
+    title = passage.source.title
+    content = passage.rendered_content
+
+    if file_format == "txt":
+        response = HttpResponse(content, content_type="text/plain; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="passage-{passage.passage_id}.txt"'
+        return response
+
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_LEFT
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+    except ImportError:
+        return HttpResponse("PDF export is unavailable on this server.", status=503)
+
+    font_name = "Helvetica"
+    if passage.source.language.upper() == "HINDI":
+        candidates = [
+            r"C:\Windows\Fonts\Nirmala.ttf",
+            r"C:\Windows\Fonts\NirmalaUI.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        font_path = next((path for path in candidates if os.path.exists(path)), None)
+        if not font_path:
+            return HttpResponse(
+                "Hindi PDF export needs a Unicode Devanagari font on the server. TXT export remains available.",
+                status=503,
+            )
+        try:
+            pdfmetrics.registerFont(TTFont("TypingSkillZoneHindi", font_path))
+            font_name = "TypingSkillZoneHindi"
+        except Exception:
+            return HttpResponse("The server Hindi font could not be loaded. TXT export remains available.", status=503)
+
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer, pagesize=A4, rightMargin=48, leftMargin=48, topMargin=52, bottomMargin=48,
+        title=title, author="TypingSkillZone",
+    )
+    styles = getSampleStyleSheet()
+    heading = ParagraphStyle(
+        "PassageHeading", parent=styles["Heading1"], fontName=font_name,
+        fontSize=16, leading=21, textColor=colors.HexColor("#172033"), spaceAfter=8,
+    )
+    meta = ParagraphStyle(
+        "PassageMeta", parent=styles["Normal"], fontName=font_name,
+        fontSize=9, leading=13, textColor=colors.HexColor("#64748B"), spaceAfter=18,
+    )
+    body = ParagraphStyle(
+        "PassageBody", parent=styles["BodyText"], fontName=font_name,
+        fontSize=11, leading=17, alignment=TA_LEFT, spaceAfter=9,
+    )
+    story = [
+        Paragraph(xml_escape(title), heading),
+        Paragraph(xml_escape(f"{exam.name} · {passage.source.language.title()} · Passage {passage.passage_id}"), meta),
+    ]
+    for paragraph in content.replace("\r\n", "\n").replace("\r", "\n").split("\n\n"):
+        if paragraph.strip():
+            story.append(Paragraph(xml_escape(paragraph).replace("\n", "<br/>"), body))
+            story.append(Spacer(1, 2))
+    document.build(story)
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="passage-{passage.passage_id}.pdf"'
+    return response
+
+
 def student_dashboard(request):
     """Student dashboard with progress, speed, accuracy, and statistics."""
     if request.user.role != User.Roles.STUDENT:
