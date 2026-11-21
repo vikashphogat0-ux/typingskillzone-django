@@ -1,12 +1,12 @@
-{% extends "passages/site_base.html" %}
-{% block content %}
-<nav class="app-nav" aria-label="Student">
-  <a href="{% url 'accounts:student_dashboard' %}">Dashboard</a>
-  <a href="{% url 'accounts:passage_library' %}">Passages</a>
-  <a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
-  <a href="{% url 'accounts:student_result_history' %}">Results</a>
-  <a href="{% url 'accounts:student_profile' %}">Profile</a>
-  <form method="post" action="{% url 'institutes:student_logout' %}" class="signout">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-small">Sign out</button></form>
-</nav>
-{% block app %}{% endblock %}
+{% extends "passages/dashboard_base.html" %}
+{% block dashboard_role %}Student{% endblock %}
+{% block dashboard_role_label %}Student workspace{% endblock %}
+{% block dashboard_heading %}Student workspace{% endblock %}
+{% block dashboard_nav %}
+<a href="{% url 'accounts:student_dashboard' %}"{% if request.resolver_match.url_name == 'student_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
+<a href="{% url 'accounts:passage_library' %}"{% if request.resolver_match.url_name == 'passage_library' %} class="active" aria-current="page"{% endif %}>Passage Library</a>
+<a href="{% url 'exams:catalogue' %}">Exam Catalogue</a>
+<a href="{% url 'accounts:student_result_history' %}"{% if request.resolver_match.url_name == 'student_result_history' %} class="active" aria-current="page"{% endif %}>My Results</a>
+<a href="{% url 'accounts:student_profile' %}"{% if request.resolver_match.url_name == 'student_profile' %} class="active" aria-current="page"{% endif %}>Profile</a>
 {% endblock %}
+{% block dashboard_account_action %}<form method="post" action="{% url 'institutes:student_logout' %}">{% csrf_token %}<button class="dashboard-signout" type="submit">Sign out</button></form>{% endblock %}
