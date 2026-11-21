@@ -51,10 +51,18 @@ def build_word_comparison(reference, typed):
                 ).ratio()
                 # Similar spellings are typos. A substantially different
                 # Latin word is better represented as an omission plus an
-                # extra word. Equal-length non-Latin words remain paired:
-                # edit-distance similarity is less reliable for Hindi.
+                # extra word. Devanagari replacements remain paired as
+                # incorrect words even when their code-point lengths differ;
+                # character-level similarity is not a reliable word-alignment
+                # signal for Hindi.
                 same_length = len(expected_word) == len(actual_word)
-                likely_typo = similarity >= 0.60 or same_length
+                contains_devanagari = any(
+                    "DEVANAGARI" in unicodedata.name(char, "")
+                    for char in expected_word + actual_word
+                )
+                likely_typo = (
+                    similarity >= 0.60 or same_length or contains_devanagari
+                )
                 if likely_typo:
                     reference_status[ref_index] = "incorrect"
                     typed_status[typed_index] = "incorrect"
