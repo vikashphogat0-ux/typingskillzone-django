@@ -57,4 +57,5 @@ urlpatterns = [
         name="student_result_history",
     ),
     path("passage-library/", views.passage_library, name="passage_library"),
+    path("passage-library/<slug:exam_code>/<str:passage_id>/download/<str:file_format>/", views.download_library_passage, name="download_library_passage"),
 ]
