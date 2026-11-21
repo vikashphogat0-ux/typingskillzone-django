@@ -15,7 +15,7 @@
   </header>
   <div class="typing-toolbar">
     <span class="mode-label">Practice mode: <strong>{{ attempt.rules_snapshot.display_mode|default:"normal"|title }}</strong></span>
-    <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" {% if attempt.rules_snapshot.display_mode != "highlighted" %}hidden{% endif %}>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
+    <div class="typing-toolbar-right"><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
   </div>
   <div class="rule-strip">
     {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
@@ -55,6 +55,30 @@
   const referenceElement = document.getElementById("reference");
   const mode = rules.display_mode || "normal";
   const activateUrl = "{% url 'typing_sessions:activate' attempt.pk %}";
+  const restartUrl = "{% url 'typing_sessions:restart' attempt.pk %}";
+  // A browser refresh means a fresh attempt on this same passage, never draft restoration.
+  const navigationEntry = performance.getEntriesByType("navigation")[0];
+  if (navigationEntry && navigationEntry.type === "reload") {
+    input.value = "";
+    input.readOnly = true;
+    const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    fetch(restartUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"X-CSRFToken": csrf},
+    }).then(response => {
+      if (!response.ok) throw new Error("Unable to restart this attempt.");
+      return response.json();
+    }).then(data => {
+      window.location.replace(data.redirect_url);
+    }).catch(() => {
+      const status = document.getElementById("timer-status");
+      status.hidden = false;
+      status.textContent = "A fresh attempt could not be created. Please reload once more or return to the passage library.";
+      input.readOnly = true;
+    });
+    return;
+  }
   const countdown = document.getElementById("countdown");
   const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   let startedAt = null;
@@ -148,8 +172,6 @@
     if (rules.allow_copy === false) { event.preventDefault(); policyEvents = Math.min(1000, policyEvents + 1); }
   });
   const engine = document.getElementById("typing-engine");
-  const currentTargetWrap = document.getElementById("current-target-wrap");
-  const currentTarget = document.getElementById("current-target");
   engine.dataset.mode = mode;
   const fullscreenButton = document.getElementById("fullscreen-button");
   fullscreenButton.addEventListener("click", async () => {
@@ -176,8 +198,6 @@
   }
   function updateStats() {
     const typed=input.value;
-    const nextCharacter = Array.from(reference)[Array.from(typed).length] || "✓";
-    if (currentTarget) currentTarget.textContent = nextCharacter === " " ? "␠" : (nextCharacter === "\n" ? "↵" : nextCharacter);
     const elapsed = startedAt ? Math.max(1/60, (Date.now()-startedAt)/60000) : 1;
     document.getElementById("live-wpm").textContent=Math.round(typed.length/5/elapsed);
     let correct=0;
