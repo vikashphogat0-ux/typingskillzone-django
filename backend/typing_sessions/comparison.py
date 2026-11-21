@@ -41,8 +41,26 @@ def build_word_comparison(reference, typed):
             actual_indexes = typed_word_indexes[j1:j2]
             paired = min(len(expected_indexes), len(actual_indexes))
             for offset in range(paired):
-                reference_status[expected_indexes[offset]] = "incorrect"
-                typed_status[actual_indexes[offset]] = "incorrect"
+                ref_index = expected_indexes[offset]
+                typed_index = actual_indexes[offset]
+                expected_word = reference_tokens[ref_index]
+                actual_word = typed_tokens[typed_index]
+                similarity = SequenceMatcher(
+                    None, expected_word.casefold(), actual_word.casefold(),
+                    autojunk=False,
+                ).ratio()
+                # Similar spellings are typos. A substantially different
+                # Latin word is better represented as an omission plus an
+                # extra word. Equal-length non-Latin words remain paired:
+                # edit-distance similarity is less reliable for Hindi.
+                same_length = len(expected_word) == len(actual_word)
+                likely_typo = similarity >= 0.60 or same_length
+                if likely_typo:
+                    reference_status[ref_index] = "incorrect"
+                    typed_status[typed_index] = "incorrect"
+                else:
+                    reference_status[ref_index] = "omitted"
+                    typed_status[typed_index] = "added"
             for ref_index in expected_indexes[paired:]:
                 reference_status[ref_index] = "omitted"
             for typed_index in actual_indexes[paired:]:
