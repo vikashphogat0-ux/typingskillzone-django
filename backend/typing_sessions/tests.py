@@ -74,11 +74,11 @@ class TypingSessionTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'data-mode="' + mode + '"')
                 self.assertContains(response, "exam-language-bar")
-                self.assertContains(response, 'id="rkc-live-errors"')
-                self.assertContains(response, 'id="rkc-correct"')
-                self.assertContains(response, 'id="rkc-wrong"')
-                self.assertContains(response, 'id="rkc-omitted"')
-                self.assertContains(response, 'id="rkc-extra"')
+                self.assertNotContains(response, 'id="rkc-live-errors"')
+                self.assertNotContains(response, 'id="rkc-correct"')
+                self.assertNotContains(response, 'id="rkc-wrong"')
+                self.assertNotContains(response, 'id="rkc-omitted"')
+                self.assertNotContains(response, 'id="rkc-extra"')
                 if mode == "offscreen":
                     self.assertNotContains(response, 'id="reference-panel"')
                 else:
