@@ -496,3 +496,8 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
   .typing-engine .typing-panel .finish-row { flex-direction: row; }
   .typing-engine .finish-row .btn { flex: 1; min-width: 0; }
 }
+
+
+.typing-engine .offscreen-tools { display: none; }
+.typing-engine[data-mode="offscreen"] .offscreen-tools { display: flex; justify-content: flex-start; }
+.typing-engine[data-mode="offscreen"] #exam-sound-button { min-height: 34px; padding: 7px 14px; border-radius: 4px; font-size: 12px; }
