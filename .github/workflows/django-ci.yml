@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/release-review-2026-11
+      - fix/diagnostic-remediation
   pull_request:
     branches:
       - main
