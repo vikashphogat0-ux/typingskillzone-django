@@ -210,6 +210,8 @@
       const paired = Math.min(deletes.length, k);
       deletes.forEach((refIndex, offset) => { status[refIndex] = offset < paired ? "bad" : "miss"; });
     }
+    next = status.findIndex(value => !value);
+    if (next < 0) next = refWords.length;
     let wordIndex = 0;
     referenceElement.innerHTML = reference.split(/(\s+)/).map((token) => {
       if (!token) return "";
