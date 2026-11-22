@@ -501,3 +501,23 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .typing-engine .offscreen-tools { display: none; }
 .typing-engine[data-mode="offscreen"] .offscreen-tools { display: flex; justify-content: flex-start; }
 .typing-engine[data-mode="offscreen"] #exam-sound-button { min-height: 34px; padding: 7px 14px; border-radius: 4px; font-size: 12px; }
+
+
+/* Match the typing field width to the full reference passage panel. */
+.typing-engine .typing-panel,
+.typing-engine .typing-panel .typing-form {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+.typing-engine .typing-panel .typing-input {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+}
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-input {
+  width: 100%;
+}
