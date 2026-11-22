@@ -102,5 +102,8 @@ def simulator_passage_detail(request, exam_code, passage_id):
     )
     if not passage.is_released():
         raise Http404("This passage is not released yet.")
-    workspace_url = reverse("exams:exam_detail", kwargs={"code": exam.code})
-    return redirect(f"{workspace_url}?passage={passage.serial_number}")
+    return render(
+        request,
+        "passages/simulator_detail.html",
+        {"exam": exam, "passage": passage},
+    )
