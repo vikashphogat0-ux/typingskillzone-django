@@ -41,6 +41,20 @@
     <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default_if_none:"0" }}</dd></div>
     {% if attempt.result_snapshot.required_keystrokes %}<div><dt>Required keystrokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}{% if attempt.result_snapshot.required_keystrokes_met %} · met{% else %} · not met{% endif %}</dd></div>{% endif %}
   </dl>
+  {% if attempt.result_snapshot.mistake_categories %}
+  <h3 style="margin-top:22px">RKC-style error identification</h3>
+  <p class="muted" style="margin:6px 0 12px">Diagnostic classification is calculated from the submitted text in Normal, Highlighted and Offscreen modes. The configured exam scoring rule remains the authority for the final score.</p>
+  <dl class="pattern-grid">
+    <div><dt>Omitted words</dt><dd>{{ attempt.result_snapshot.mistake_categories.omission|default:0 }}</dd></div>
+    <div><dt>Wrong / substituted words</dt><dd>{{ attempt.result_snapshot.mistake_categories.substitution|default:0 }}</dd></div>
+    <div><dt>Extra / repeated words</dt><dd>{{ attempt.result_snapshot.mistake_categories.addition|default:0 }}</dd></div>
+    <div><dt>Capitalization</dt><dd>{{ attempt.result_snapshot.mistake_categories.capitalization|default:0 }}</dd></div>
+    <div><dt>Punctuation</dt><dd>{{ attempt.result_snapshot.mistake_categories.punctuation|default:0 }}</dd></div>
+    <div><dt>Internal spacing</dt><dd>{{ attempt.result_snapshot.mistake_categories.internal_spacing|default:0 }}</dd></div>
+    <div><dt>Word spacing</dt><dd>{{ attempt.result_snapshot.mistake_categories.word_spacing|default:0 }}</dd></div>
+    <div><dt>Paragraph breaks</dt><dd>{{ attempt.result_snapshot.mistake_categories.paragraph_breaks|default:0 }}</dd></div>
+  </dl>
+  {% endif %}
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
 </section>
 <script>
