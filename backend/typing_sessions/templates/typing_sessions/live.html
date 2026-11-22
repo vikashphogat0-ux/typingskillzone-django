@@ -13,6 +13,9 @@
     </div>
   </header>
   <div class="exam-language-bar">Language: {{ attempt.rules_snapshot.language|default:"ENGLISH"|title }}</div>
+  {% if attempt.rules_snapshot.display_mode == "offscreen" %}
+  <div class="offscreen-tools"><button type="button" class="btn btn-primary btn-small" id="exam-sound-button">Start Exam Hall Sound</button></div>
+  {% endif %}
   <div class="typing-toolbar">
     <span class="mode-label">Practice mode: <strong>{{ attempt.rules_snapshot.display_mode|default:"normal"|title }}</strong></span>
     <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" {% if attempt.rules_snapshot.display_mode != "highlighted" %}hidden{% endif %}>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
@@ -153,6 +156,49 @@
   const currentTargetWrap = document.getElementById("current-target-wrap");
   const currentTarget = document.getElementById("current-target");
   engine.dataset.mode = mode;
+  const soundButton = document.getElementById("exam-sound-button");
+  if (soundButton) {
+    let soundContext = null;
+    let soundSource = null;
+    let soundGain = null;
+    soundButton.addEventListener("click", async () => {
+      try {
+        if (soundSource) {
+          soundSource.stop();
+          soundSource = null;
+          soundButton.textContent = "Start Exam Hall Sound";
+          return;
+        }
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) throw new Error("Audio is not supported");
+        soundContext = soundContext || new AudioContextClass();
+        await soundContext.resume();
+        const buffer = soundContext.createBuffer(1, soundContext.sampleRate * 3, soundContext.sampleRate);
+        const samples = buffer.getChannelData(0);
+        let filtered = 0;
+        for (let i = 0; i < samples.length; i++) {
+          filtered = filtered * 0.96 + (Math.random() * 2 - 1) * 0.04;
+          samples[i] = filtered * 2.8;
+        }
+        soundSource = soundContext.createBufferSource();
+        soundSource.buffer = buffer;
+        soundSource.loop = true;
+        const lowPass = soundContext.createBiquadFilter();
+        lowPass.type = "lowpass";
+        lowPass.frequency.value = 850;
+        soundGain = soundContext.createGain();
+        soundGain.gain.value = 0.018;
+        soundSource.connect(lowPass);
+        lowPass.connect(soundGain);
+        soundGain.connect(soundContext.destination);
+        soundSource.onended = () => { soundSource = null; };
+        soundSource.start();
+        soundButton.textContent = "Stop Exam Hall Sound";
+      } catch (error) {
+        soundButton.textContent = "Sound unavailable";
+      }
+    });
+  }
   const fullscreenButton = document.getElementById("fullscreen-button");
   fullscreenButton.addEventListener("click", async () => {
     try {
