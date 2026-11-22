@@ -6,6 +6,12 @@ from exams.models import ExamConfiguration
 from .models import SimulatorPassage
 
 
+def home(request):
+    """Public entry page linking visitors to existing TypingSkillZone portals."""
+    return render(request, "passages/home.html")
+
+
+
 @login_required
 def simulator_catalogue(request):
     """Show every active exam profile using its stored category and identity."""
