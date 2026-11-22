@@ -94,3 +94,13 @@ class SimulatorCatalogueTests(TestCase):
         self.assertContains(response, 'data-category-filter="SSC"')
         self.assertContains(response, 'scrollIntoView({behavior: "smooth", block: "start"})')
         self.assertContains(response, 'id="examSectionsPanel"')
+
+    def test_public_homepage_loads_without_authentication_and_links_existing_portals(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Build your typing speed with TypingSkillZone")
+        self.assertContains(response, reverse("institutes:student_login"))
+        self.assertContains(response, reverse("accounts:student_register"))
+        self.assertContains(response, reverse("passages:simulator-catalogue"))
+        self.assertContains(response, reverse("institutes:register"))
