@@ -1,0 +1,144 @@
+{% extends "passages/base.html" %}
+{% block title %}Exam Catalogue | TypingSkillZone{% endblock %}
+{% block content %}
+<style>
+  :root{color-scheme:light}
+  body{background:#f3f6fb!important;color:#17233b!important}
+  .wrap{max-width:1440px!important;padding:24px 24px 40px!important}
+  .top{margin-bottom:18px!important}
+  .catalogue-shell{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;align-items:start}
+  .catalogue-panel{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:15px!important;box-shadow:0 5px 22px rgba(31,51,82,.06)!important;padding:18px!important;color:#17233b}
+  .catalogue-heading{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:750;color:#25334d;margin:0 0 14px}
+  .catalogue-heading .heading-icon{color:#6476b8;font-size:18px}
+  .category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .category-button{min-height:91px;border:1px solid #e7ebf2;border-radius:11px;background:#fbfcfe;color:#33415d;padding:11px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;cursor:pointer;font:inherit;transition:border-color .15s,background .15s,transform .15s}
+  .category-button:hover{border-color:#a8b9e8;background:#f5f7ff;transform:translateY(-1px)}
+  .category-button.is-active{border-color:#8fa6e8;background:#eef3ff;box-shadow:inset 0 0 0 1px #d7e1ff}
+  .category-icon{font-size:22px;line-height:1.2}
+  .category-name{font-size:12px;font-weight:650;line-height:1.25}
+  .category-count{font-size:11px;color:#7b879c}
+  .catalogue-main{min-width:0}
+  .catalogue-search{position:relative;margin:0 0 17px}
+  .catalogue-search input{width:100%;height:46px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;padding:0 16px 0 44px;color:#1d2a44;font:14px inherit;outline:none;box-shadow:0 2px 8px rgba(31,51,82,.03)}
+  .catalogue-search input:focus{border-color:#829be0;box-shadow:0 0 0 3px rgba(93,125,211,.12)}
+  .search-icon{position:absolute;left:16px;top:12px;color:#8a96aa;font-size:17px;pointer-events:none}
+  .catalogue-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 2px 13px;color:#6c7890;font-size:13px}
+  .catalogue-summary strong{color:#33415d}
+  .exam-section{margin-bottom:17px}
+  .exam-section[hidden]{display:none}
+  .exam-section-heading{display:flex;align-items:center;gap:9px;border-bottom:1px solid #edf0f5;padding:2px 2px 11px;margin-bottom:11px;color:#34425d;font-size:15px;font-weight:750}
+  .exam-section-heading .section-icon{font-size:17px}
+  .exam-section-heading .section-count{margin-left:auto;color:#8792a5;font-size:12px;font-weight:600}
+  .exam-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+  .exam-link{min-height:45px;display:flex;align-items:center;gap:8px;border:1px solid #e7ebf2;border-radius:9px;background:#fbfcfe;padding:10px 11px;color:#4965a7;text-decoration:none;font-size:12.5px;font-weight:600;line-height:1.35;transition:border-color .15s,background .15s,box-shadow .15s}
+  .exam-link:hover{border-color:#b8c7ee;background:#f6f8ff;box-shadow:0 2px 8px rgba(53,83,150,.06);text-decoration:none}
+  .exam-chevron{flex:0 0 auto;color:#9aa8c1;font-size:17px;line-height:1}
+  .exam-name{min-width:0;overflow-wrap:anywhere}
+  .exam-meta{display:block;color:#8a95a8;font-size:10.5px;font-weight:500;margin-top:3px}
+  .catalogue-empty{display:none;padding:35px 18px;text-align:center;border:1px dashed #d9e0eb;border-radius:12px;color:#758198;background:#fff}
+  .catalogue-empty.is-visible{display:block}
+  .catalogue-empty strong{display:block;color:#34425d;margin-bottom:5px}
+  @media(max-width:1050px){.exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:760px){.catalogue-shell{grid-template-columns:1fr}.category-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.category-button{min-height:78px}.exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:520px){.wrap{padding:16px 12px 28px!important}.catalogue-panel{padding:14px!important}.category-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.category-button{min-height:74px}.category-name{font-size:11px}.exam-grid{grid-template-columns:1fr}.catalogue-summary{align-items:flex-start;flex-direction:column;gap:3px}}
+</style>
+
+<div class="catalogue-shell">
+  <aside class="catalogue-panel" aria-label="Exam categories">
+    <h2 class="catalogue-heading"><span class="heading-icon">▦</span> Exam Categories</h2>
+    <div class="category-grid">
+      <button class="category-button is-active" type="button" data-category-filter="ALL" aria-pressed="true">
+        <span class="category-icon">📚</span><span class="category-name">All Exams</span><span class="category-count">{{ exam_count }} exams</span>
+      </button>
+      {% for group in category_groups %}
+      <button class="category-button" type="button" data-category-filter="{{ group.key }}" aria-pressed="false">
+        <span class="category-icon">{{ group.icon }}</span><span class="category-name">{{ group.label }}</span><span class="category-count">{{ group.count }} exams</span>
+      </button>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <section class="catalogue-main">
+    <div class="catalogue-search">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input id="examSearch" type="search" placeholder="Search exam by name, language, script or code..." autocomplete="off" aria-label="Search exams">
+    </div>
+    <div class="catalogue-panel">
+      <div class="catalogue-summary">
+        <span><strong id="visibleExamCount">{{ exam_count }}</strong> available typing test exams</span>
+        <span id="activeCategoryLabel">Showing all categories · {{ category_count }} groups</span>
+      </div>
+
+      {% for group in category_groups %}
+      <section class="exam-section" data-exam-section="{{ group.key }}">
+        <h2 class="exam-section-heading"><span class="section-icon">{{ group.icon }}</span>{{ group.label }}<span class="section-count" data-section-count>{{ group.count }} exams</span></h2>
+        <div class="exam-grid">
+          {% for exam in group.exams %}
+          <a class="exam-link" data-exam-card data-category="{{ group.key }}" data-search="{{ exam.name|lower }} {{ exam.code|lower }} {{ exam.language|lower }} {{ exam.script|lower }} {{ exam.interface_type|lower }}" href="{% url 'passages:simulator-list' exam.code %}">
+            <span class="exam-chevron" aria-hidden="true">›</span>
+            <span class="exam-name">{{ exam.name }}<span class="exam-meta">{% if exam.language %}{{ exam.language|title }}{% endif %}{% if exam.script %} · {{ exam.script }}{% endif %}{% if exam.interface_type %} · {{ exam.interface_type }}{% endif %}</span></span>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+
+      <div class="catalogue-empty" id="catalogueEmpty" role="status">
+        <strong>No matching exams found</strong>
+        Try another search term or select a different category.
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById("examSearch");
+  const cards = Array.from(document.querySelectorAll("[data-exam-card]"));
+  const sections = Array.from(document.querySelectorAll("[data-exam-section]"));
+  const categoryButtons = Array.from(document.querySelectorAll("[data-category-filter]"));
+  const count = document.getElementById("visibleExamCount");
+  const categoryLabel = document.getElementById("activeCategoryLabel");
+  const empty = document.getElementById("catalogueEmpty");
+  let selectedCategory = "ALL";
+
+  function applyFilters() {
+    const term = search.value.trim().toLocaleLowerCase();
+    let visible = 0;
+    sections.forEach(section => {
+      let sectionVisible = 0;
+      section.querySelectorAll("[data-exam-card]").forEach(card => {
+        const categoryMatches = selectedCategory === "ALL" || card.dataset.category === selectedCategory;
+        const searchMatches = !term || card.dataset.search.includes(term);
+        const show = categoryMatches && searchMatches;
+        card.hidden = !show;
+        if (show) sectionVisible += 1;
+      });
+      section.hidden = sectionVisible === 0;
+      const sectionCount = section.querySelector("[data-section-count]");
+      if (sectionCount) sectionCount.textContent = sectionVisible + (sectionVisible === 1 ? " exam" : " exams");
+      visible += sectionVisible;
+    });
+    count.textContent = visible;
+    empty.classList.toggle("is-visible", visible === 0);
+    const activeButton = categoryButtons.find(button => button.dataset.categoryFilter === selectedCategory);
+    const activeName = activeButton ? activeButton.querySelector(".category-name").textContent : "All Exams";
+    categoryLabel.textContent = selectedCategory === "ALL" ? "Showing all categories" : "Category: " + activeName;
+  }
+
+  categoryButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      selectedCategory = button.dataset.categoryFilter;
+      categoryButtons.forEach(item => {
+        const active = item === button;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      applyFilters();
+    });
+  });
+  search.addEventListener("input", applyFilters);
+  applyFilters();
+})();
+</script>
+{% endblock %}
