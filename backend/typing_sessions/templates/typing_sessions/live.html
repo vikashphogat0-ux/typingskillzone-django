@@ -238,45 +238,61 @@
   function analyzeRkcWords(typed) {
     const refWords = reference.match(/\S+/g) || [];
     const allTypedWords = typed.match(/\S+/g) || [];
+    // A word is final only after the user types its separator. The active word
+    // is never scored as wrong while it is still being entered.
     const committedWords = /\s$/.test(typed) ? allTypedWords : allTypedWords.slice(0, -1);
-    const operations = wordAlignOps(refWords, committedWords);
     const status = new Array(refWords.length).fill("");
+    let cursor = 0;
     let correct = 0, wrong = 0, omitted = 0, extra = 0;
-    let group = { deletes: [], inserts: [] };
 
-    const finishEditGroup = (hasFollowingTypedWord) => {
-      const deleted = group.deletes;
-      const inserted = group.inserts;
-      const paired = Math.min(deleted.length, inserted.length);
-      for (let i = 0; i < paired; i++) status[deleted[i]] = "bad";
-      wrong += paired;
-      extra += inserted.length - paired;
-      // Only deletions followed by later committed text are omissions.
-      // A trailing untyped suffix—even after a final typo—must stay pending.
-      if (hasFollowingTypedWord) {
-        for (let i = paired; i < deleted.length; i++) status[deleted[i]] = "miss";
-        omitted += deleted.length - paired;
+    // RKC-style sequential checking: compare each committed word with the
+    // current reference word. A short forward look-ahead distinguishes a
+    // skipped reference word from a spelling mistake. Crucially, the
+    // untouched passage suffix is never traversed or counted.
+    for (const typedWord of committedWords) {
+      if (cursor >= refWords.length) {
+        extra++;
+        continue;
       }
-      group = { deletes: [], inserts: [] };
-    };
 
-    for (let i = 0; i < operations.length; i++) {
-      const [kind, refIndex, typedIndex] = operations[i];
-      if (kind === "equal") {
-        finishEditGroup(true);
-        status[refIndex] = "ok";
+      if (typedWord === refWords[cursor]) {
+        status[cursor] = "ok";
         correct++;
-      } else if (kind === "delete") {
-        group.deletes.push(refIndex);
+        cursor++;
+        continue;
+      }
+
+      let matchedAhead = -1;
+      const lookAheadLimit = Math.min(refWords.length, cursor + 4);
+      for (let candidate = cursor + 1; candidate < lookAheadLimit; candidate++) {
+        if (typedWord === refWords[candidate]) {
+          matchedAhead = candidate;
+          break;
+        }
+      }
+
+      if (matchedAhead !== -1) {
+        while (cursor < matchedAhead) {
+          status[cursor] = "miss";
+          omitted++;
+          cursor++;
+        }
+        status[cursor] = "ok";
+        correct++;
+        cursor++;
       } else {
-        group.inserts.push(typedIndex);
+        // One committed incorrect word is one word-level error, regardless
+        // of how many individual characters differ.
+        status[cursor] = "bad";
+        wrong++;
+        cursor++;
       }
     }
-    finishEditGroup(false);
 
-    let currentIndex = status.findIndex(value => !value);
-    if (currentIndex < 0) currentIndex = refWords.length;
-    return { refWords, status, currentIndex, correct, wrong, omitted, extra };
+    return {
+      refWords, status, currentIndex: Math.min(cursor, refWords.length),
+      correct, wrong, omitted, extra
+    };
   }
 
   function renderRkcErrorIdentification(typed) {
