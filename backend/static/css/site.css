@@ -423,6 +423,16 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .typing-engine[data-mode="normal"] .reference-panel,
 .typing-engine[data-mode="highlighted"] .reference-panel { max-height: 62vh; overflow-y: auto; border-radius: 14px; }
 .typing-engine .word { border-radius: 4px; }
+/* Single exam window: header and stats stay visible, reference above, typing below */
+.typing-engine { display: grid; gap: 14px; max-width: 1040px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
+.typing-engine .exam-header { position: sticky; top: 0; z-index: 5; background: var(--surface); padding-bottom: 10px; border-bottom: 1px solid var(--line); margin: 0; }
+.typing-engine .typing-workspace { display: flex; flex-direction: column; gap: 14px; }
+.typing-engine .reference-panel { order: 1; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.typing-engine .reference-panel .reference-scroll { max-height: 34vh; overflow-y: auto; }
+.typing-engine .typing-panel { order: 2; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.typing-engine .typing-input { min-height: 200px; font-size: 17px; line-height: 1.75; }
+.typing-engine[data-mode="offscreen"] .typing-workspace { max-width: 860px; margin: 0 auto; width: 100%; }
+.typing-engine .word { text-decoration: none; background: none; color: inherit; border-radius: 4px; }
 .typing-engine[data-mode="highlighted"] .word.ok { background: #DCFCE7; color: #14532D; }
 .typing-engine[data-mode="highlighted"] .word.bad { background: #FEE2E2; color: #991B1B; text-decoration: underline wavy #DC2626; }
 .typing-engine[data-mode="highlighted"] .word.miss { background: #FEF3C7; color: #92400E; text-decoration: line-through; }
@@ -430,3 +440,5 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .typing-engine[data-mode="normal"] .word.ok, .typing-engine[data-mode="normal"] .word.bad,
 .typing-engine[data-mode="normal"] .word.miss, .typing-engine[data-mode="normal"] .word.current { background: none; color: inherit; text-decoration: none; box-shadow: none; }
 @media (max-width: 880px) { .typing-engine[data-mode="normal"] .typing-workspace, .typing-engine[data-mode="highlighted"] .typing-workspace { grid-template-columns: minmax(0, 1fr); } }
+.typing-engine .passage-text, .typing-engine #reference { text-decoration: none; }
+@media (max-width: 720px) { .typing-engine { padding: 12px; } .typing-engine .reference-panel .reference-scroll { max-height: 30vh; } }

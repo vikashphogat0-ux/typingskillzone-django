@@ -1,5 +1,7 @@
 """Deterministic server-side scoring for a single submitted typing attempt."""
 from difflib import SequenceMatcher
+
+from .word_grading import grade_words
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
@@ -71,16 +73,8 @@ def _count_character_errors(reference, typed):
 
 
 def _count_word_errors(reference, typed):
-    ref_words = re.findall(r"\S+", _attempted_reference_prefix(reference, typed))
-    typed_words = re.findall(r"\S+", typed)
-    matcher = SequenceMatcher(a=ref_words, b=typed_words, autojunk=False)
-    errors = 0
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal":
-            continue
-        errors += max(i2 - i1, j2 - j1)
-    return errors
-
+    """Word errors in the typed text only (see word_grading.grade_words)."""
+    return grade_words(reference, typed)["errors"]
 
 
 def _count_correct_words(reference, typed):

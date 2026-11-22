@@ -164,9 +164,7 @@
   function escapeHtml(value) {
     return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
-  // Word-level alignment (longest common subsequence). Each passage word is coloured by its result,
-  // so one mistake only colours that word and does not shift the colours of the words after it.
-  function alignWords(ref, typed) {
+  function wordAlignOps(ref, typed) {
     const n = ref.length, m = typed.length, table = [];
     for (let i = 0; i <= n; i++) table.push(new Array(m + 1).fill(0));
     for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
@@ -188,7 +186,7 @@
     const m = typedWords.length;
     const status = new Array(refWords.length).fill("");
     const blocks = []; let current = null; let next = 0;
-    for (const [kind, i, j] of alignWords(refWords, typedWords)) {
+    for (const [kind, i, j] of wordAlignOps(refWords, typedWords)) {
       if (kind === "equal") {
         if (current) { blocks.push(current); current = null; }
         status[i] = "ok"; next = i + 1; continue;
@@ -199,10 +197,11 @@
     if (current) blocks.push(current);
     for (const block of blocks) {
       const k = block.ins.length;
-      if (k === 0 && block.start >= m) continue; // untyped passage text is not marked
+      if (k === 0 && block.start >= m) continue;
       const reachesEnd = k > 0 && block.start + k === m;
-      const marked = reachesEnd ? block.dels.slice(0, k) : block.dels;
-      marked.forEach((i) => { status[i] = k ? "bad" : "miss"; });
+      const deletes = reachesEnd ? block.dels.slice(0, k) : block.dels;
+      const paired = Math.min(deletes.length, k);
+      deletes.forEach((refIndex, offset) => { status[refIndex] = offset < paired ? "bad" : "miss"; });
     }
     let wordIndex = 0;
     referenceElement.innerHTML = reference.split(/(\s+)/).map((token) => {
@@ -212,6 +211,8 @@
       const classes = ["word", status[k], k === next ? "current" : ""].filter(Boolean).join(" ");
       return '<span class="' + classes + '">' + escapeHtml(token) + '</span>';
     }).join("");
+    const target = document.getElementById("current-target");
+    if (target) target.textContent = refWords[next] || "";
   }
   function updateStats() {
     const typed=input.value;
