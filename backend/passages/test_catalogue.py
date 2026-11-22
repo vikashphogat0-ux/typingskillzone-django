@@ -100,7 +100,7 @@ class SimulatorCatalogueTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Master Your Typing Skills. Prepare for Government Exams.")
-        self.assertContains(response, reverse("institutes:student_login"))
+        self.assertContains(response, reverse("accounts:student_login"))
         self.assertContains(response, reverse("accounts:student_register"))
         self.assertContains(response, reverse("passages:simulator-catalogue"))
         self.assertContains(response, reverse("institutes:register"))
