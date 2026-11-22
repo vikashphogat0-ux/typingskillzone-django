@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 import logging
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -14,7 +15,7 @@ from django.utils import timezone
 
 from .drafts import load_draft_text
 from .models import TypingSession
-from .services import activate_session, expire_session, save_draft, start_session, submit_session
+from .services import abandon_active_attempts, activate_session, expire_session, save_draft, start_session, submit_session
 
 DISPLAY_MODES = {"normal", "highlighted", "offscreen"}
 
@@ -64,6 +65,7 @@ def start_typing_session(request, exam_code, passage_id):
             request.user.pk, request.user.role, exam.code, passage_id, error,
         )
         return render(request, "typing_sessions/error.html", {"message": str(error), "exam": exam}, status=409)
+    request.session["fresh_attempt"] = str(attempt.pk)
     return redirect("typing_sessions:session", session_id=attempt.pk)
 
 
@@ -82,6 +84,11 @@ def typing_session(request, session_id):
         pk=session_id,
         learner=request.user,
     )
+    if attempt.state == TypingSession.State.ACTIVE and request.session.pop("fresh_attempt", None) != str(attempt.pk):
+        # Refreshing (or re-opening) an unfinished test ends it without scoring and returns to the
+        # passage page, so the student chooses a mode and starts a new test with a fresh timer.
+        abandon_active_attempts(learner=request.user, publication=attempt.publication)
+        return redirect(reverse("passages:simulator-detail", args=[attempt.publication.exam.code, attempt.publication.passage_id]))
     if attempt.state != TypingSession.State.ACTIVE:
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
     if attempt.has_expired:

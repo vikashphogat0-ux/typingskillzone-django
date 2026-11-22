@@ -35,11 +35,14 @@ class RemediationBase(TestCase):
 
 
 class LiveAttemptReuseTests(RemediationBase):
-    def test_second_start_reopens_the_live_attempt(self):
+    def test_second_start_begins_a_fresh_test_and_ends_the_first_unscored(self):
         first = start_session(learner=self.learner, publication=self.publication)
         second = start_session(learner=self.learner, publication=self.publication)
-        self.assertEqual(first.pk, second.pk)
-        self.assertEqual(TypingSession.objects.filter(learner=self.learner).count(), 1)
+        self.assertNotEqual(first.pk, second.pk)
+        first.refresh_from_db()
+        self.assertEqual(first.state, TypingSession.State.EXPIRED)
+        self.assertEqual(first.result_snapshot, {})
+        self.assertEqual(TypingSession.objects.filter(learner=self.learner, state=TypingSession.State.ACTIVE).count(), 1)
 
     def test_expired_live_attempt_is_not_reused(self):
         first = start_session(learner=self.learner, publication=self.publication)

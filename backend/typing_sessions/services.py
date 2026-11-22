@@ -33,15 +33,8 @@ def start_session(*, learner, publication):
     if not publication.is_released():
         raise ValidationError("This passage is not released yet.")
 
-    # One live attempt per learner and passage: reopen it instead of creating a second.
-    existing = (
-        TypingSession.objects.select_for_update()
-        .filter(learner=learner, publication=publication, state=TypingSession.State.ACTIVE)
-        .order_by("-started_at")
-        .first()
-    )
-    if existing is not None and not existing.has_expired:
-        return existing
+    # Every start is a new test. Unfinished tests for this passage end without scoring.
+    abandon_active_attempts(learner=learner, publication=publication)
 
     exam = publication.exam
     duration = exam.duration_seconds
@@ -170,3 +163,22 @@ def expire_session(*, session_id, learner):
     session.completed_at = timezone.now()
     session.save(update_fields=("state", "completed_at"))
     return session
+
+
+@transaction.atomic
+def abandon_active_attempts(*, learner, publication=None):
+    """End unfinished tests without scoring them (used when a new test starts or the page is refreshed)."""
+    queryset = TypingSession.objects.select_for_update().filter(learner=learner, state=TypingSession.State.ACTIVE)
+    if publication is not None:
+        queryset = queryset.filter(publication=publication)
+    now = timezone.now()
+    ended = 0
+    for attempt in queryset:
+        attempt.state = TypingSession.State.EXPIRED
+        attempt.completed_at = now
+        attempt.result_snapshot = {}
+        attempt.scoring_version = ""
+        attempt.save(update_fields=("state", "completed_at", "result_snapshot", "scoring_version"))
+        ended += 1
+    return ended
+
