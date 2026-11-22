@@ -114,7 +114,11 @@ def classify_typing_mistakes(reference, typed):
                 and len(expected) > 1
                 and _clean_word(joined_expected) == typed_clean[j1]
             ):
-                categories["internal_spacing"] += 1
+                # Two reference words typed as one joined token are two wrong
+                # words (not omissions and not one generic spacing error).
+                # Keep this distinct from the opposite case where one reference
+                # word is split into multiple typed tokens.
+                categories["substitution"] += len(expected)
             else:
                 paired = min(len(expected), len(actual))
                 categories["substitution"] += paired
