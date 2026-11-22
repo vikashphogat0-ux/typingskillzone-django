@@ -40,6 +40,12 @@
       <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
       <input type="hidden" id="policy-events" name="policy_events" value="0">
       <label for="typed-text">Type Here</label>
+      <div class="rkc-live-errors" id="rkc-live-errors" aria-live="polite">
+        <span>Correct: <strong id="rkc-correct">0</strong></span>
+        <span>Wrong: <strong id="rkc-wrong">0</strong></span>
+        <span>Omitted: <strong id="rkc-omitted">0</strong></span>
+        <span>Extra: <strong id="rkc-extra">0</strong></span>
+      </div>
       <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
       <div class="finish-row">
         <button id="cancel-button" form="cancel-form" type="submit" class="btn btn-danger">Cancel Test</button>
@@ -229,61 +235,73 @@
     while (j < m) { ops.push(["insert", i, j]); j++; }
     return ops;
   }
-  function renderHighlightedReference(typed) {
-    if (mode !== "highlighted" || !referenceElement) return;
-    const refWords = reference.match(/\\S+/g) || [];
-    const typedWords = typed.match(/\\S+/g) || [];
-    const committed = /\\s$/.test(typed) ? typedWords : typedWords.slice(0, -1);
-    const ops = wordAlignOps(refWords, committed);
+  function analyzeRkcWords(typed) {
+    const refWords = reference.match(/\S+/g) || [];
+    const allTypedWords = typed.match(/\S+/g) || [];
+    const committedWords = /\s$/.test(typed) ? allTypedWords : allTypedWords.slice(0, -1);
+    const operations = wordAlignOps(refWords, committedWords);
     const status = new Array(refWords.length).fill("");
-    let pendingDeletes = [];
-    let nextReferenceIndex = 0;
+    let correct = 0, wrong = 0, omitted = 0, extra = 0;
+    let group = { deletes: [], inserts: [] };
 
-    // RKC-style sequential word checking:
-    // - mark a word only after the learner commits it with a separator;
-    // - a typed word that replaces an expected word is one whole-word error;
-    // - skipped words are omissions only when later typing proves the learner moved past them;
-    // - never mark the untouched passage suffix as omitted.
-    const flushBeforeNextTypedWord = (kind, refIndex, typedIndex) => {
-      if (kind === "equal") {
-        pendingDeletes.forEach(index => { status[index] = "miss"; });
-        pendingDeletes = [];
-        status[refIndex] = "ok";
-        nextReferenceIndex = refIndex + 1;
-      } else if (kind === "insert") {
-        if (pendingDeletes.length) {
-          status[pendingDeletes.shift()] = "bad";
-          pendingDeletes.forEach(index => { status[index] = "miss"; });
-          pendingDeletes = [];
-          nextReferenceIndex = refIndex + 1;
-        }
-        // Extra typed words are accounted for by the common server-side grader.
-        // They do not cause an untouched reference word to be marked as wrong.
-      } else {
-        pendingDeletes.push(refIndex);
+    const finishEditGroup = (hasFollowingTypedWord) => {
+      const deleted = group.deletes;
+      const inserted = group.inserts;
+      if (inserted.length || hasFollowingTypedWord) {
+        const paired = Math.min(deleted.length, inserted.length);
+        for (let i = 0; i < paired; i++) status[deleted[i]] = "bad";
+        for (let i = paired; i < deleted.length; i++) status[deleted[i]] = "miss";
+        wrong += paired;
+        omitted += deleted.length - paired;
+        extra += inserted.length - paired;
       }
+      // A trailing delete-only group is untouched passage text, not omission.
+      group = { deletes: [], inserts: [] };
     };
 
-    for (const [kind, refIndex, typedIndex] of ops) {
-      flushBeforeNextTypedWord(kind, refIndex, typedIndex);
+    for (let i = 0; i < operations.length; i++) {
+      const [kind, refIndex, typedIndex] = operations[i];
+      if (kind === "equal") {
+        finishEditGroup(true);
+        status[refIndex] = "ok";
+        correct++;
+      } else if (kind === "delete") {
+        group.deletes.push(refIndex);
+      } else {
+        group.inserts.push(typedIndex);
+      }
     }
+    finishEditGroup(false);
 
-    // Pending deletes at the end are untyped future passage words: leave them untouched.
     let currentIndex = status.findIndex(value => !value);
     if (currentIndex < 0) currentIndex = refWords.length;
+    return { refWords, status, currentIndex, correct, wrong, omitted, extra };
+  }
 
+  function renderRkcErrorIdentification(typed) {
+    const result = analyzeRkcWords(typed);
+    const setCount = (id, value) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = String(value);
+    };
+    setCount("rkc-correct", result.correct);
+    setCount("rkc-wrong", result.wrong);
+    setCount("rkc-omitted", result.omitted);
+    setCount("rkc-extra", result.extra);
+
+    if (mode !== "highlighted" || !referenceElement) return;
     let wordIndex = 0;
-    referenceElement.innerHTML = reference.split(/(\\s+)/).map(token => {
+    referenceElement.innerHTML = reference.split(/(\s+)/).map(token => {
       if (!token) return "";
-      if (/^\\s+$/.test(token)) return escapeHtml(token);
+      if (/^\s+$/.test(token)) return escapeHtml(token);
       const index = wordIndex++;
-      const classes = ["word", status[index], index === currentIndex ? "current" : ""]
+      const classes = ["word", result.status[index], index === result.currentIndex ? "current" : ""]
         .filter(Boolean).join(" ");
       return '<span class="' + classes + '">' + escapeHtml(token) + '</span>';
     }).join("");
 
     const target = document.getElementById("current-target");
-    if (target) target.textContent = refWords[currentIndex] || "";
+    if (target) target.textContent = result.refWords[result.currentIndex] || "";
   }
   function updateStats() {
     const typed=input.value;
@@ -295,7 +313,7 @@
     const entered=Array.from(typed), original=Array.from(reference);
     for(let i=0;i<Math.min(entered.length,original.length);i++) if(entered[i]===original[i]) correct++;
     document.getElementById("live-accuracy").textContent=(typed.length?Math.round(correct/entered.length*100):100)+"%";
-    renderHighlightedReference(typed);
+    renderRkcErrorIdentification(typed);
   }
   input.addEventListener("input",() => {
     if (!startedAt) startedAt = Date.now();
