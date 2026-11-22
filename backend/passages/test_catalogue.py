@@ -99,7 +99,7 @@ class SimulatorCatalogueTests(TestCase):
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Build your typing speed with TypingSkillZone")
+        self.assertContains(response, "Master Your Typing Skills. Prepare for Government Exams.")
         self.assertContains(response, reverse("institutes:student_login"))
         self.assertContains(response, reverse("accounts:student_register"))
         self.assertContains(response, reverse("passages:simulator-catalogue"))
