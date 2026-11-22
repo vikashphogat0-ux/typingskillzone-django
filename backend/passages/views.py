@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render
 from django.db.models import Count
+from django.shortcuts import get_object_or_404, render
 
 from exams.models import ExamConfiguration
 from .models import SimulatorPassage
@@ -40,6 +40,7 @@ def simulator_catalogue(request):
         "exam_count": len(exams),
         "category_count": len(category_groups),
     })
+
 
 @login_required
 def simulator_passage_list(request, exam_code):
