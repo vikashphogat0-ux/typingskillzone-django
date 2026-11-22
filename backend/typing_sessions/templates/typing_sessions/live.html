@@ -3,15 +3,16 @@
 {% block simulator_content %}
 <section class="exam-shell typing-engine" id="typing-engine" data-mode="{{ attempt.rules_snapshot.display_mode|default:'normal' }}">
   <header class="exam-header">
-    <div>
+    <div class="exam-title">
       <span class="eyebrow">{{ attempt.rules_snapshot.exam_name }} · Passage {{ attempt.rules_snapshot.passage_id }}</span>
       <h1>Typing test</h1>
     </div>
     <div class="timer-card">
       <strong id="countdown">--:--</strong>
-      <span>Time remaining</span>
+      <span>Time Left</span>
     </div>
   </header>
+  <div class="exam-language-bar">Language: {{ attempt.rules_snapshot.language|default:"ENGLISH"|title }}</div>
   <div class="typing-toolbar">
     <span class="mode-label">Practice mode: <strong>{{ attempt.rules_snapshot.display_mode|default:"normal"|title }}</strong></span>
     <div class="typing-toolbar-right"><span class="current-target-wrap" id="current-target-wrap" {% if attempt.rules_snapshot.display_mode != "highlighted" %}hidden{% endif %}>Next: <strong id="current-target"> </strong></span><button type="button" class="btn btn-ghost btn-small" id="fullscreen-button">Enter full screen</button></div>
@@ -29,17 +30,20 @@
   </div>
   {% if attempt.rules_snapshot.verification_status != "VERIFIED" %}<p class="practice-note">Practice attempt: exam rules are not officially verified, so no qualification status will be claimed.</p>{% endif %}
   <div class="typing-workspace" id="typing-workspace">{% if attempt.rules_snapshot.display_mode != "offscreen" %}<section class="reference-panel" id="reference-panel"><div class="typing-panel-heading"><strong>Passage reference</strong><span>Scroll independently</span></div><div class="reference-scroll"><article id="reference" class="passage-text" style="font-family:{{ attempt.rules_snapshot.passage_font_family|default:'Arial'|escape }};font-size:{{ attempt.rules_snapshot.passage_font_size_pt|default:12 }}pt;line-height:{{ attempt.rules_snapshot.passage_line_height|default:'1.6' }};white-space:pre-wrap;tab-size:{{ attempt.rules_snapshot.passage_tab_size|default:4 }};{% if attempt.rules_snapshot.allow_copy is False %}user-select:none;-webkit-user-select:none;{% endif %}">{{ attempt.reference_text }}</article></div></section>{% endif %}
-  <section class="typing-panel"><div class="typing-panel-heading"><strong>Your typing area</strong><span>Scroll independently</span></div><form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
-    {% csrf_token %}
-    <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
-    <input type="hidden" id="policy-events" name="policy_events" value="0">
-    <label for="typed-text"><strong>Type the selected passage</strong></label>
-    <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
-    <div class="finish-row">
-      <button id="finish-button" type="submit" class="btn btn-primary">Finish test</button>
-      <span class="muted">The server checks the deadline and calculates the final score.</span>
-    </div>
-  </form></section></div>
+  <section class="typing-panel"><div class="typing-panel-heading"><strong>Your typing area</strong><span>Type here</span></div>
+    <form id="cancel-form" method="post" action="{% url 'typing_sessions:cancel' attempt.pk %}">{% csrf_token %}</form>
+    <form id="typing-form" class="typing-form" method="post" action="{% url 'typing_sessions:submit' attempt.pk %}">
+      {% csrf_token %}
+      <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
+      <input type="hidden" id="policy-events" name="policy_events" value="0">
+      <label for="typed-text">Type Here</label>
+      <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
+      <div class="finish-row">
+        <button id="cancel-button" form="cancel-form" type="submit" class="btn btn-danger">Cancel Test</button>
+        <button id="finish-button" type="submit" class="btn btn-primary">Submit Test</button>
+      </div>
+    </form>
+  </section></div>
 </section>
 {{ attempt.rules_snapshot|json_script:"typing-rules" }}
 {{ attempt.reference_text|json_script:"reference-data" }}
@@ -182,7 +186,10 @@
   function renderHighlightedReference(typed) {
     if (mode !== "highlighted" || !referenceElement) return;
     const refWords = reference.match(/\S+/g) || [];
-    const typedWords = typed.match(/\S+/g) || [];
+    const allTypedWords = typed.match(/\S+/g) || [];
+    // Keep the active word amber until the learner commits it with Space/Enter.
+    const hasCommittedLastWord = /\s$/.test(typed);
+    const typedWords = hasCommittedLastWord ? allTypedWords : allTypedWords.slice(0, -1);
     const m = typedWords.length;
     const status = new Array(refWords.length).fill("");
     const blocks = []; let current = null; let next = 0;
