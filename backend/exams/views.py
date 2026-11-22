@@ -12,11 +12,13 @@ def _published_filter():
 
 
 def catalogue(request):
-    """Public exam catalogue. Search and language are plain GET parameters, no dropdowns."""
+    """Public, category-based exam catalogue; practice-only entries are excluded."""
     query = request.GET.get("q", "").strip()[:80]
     language = request.GET.get("lang", "").strip().upper()[:20]
 
-    base = ExamConfiguration.objects.filter(is_active=True)
+    base = ExamConfiguration.objects.filter(is_active=True).exclude(
+        category=ExamConfiguration.Category.PRACTICE
+    )
     languages = sorted({value for value in base.values_list("language", flat=True) if value})
 
     exams = base.annotate(passage_count=Count("published_passages", filter=_published_filter()))
@@ -24,14 +26,28 @@ def catalogue(request):
         exams = exams.filter(Q(name__icontains=query) | Q(code__icontains=query))
     if language:
         exams = exams.filter(language=language)
-    exams = exams.order_by("display_order", "name")
+    exams = exams.order_by("category", "display_order", "name")
+
+    category_groups = []
+    for key, label in ExamConfiguration.Category.choices:
+        if key == ExamConfiguration.Category.PRACTICE:
+            continue
+        category_exams = [exam for exam in exams if exam.category == key]
+        if category_exams:
+            category_groups.append({
+                "key": key,
+                "label": label,
+                "count": len(category_exams),
+                "exams": category_exams,
+            })
 
     return render(request, "exams/catalogue.html", {
-        "exams": exams,
+        "category_groups": category_groups,
         "query": query,
         "selected_language": language,
         "languages": languages,
         "total_exams": base.count(),
+        "visible_exams": sum(group["count"] for group in category_groups),
     })
 
 
