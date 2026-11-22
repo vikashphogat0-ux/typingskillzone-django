@@ -521,3 +521,76 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 .typing-engine[data-mode="offscreen"] .typing-panel .typing-input {
   width: 100%;
 }
+
+
+/* High-contrast RKC-style exam text and full-width typing surface. */
+.typing-engine .reference-panel,
+.typing-engine .reference-panel .reference-scroll {
+  background: #ffffff !important;
+}
+.typing-engine .reference-panel .passage-text,
+.typing-engine .reference-panel #reference {
+  color: #172033 !important;
+  opacity: 1 !important;
+  font-weight: 500;
+  text-shadow: none !important;
+}
+.typing-engine .typing-panel,
+.typing-engine .typing-panel .typing-form {
+  display: flex;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  align-items: stretch;
+}
+.typing-engine .typing-panel .typing-input {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  min-height: 190px;
+  box-sizing: border-box;
+  align-self: stretch;
+  background: #ffffff !important;
+  color: #111827 !important;
+  caret-color: #0b57d0;
+  border: 2px solid #9aaac2 !important;
+  border-radius: 4px !important;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.6;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+.typing-engine .typing-panel .typing-input:focus {
+  outline: 2px solid #3157c8;
+  outline-offset: 1px;
+  border-color: #3157c8 !important;
+}
+.typing-engine[data-mode="highlighted"] .reference-panel .word.ok {
+  color: #14532d !important;
+  background: #bbf7d0 !important;
+  text-decoration: none !important;
+}
+.typing-engine[data-mode="highlighted"] .reference-panel .word.bad {
+  color: #991b1b !important;
+  background: #fecaca !important;
+  text-decoration: underline wavy #b91c1c !important;
+}
+.typing-engine[data-mode="highlighted"] .reference-panel .word.miss {
+  color: #78350f !important;
+  background: #fde68a !important;
+  text-decoration: line-through 2px #b45309 !important;
+}
+.typing-engine[data-mode="highlighted"] .reference-panel .word.current {
+  color: #1e3a8a !important;
+  background: #bfdbfe !important;
+  outline: 1px solid #2563eb;
+  text-decoration: none !important;
+}
+@media (max-width: 700px) {
+  .typing-engine .typing-panel .typing-input {
+    min-height: 180px;
+    font-size: 16px;
+  }
+}
