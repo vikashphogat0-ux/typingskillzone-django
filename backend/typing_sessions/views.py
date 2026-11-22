@@ -38,12 +38,24 @@ def start_typing_session(request, exam_code, passage_id):
         status=SimulatorPassage.Status.PUBLISHED,
     )
     try:
-        attempt = start_session(learner=request.user, publication=publication)
-        # The mode chosen at start is saved. It can still change until typing begins
-        # (the server clock starts on the first keystroke); after that it stays fixed.
+        # Before the first keystroke, the learner may return to the mode selector
+        # and change the display mode on the same unstarted attempt.
+        attempt = (
+            TypingSession.objects.filter(
+                learner=request.user,
+                publication=publication,
+                state=TypingSession.State.ACTIVE,
+                deadline_at__isnull=True,
+            )
+            .order_by("-started_at")
+            .first()
+        )
+        if attempt is None or attempt.rules_snapshot.get("timer_started"):
+            attempt = start_session(learner=request.user, publication=publication)
+
         requested_mode = (request.POST.get("display_mode") or "").strip().lower()
         current_mode = attempt.rules_snapshot.get("display_mode")
-        if requested_mode in DISPLAY_MODES and attempt.deadline_at is None and requested_mode != current_mode:
+        if requested_mode in DISPLAY_MODES and attempt.deadline_at is None and not attempt.rules_snapshot.get("timer_started") and requested_mode != current_mode:
             attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": requested_mode}
             attempt.save(update_fields=("rules_snapshot",))
         elif not current_mode:
@@ -84,16 +96,17 @@ def typing_session(request, session_id):
         pk=session_id,
         learner=request.user,
     )
-    if attempt.state == TypingSession.State.ACTIVE and request.session.pop("fresh_attempt", None) != str(attempt.pk):
-        # Refreshing (or re-opening) an unfinished test ends it without scoring and returns to the
-        # passage page, so the student chooses a mode and starts a new test with a fresh timer.
-        abandon_active_attempts(learner=request.user, publication=attempt.publication)
-        return redirect(reverse("passages:simulator-detail", args=[attempt.publication.exam.code, attempt.publication.passage_id]))
     if attempt.state != TypingSession.State.ACTIVE:
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
+    # Expiry takes precedence over the refresh guard: an elapsed attempt must be
+    # marked expired and shown as a result, never silently abandoned by a redirect.
     if attempt.has_expired:
         attempt = expire_session(session_id=attempt.pk, learner=request.user)
         return render(request, "typing_sessions/result.html", {"attempt": attempt})
+    if request.session.pop("fresh_attempt", None) != str(attempt.pk):
+        # Refreshing (or re-opening) a still-running test ends it without scoring.
+        abandon_active_attempts(learner=request.user, publication=attempt.publication)
+        return redirect(reverse("passages:simulator-detail", args=[attempt.publication.exam.code, attempt.publication.passage_id]))
     # Server clock and deadline are sent as epoch milliseconds so the countdown does not
     # depend on the device clock.
     clock = {
