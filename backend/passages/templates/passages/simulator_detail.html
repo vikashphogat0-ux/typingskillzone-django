@@ -5,6 +5,8 @@
 <section class="page-head">
   <span class="eyebrow">{{ exam.name }} · {{ exam.get_passage_layout_display }}</span>
   <h1>{{ passage.source.title }}</h1>
+  <p class="test-number">Test number <strong>{{ passage.test_number }}</strong></p>
+  <a class="btn btn-ghost btn-small" href="{% url 'passages:simulator-pdf' exam.code passage.passage_id %}">Download PDF</a>
   <p class="lead">{{ passage.source.language|title }}{% if passage.source.script %} · {{ passage.source.script }}{% endif %}. Read the passage, then start the timed test.</p>
 </section>
 <div class="detail-layout">

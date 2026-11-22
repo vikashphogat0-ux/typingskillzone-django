@@ -93,6 +93,12 @@ class SimulatorPassage(models.Model):
         return f"{self.serial_number:02d}"
 
     @property
+    def test_number(self):
+        """Short number shown to students, for example TSZ-29464."""
+        key = str(self.pk)
+        return f"TSZ-{int(key):05d}" if key.isdigit() else f"TSZ-{key[:8].upper()}"
+
+    @property
     def release_at(self):
         """The moment this passage opens, or None if it has no schedule."""
         if not (self.release_date and self.release_slot):
