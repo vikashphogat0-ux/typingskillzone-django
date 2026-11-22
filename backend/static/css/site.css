@@ -594,3 +594,55 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
     font-size: 16px;
   }
 }
+
+
+/* Readable RKC-style live error summary shared by Normal, Highlighted and Offscreen. */
+.typing-engine .rkc-live-errors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #c5d3e8;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #172554;
+  font-size: 13px;
+  font-weight: 600;
+}
+.typing-engine .rkc-live-errors strong {
+  color: #0b3b91;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.typing-engine[data-mode="offscreen"] .exam-header {
+  background: #2446a3 !important;
+  color: #ffffff !important;
+}
+.typing-engine[data-mode="offscreen"] .exam-header .exam-title,
+.typing-engine[data-mode="offscreen"] .exam-header .eyebrow {
+  background: transparent !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.typing-engine[data-mode="normal"] .exam-header,
+.typing-engine[data-mode="highlighted"] .exam-header {
+  background: #f1f5f9 !important;
+  color: #172033 !important;
+}
+.typing-engine[data-mode="normal"] .exam-header .eyebrow,
+.typing-engine[data-mode="highlighted"] .exam-header .eyebrow {
+  color: #172033 !important;
+  opacity: 1 !important;
+}
+.typing-engine .typing-panel .typing-input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+@media (max-width: 700px) {
+  .typing-engine .rkc-live-errors { gap: 7px 14px; font-size: 12px; }
+}
