@@ -75,7 +75,8 @@ class SimulatorCatalogueTests(TestCase):
             response,
             'data-search="ssc practice english test ssc-practice-english english latin',
         )
-        self.assertContains(response, "Search exam by name, language, script or code")
+        self.assertContains(response, "Search exam by name (e.g. SSC, BSF, Court, Beltron)")
+
     def test_catalogue_includes_live_search_highlighting_and_clear_control(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse("passages:simulator-catalogue"))
