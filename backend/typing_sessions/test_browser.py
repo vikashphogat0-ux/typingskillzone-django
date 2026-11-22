@@ -235,6 +235,41 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
         self._run_playwright(flow)
 
     # ---------- typing start -> result ----------
+    def test_live_rkc_error_identification_handles_typo_and_omission_without_suffix_errors(self):
+        def flow(page):
+            self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
+            detail_url = (
+                f"/simulators/{self.exam.code}/passages/"
+                f"{self.publication.passage_id}/"
+            )
+            page.goto(self.live_server_url + detail_url)
+            page.locator('input[name="display_mode"][value="normal"]').check()
+            page.click('button[type="submit"]')
+            page.wait_for_load_state("networkidle", timeout=10000)
+
+            # One misspelt committed word is one error; later correct words
+            # must realign sequentially without marking the passage suffix omitted.
+            page.fill("#typed-text", "The quick brwn ")
+            expect(page.locator("#rkc-correct")).to_have_text("2")
+            expect(page.locator("#rkc-wrong")).to_have_text("1")
+            expect(page.locator("#rkc-omitted")).to_have_text("0")
+            expect(page.locator("#rkc-extra")).to_have_text("0")
+
+            # Skipping "quick" and then typing "brown" is one omission.
+            page.fill("#typed-text", "The brown ")
+            expect(page.locator("#rkc-correct")).to_have_text("2")
+            expect(page.locator("#rkc-wrong")).to_have_text("0")
+            expect(page.locator("#rkc-omitted")).to_have_text("1")
+
+            # The final untyped passage suffix is never counted as omitted.
+            page.fill("#typed-text", "The quick brown ")
+            expect(page.locator("#rkc-correct")).to_have_text("3")
+            expect(page.locator("#rkc-wrong")).to_have_text("0")
+            expect(page.locator("#rkc-omitted")).to_have_text("0")
+            expect(page.locator("#rkc-extra")).to_have_text("0")
+
+        self._run_playwright(flow)
+
     def test_typing_start_to_result_flow(self):
         def flow(page):
             self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
