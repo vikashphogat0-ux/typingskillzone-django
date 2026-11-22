@@ -61,6 +61,35 @@ class TypingSessionTests(TestCase):
         attempt.refresh_from_db()
         self.assertEqual(attempt.rules_snapshot["display_mode"], "offscreen")
 
+    def test_all_three_modes_render_their_reference_visibility(self):
+        self.client.force_login(self.learner)
+        url = reverse("typing_sessions:start_selected", args=[self.exam.code])
+        for mode in ("normal", "highlighted", "offscreen"):
+            with self.subTest(mode=mode):
+                response = self.client.post(
+                    url,
+                    {"passage_id": str(self.publication.serial_number), "display_mode": mode},
+                    follow=True,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'data-mode="' + mode + '"')
+                self.assertContains(response, "exam-language-bar")
+                if mode == "offscreen":
+                    self.assertNotContains(response, 'id="reference-panel"')
+                else:
+                    self.assertContains(response, 'id="reference-panel"')
+                    self.assertContains(response, "One.")
+
+    def test_cancelled_attempt_returns_to_passage_without_a_score(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        self.client.force_login(self.learner)
+        response = self.client.post(reverse("typing_sessions:cancel", args=[attempt.pk]))
+        self.assertEqual(response.status_code, 302)
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.state, TypingSession.State.EXPIRED)
+        self.assertEqual(attempt.result_snapshot, {})
+        self.assertEqual(attempt.submitted_text, "")
+
     def test_mode_is_locked_once_typing_has_started(self):
         from datetime import timedelta
         from django.utils import timezone as dj_timezone
