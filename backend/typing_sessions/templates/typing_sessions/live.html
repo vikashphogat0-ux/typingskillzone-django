@@ -247,15 +247,16 @@
     const finishEditGroup = (hasFollowingTypedWord) => {
       const deleted = group.deletes;
       const inserted = group.inserts;
-      if (inserted.length || hasFollowingTypedWord) {
-        const paired = Math.min(deleted.length, inserted.length);
-        for (let i = 0; i < paired; i++) status[deleted[i]] = "bad";
+      const paired = Math.min(deleted.length, inserted.length);
+      for (let i = 0; i < paired; i++) status[deleted[i]] = "bad";
+      wrong += paired;
+      extra += inserted.length - paired;
+      // Only deletions followed by later committed text are omissions.
+      // A trailing untyped suffix—even after a final typo—must stay pending.
+      if (hasFollowingTypedWord) {
         for (let i = paired; i < deleted.length; i++) status[deleted[i]] = "miss";
-        wrong += paired;
         omitted += deleted.length - paired;
-        extra += inserted.length - paired;
       }
-      // A trailing delete-only group is untouched passage text, not omission.
       group = { deletes: [], inserts: [] };
     };
 
