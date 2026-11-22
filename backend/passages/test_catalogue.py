@@ -39,7 +39,7 @@ class SimulatorCatalogueTests(TestCase):
     def test_catalogue_requires_login(self):
         response = self.client.get(reverse("passages:simulator-catalogue"))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response.url)
+        self.assertIn(reverse("accounts:student_login"), response.url)
 
     def test_catalogue_lists_all_active_exams_and_preserves_existing_exam_routes(self):
         self.client.force_login(self.student)
