@@ -378,8 +378,16 @@ class TypingScoringTests(TestCase):
         self.assertIn("mistake_analysis", result.result_snapshot)
         self.assertIn("mistake_categories", result.result_snapshot)
 
-        self.assertIsNone(result.result_snapshot["mistake_categories"])
-        self.assertIsNone(result.result_snapshot["mistake_analysis"])
+        self.assertEqual(
+            result.result_snapshot["mistake_categories"],
+            {
+                "omission": 0, "substitution": 0, "addition": 0,
+                "capitalization": 0, "punctuation": 0,
+                "internal_spacing": 0, "word_spacing": 0,
+                "paragraph_breaks": 0,
+            },
+        )
+        self.assertEqual(result.result_snapshot["mistake_analysis"]["total_detected_errors"], 0)
 
     def test_stroke_net_wpm_uses_total_strokes_and_word_mistakes(self):
         from .scoring import calculate_result
