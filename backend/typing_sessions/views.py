@@ -166,6 +166,24 @@ def submit_typing_session(request, session_id):
 
 @login_required
 @require_POST
+def cancel_typing_session(request, session_id):
+    """Cancel an active attempt without producing a score."""
+    attempt = get_object_or_404(
+        TypingSession.objects.select_related("publication__exam"),
+        pk=session_id,
+        learner=request.user,
+    )
+    if attempt.state == TypingSession.State.ACTIVE:
+        abandon_active_attempts(learner=request.user, publication=attempt.publication)
+    return redirect(
+        "passages:simulator-detail",
+        exam_code=attempt.publication.exam.code,
+        passage_id=attempt.publication.passage_id,
+    )
+
+
+@login_required
+@require_POST
 def save_typing_draft(request, session_id):
     try:
         save_draft(
