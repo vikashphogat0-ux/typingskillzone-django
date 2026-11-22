@@ -5,6 +5,7 @@
   <span class="eyebrow">Institute staff</span>
   <h1>Welcome{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
   <p class="lead">The institutes you are assigned to.</p>
+  <p><a class="btn btn-primary" href="{% url 'passages:simulator-catalogue' %}">Browse Exam Catalogue</a></p>
 </section>
 {% for membership in memberships %}
 <section class="card institute-card">
