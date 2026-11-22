@@ -164,7 +164,7 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
 
     def test_shared_error_diagnostics_cover_case_punctuation_and_spacing(self):
         result = calculate_result(
-            reference="Hello, world!\\none two",
+            reference="Hello, world!\none two",
             typed="hello world one  two",
             duration_seconds=60,
             rules={"scoring_mode": "GENERIC"},
