@@ -102,5 +102,6 @@ class SimulatorCatalogueTests(TestCase):
         self.assertContains(response, "Master Your Typing Skills. Prepare for Government Exams.")
         self.assertContains(response, reverse("accounts:student_login"))
         self.assertContains(response, reverse("accounts:student_register"))
-        self.assertContains(response, reverse("passages:simulator-catalogue"))
+        self.assertContains(response, reverse("exams:catalogue"))
+        self.assertNotContains(response, "Browse Exam Catalogue")
         self.assertContains(response, reverse("institutes:register"))
