@@ -20,6 +20,10 @@ class ExamCatalogueTests(TestCase):
             code="retired-test", name="Retired Exam", language="ENGLISH", script="LATIN",
             duration_seconds=600, allow_backspace=False, is_active=False,
         )
+        self.practice = ExamConfiguration.objects.create(
+            code="practice-speed-booster", name="Practice and Speed Booster",
+            category=ExamConfiguration.Category.PRACTICE, language="ENGLISH",
+        )
         source = PassageSource.objects.create(
             title="Daily English passage", content="The quick brown fox.", language="ENGLISH",
             script="LATIN", status=PassageSource.Status.PUBLISHED,
@@ -32,6 +36,18 @@ class ExamCatalogueTests(TestCase):
         self.assertContains(response, "SSC CGL Typing Test")
         self.assertContains(response, "Hindi Typing Test")
         self.assertNotContains(response, "Retired Exam")
+
+    def test_catalogue_excludes_practice_and_speed_booster_category(self):
+        response = self.client.get(reverse("exams:catalogue"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Practice and Speed Booster")
+        self.assertNotContains(response, "Practice &amp; Speed Booster")
+
+    def test_catalogue_groups_exams_by_category(self):
+        response = self.client.get(reverse("exams:catalogue"))
+        self.assertContains(response, "Exam Categories")
+        self.assertContains(response, 'data-exam-section="OTHER"')
+        self.assertContains(response, "All Exams")
 
     def test_search_filters_by_name(self):
         response = self.client.get(reverse("exams:catalogue"), {"q": "hindi"})
