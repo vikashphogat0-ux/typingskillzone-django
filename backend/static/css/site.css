@@ -442,3 +442,57 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 @media (max-width: 880px) { .typing-engine[data-mode="normal"] .typing-workspace, .typing-engine[data-mode="highlighted"] .typing-workspace { grid-template-columns: minmax(0, 1fr); } }
 .typing-engine .passage-text, .typing-engine #reference { text-decoration: none; }
 @media (max-width: 720px) { .typing-engine { padding: 12px; } .typing-engine .reference-panel .reference-scroll { max-height: 30vh; } }
+
+
+/* RKC-style typing exam layout: shared structure, mode-specific reference visibility. */
+.typing-engine { max-width: 1180px; gap: 12px; padding: 18px; border-radius: 10px; }
+.typing-engine .typing-toolbar,
+.typing-engine .rule-strip,
+.typing-engine .live-stats { display: none !important; }
+.typing-engine .exam-header { position: static; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 2px 8px; border: 0; background: transparent; }
+.typing-engine .exam-header .eyebrow { display: block; color: var(--ink-2); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.typing-engine .exam-header h1 { display: none; }
+.typing-engine .timer-card { min-width: 120px; padding: 5px 12px; border-radius: 5px; background: #dc3545; box-shadow: none; }
+.typing-engine .timer-card strong { font-size: 25px; line-height: 1.2; }
+.typing-engine .timer-card span { font-size: 11px; color: #fff; }
+.typing-engine .exam-language-bar { padding: 10px 14px; border-radius: 4px; background: #3157c8; color: #fff; font-size: 14px; }
+.typing-engine .typing-workspace { display: flex !important; width: 100%; max-width: none !important; flex-direction: column; gap: 12px; margin: 0; }
+.typing-engine .reference-panel { order: 1; max-height: none; border: 1px solid #d8dee8; border-radius: 4px; }
+.typing-engine .reference-panel .typing-panel-heading { display: none; }
+.typing-engine .reference-panel .reference-scroll { height: 220px; max-height: 34vh; padding: 12px 16px; background: #fff; }
+.typing-engine .reference-panel .passage-text { font-size: 16px !important; line-height: 1.55 !important; }
+.typing-engine .typing-panel { order: 2; border: 0; border-radius: 0; overflow: visible; }
+.typing-engine .typing-panel .typing-panel-heading { display: none; }
+.typing-engine .typing-panel .typing-form { padding: 0; gap: 8px; }
+.typing-engine .typing-panel .typing-form label { color: var(--muted); font-size: 13px; font-weight: 500; }
+.typing-engine .typing-panel .typing-input { min-height: 150px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 3px; background: #fff; font: 16px/1.55 Georgia, serif; }
+.typing-engine .typing-panel .finish-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.typing-engine .finish-row .btn { min-width: 112px; min-height: 42px; border-radius: 4px; }
+.typing-engine #cancel-button { order: 1; border: 0; background: #dc3545; color: #fff; }
+.typing-engine #finish-button { order: 2; border: 0; background: #20a66a; color: #fff; }
+.typing-engine[data-mode="highlighted"] .word.ok { background: #dcfce7; color: #166534; }
+.typing-engine[data-mode="highlighted"] .word.bad { background: #fee2e2; color: #991b1b; text-decoration: underline wavy #dc2626; }
+.typing-engine[data-mode="highlighted"] .word.miss { background: #fef3c7; color: #92400e; text-decoration: line-through; }
+.typing-engine[data-mode="highlighted"] .word.current { background: #fde68a; color: #78350f; box-shadow: 0 0 0 1px #f59e0b; }
+.typing-engine[data-mode="normal"] .word { background: transparent; color: inherit; text-decoration: none; box-shadow: none; }
+
+/* Offscreen: no reference or language panel; keep a single large blank writing surface. */
+.typing-engine[data-mode="offscreen"] .exam-header { margin: 0; padding: 10px 14px; background: #334b9b; }
+.typing-engine[data-mode="offscreen"] .exam-header .eyebrow { color: #fff; font-size: 13px; }
+.typing-engine[data-mode="offscreen"] .timer-card { min-width: 96px; padding: 4px 9px; background: #e8edf8; color: #263b72; }
+.typing-engine[data-mode="offscreen"] .timer-card strong,
+.typing-engine[data-mode="offscreen"] .timer-card span { color: #263b72; }
+.typing-engine[data-mode="offscreen"] .exam-language-bar,
+.typing-engine[data-mode="offscreen"] .reference-panel { display: none !important; }
+.typing-engine[data-mode="offscreen"] .typing-workspace { display: block !important; width: 100%; max-width: none !important; }
+.typing-engine[data-mode="offscreen"] .typing-panel { min-height: 58vh; border: 1px solid #d8dee8; }
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-form { min-height: 58vh; padding: 12px; }
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-form label,
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-panel-heading { display: none; }
+.typing-engine[data-mode="offscreen"] .typing-panel .typing-input { min-height: 48vh; flex: 1; border: 0; resize: vertical; }
+@media (max-width: 700px) {
+  .typing-engine { margin: 8px auto; padding: 10px; }
+  .typing-engine .reference-panel .reference-scroll { height: 190px; max-height: 30vh; }
+  .typing-engine .typing-panel .finish-row { flex-direction: row; }
+  .typing-engine .finish-row .btn { flex: 1; min-width: 0; }
+}
