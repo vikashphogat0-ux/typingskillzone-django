@@ -91,7 +91,7 @@
           {% for exam in group.exams %}
           <a class="exam-link" data-exam-card data-category="{{ group.key }}" data-search="{{ exam.name|lower }} {{ exam.code|lower }} {{ exam.language|lower }} {{ exam.script|lower }} {{ exam.interface_type|lower }}" href="{% url 'passages:simulator-list' exam.code %}">
             <span class="exam-chevron" aria-hidden="true">›</span>
-            <span class="exam-name" data-highlight-text>{{ exam.name }}<span class="exam-meta" data-highlight-text>{% if exam.language %}{{ exam.language|title }}{% endif %}{% if exam.script %} · {{ exam.script }}{% endif %}{% if exam.interface_type %} · {{ exam.interface_type }}{% endif %}</span></span>
+            <span class="exam-name"><span class="exam-title" data-highlight-text>{{ exam.name }}</span><span class="exam-meta" data-highlight-text>{% if exam.language %}{{ exam.language|title }}{% endif %}{% if exam.script %} · {{ exam.script }}{% endif %}{% if exam.interface_type %} · {{ exam.interface_type }}{% endif %}</span></span>
           </a>
           {% endfor %}
         </div>
@@ -116,15 +116,13 @@
   const count = document.getElementById("visibleExamCount");
   const categoryLabel = document.getElementById("activeCategoryLabel");
   const empty = document.getElementById("catalogueEmpty");
-  let activeCategory = "ALL";
-
   function setActiveCategory(key) {
-    activeCategory = key;
     categoryButtons.forEach(button => {
       const active = button.dataset.categoryFilter === key;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
+    sections.forEach(section => section.classList.toggle("is-current", section.dataset.examSection === key));
     const selected = categoryButtons.find(button => button.dataset.categoryFilter === key);
     categoryLabel.textContent = key === "ALL"
       ? "Showing all categories"
@@ -185,6 +183,7 @@
       if (key === "ALL") {
         setActiveCategory("ALL");
         panel.scrollTo({top: 0, behavior: "smooth"});
+        sections.forEach(section => section.classList.remove("is-current"));
         return;
       }
       const target = document.getElementById("exam-category-" + key);
@@ -194,11 +193,7 @@
       }
       setActiveCategory(key);
       const section = document.getElementById("exam-category-" + key);
-      if (section) {
-        section.classList.add("is-current");
-        section.scrollIntoView({behavior: "smooth", block: "start"});
-        window.setTimeout(() => section.classList.remove("is-current"), 1100);
-      }
+      if (section) section.scrollIntoView({behavior: "smooth", block: "start"});
     });
   });
 
