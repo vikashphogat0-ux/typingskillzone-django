@@ -76,3 +76,20 @@ class SimulatorCatalogueTests(TestCase):
             'data-search="ssc practice english test ssc-practice-english english latin',
         )
         self.assertContains(response, "Search exam by name, language, script or code")
+    def test_catalogue_includes_live_search_highlighting_and_clear_control(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("passages:simulator-catalogue"))
+
+        self.assertContains(response, 'id="clearExamSearch"')
+        self.assertContains(response, 'data-highlight-text')
+        self.assertContains(response, 'mark.exam-match')
+        self.assertContains(response, 'addEventListener("input", applySearch)')
+
+    def test_category_navigation_targets_matching_exam_section(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("passages:simulator-catalogue"))
+
+        self.assertContains(response, 'id="exam-category-SSC"')
+        self.assertContains(response, 'data-category-filter="SSC"')
+        self.assertContains(response, 'scrollIntoView({behavior: "smooth", block: "start"})')
+        self.assertContains(response, 'id="examSectionsPanel"')
