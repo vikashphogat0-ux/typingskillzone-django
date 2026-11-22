@@ -19,7 +19,7 @@
   .category-count{font-size:11px;color:#7b879c}
   .catalogue-main{min-width:0}
   .catalogue-search{position:relative;margin:0 0 17px}
-  .catalogue-search input{width:100%;height:46px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;padding:0 16px 0 44px;color:#1d2a44;font:14px inherit;outline:none;box-shadow:0 2px 8px rgba(31,51,82,.03)}
+  .catalogue-search input{width:100%;height:46px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;padding:0 16px 0 44px;color:#1d2a44;font:inherit;font-size:14px;outline:none;box-shadow:0 2px 8px rgba(31,51,82,.03)}
   .catalogue-search input:focus{border-color:#829be0;box-shadow:0 0 0 3px rgba(93,125,211,.12)}
   .search-icon{position:absolute;left:16px;top:12px;color:#8a96aa;font-size:17px;pointer-events:none}
   .catalogue-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 2px 13px;color:#6c7890;font-size:13px}
@@ -31,6 +31,7 @@
   .exam-section-heading .section-count{margin-left:auto;color:#8792a5;font-size:12px;font-weight:600}
   .exam-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
   .exam-link{min-height:45px;display:flex;align-items:center;gap:8px;border:1px solid #e7ebf2;border-radius:9px;background:#fbfcfe;padding:10px 11px;color:#4965a7;text-decoration:none;font-size:12.5px;font-weight:600;line-height:1.35;transition:border-color .15s,background .15s,box-shadow .15s}
+  .exam-link[hidden]{display:none}
   .exam-link:hover{border-color:#b8c7ee;background:#f6f8ff;box-shadow:0 2px 8px rgba(53,83,150,.06);text-decoration:none}
   .exam-chevron{flex:0 0 auto;color:#9aa8c1;font-size:17px;line-height:1}
   .exam-name{min-width:0;overflow-wrap:anywhere}
@@ -94,7 +95,6 @@
 <script>
 (function () {
   const search = document.getElementById("examSearch");
-  const cards = Array.from(document.querySelectorAll("[data-exam-card]"));
   const sections = Array.from(document.querySelectorAll("[data-exam-section]"));
   const categoryButtons = Array.from(document.querySelectorAll("[data-category-filter]"));
   const count = document.getElementById("visibleExamCount");
