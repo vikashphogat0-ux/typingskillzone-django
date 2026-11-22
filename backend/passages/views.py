@@ -9,7 +9,6 @@ from .models import SimulatorPassage
 
 
 @login_required
-
 def simulator_catalogue(request):
     """Show active exam profiles grouped by their stored category."""
     exams = list(
