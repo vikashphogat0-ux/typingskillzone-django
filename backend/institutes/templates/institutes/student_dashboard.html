@@ -5,6 +5,7 @@
   <span class="eyebrow">Institute member</span>
   <h1>Your institute{% if memberships|length > 1 %}s{% endif %}</h1>
   <p class="lead">Your active memberships and practice.</p>
+  <p><a href="{% url 'passages:simulator-catalogue' %}">Browse Exam Catalogue</a></p>
 </section>
 {% for membership in memberships %}
 <section class="card institute-card">
