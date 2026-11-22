@@ -646,3 +646,7 @@ body:has(.typing-engine) .site-header .nav,body:has(.typing-engine) .site-footer
 @media (max-width: 700px) {
   .typing-engine .rkc-live-errors { gap: 7px 14px; font-size: 12px; }
 }
+
+
+/* Error totals are reported after submission, never during a live exam. */
+.typing-engine .rkc-live-errors { display: none !important; }
