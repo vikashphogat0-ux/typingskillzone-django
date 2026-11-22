@@ -140,6 +140,41 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         self.assertTrue(result["required_keystrokes_met"])
         self.assertIsNone(result["qualification"])
 
+    def test_shared_error_diagnostics_are_available_for_generic_scoring(self):
+        result = calculate_result(
+            reference="one two",
+            typed="one too",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        self.assertEqual(result["mistake_categories"]["substitution"], 1)
+        self.assertEqual(result["mistake_analysis"]["total_detected_errors"], 1)
+        # Diagnostic classification must not silently replace the configured score formula.
+        self.assertEqual(result["error_count"], result["character_errors"])
+
+    def test_shared_error_diagnostics_cover_omissions_and_extra_words(self):
+        result = calculate_result(
+            reference="one two three",
+            typed="one three extra",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        self.assertEqual(result["mistake_categories"]["omission"], 1)
+        self.assertEqual(result["mistake_categories"]["addition"], 1)
+
+    def test_shared_error_diagnostics_cover_case_punctuation_and_spacing(self):
+        result = calculate_result(
+            reference="Hello, world!\\none two",
+            typed="hello world one  two",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        categories = result["mistake_categories"]
+        self.assertGreaterEqual(categories["capitalization"], 1)
+        self.assertGreaterEqual(categories["punctuation"], 1)
+        self.assertGreaterEqual(categories["paragraph_breaks"], 1)
+        self.assertGreaterEqual(categories["word_spacing"], 1)
+
     def test_zero_duration_is_clamped_to_one_second(self):
         result = calculate_result(
             reference="a",
