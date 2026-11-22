@@ -1,0 +1,71 @@
+{% extends "passages/base.html" %}
+{% block title %}TypingSkillZone | Typing Practice and Exam Simulator{% endblock %}
+{% block content %}
+<style>
+  .hero{position:relative;overflow:hidden;padding:clamp(28px,6vw,64px);border:1px solid #294363;border-radius:24px;background:linear-gradient(125deg,rgba(24,48,79,.96),rgba(13,24,43,.96));box-shadow:0 22px 70px #0005}
+  .hero:after{content:"";position:absolute;width:280px;height:280px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,#3b82f655,transparent 68%);pointer-events:none}
+  .eyebrow{color:#67e8f9;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+  h1{max-width:760px;font-size:clamp(32px,5vw,54px);line-height:1.08;letter-spacing:-1.5px;margin:14px 0}
+  .lead{max-width:680px;font-size:17px;line-height:1.7;color:#b8c8df}
+  .actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:26px}
+  .action{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:12px 18px;border:1px solid #3a587d;border-radius:11px;background:#162b48;color:#eaf4ff;font-weight:750;text-decoration:none}
+  .action.primary{border-color:#3b82f6;background:linear-gradient(90deg,#2563eb,#0891b2);color:white}
+  .action:hover{filter:brightness(1.12);text-decoration:none}
+  .section-title{font-size:21px;margin:30px 0 5px}
+  .section-copy{margin:0 0 16px;color:#9eafc8}
+  .portal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}
+  .portal{display:block;min-height:155px;padding:20px;border:1px solid #263653;border-radius:15px;background:rgba(23,32,55,.78);color:#edf4ff;text-decoration:none;transition:border-color .15s,transform .15s}
+  .portal:hover{border-color:#60a5fa;transform:translateY(-2px);text-decoration:none}
+  .portal-icon{font-size:25px}
+  .portal strong{display:block;margin:9px 0 4px;font-size:16px}
+  .portal span:last-child{display:block;color:#9eafc8;font-size:13px;line-height:1.5}
+  .footnote{margin-top:22px;padding:14px 16px;border:1px solid #263653;border-radius:12px;color:#9eafc8;font-size:13px}
+  @media(max-width:600px){.hero{padding:27px 20px}.lead{font-size:15px}.action{width:100%}}
+</style>
+
+<section class="hero">
+  <div class="eyebrow">Typing practice · Exam preparation · Progress</div>
+  <h1>Build your typing speed with TypingSkillZone</h1>
+  <p class="lead">Practice for competitive typing examinations, access exam-specific typing tests, and track your learning through your student or institute portal.</p>
+  <div class="actions">
+    <a class="action primary" href="{% url 'institutes:student_login' %}">Student Login</a>
+    <a class="action" href="{% url 'accounts:student_register' %}">Create Student Account</a>
+  </div>
+</section>
+
+<h2 class="section-title">Choose your portal</h2>
+<p class="section-copy">Open the section that matches your account or what you want to do.</p>
+<div class="portal-grid">
+  <a class="portal" href="{% url 'institutes:student_login' %}">
+    <span class="portal-icon">🎓</span>
+    <strong>Student Portal</strong>
+    <span>Sign in to your student account and continue your practice.</span>
+  </a>
+  <a class="portal" href="{% url 'accounts:student_register' %}">
+    <span class="portal-icon">📝</span>
+    <strong>Student Registration</strong>
+    <span>Create a student account. Email verification is required.</span>
+  </a>
+  <a class="portal" href="{% url 'passages:simulator-catalogue' %}">
+    <span class="portal-icon">⌨️</span>
+    <strong>Exam Catalogue</strong>
+    <span>Browse available typing-test exam categories and passages. Sign-in may be required.</span>
+  </a>
+  <a class="portal" href="{% url 'institutes:register' %}">
+    <span class="portal-icon">🏫</span>
+    <strong>Institute Registration</strong>
+    <span>Register an institute to manage its typing-practice members.</span>
+  </a>
+  <a class="portal" href="{% url 'institutes:owner_login' %}">
+    <span class="portal-icon">🏢</span>
+    <strong>Institute Owner Login</strong>
+    <span>Access the institute owner dashboard.</span>
+  </a>
+  <a class="portal" href="{% url 'institutes:staff_login' %}">
+    <span class="portal-icon">👩‍🏫</span>
+    <strong>Staff Login</strong>
+    <span>Open the institute staff portal.</span>
+  </a>
+</div>
+<div class="footnote">TypingSkillZone public entry page. Your account, institute, exam, and typing-result data remain managed by their existing application workflows.</div>
+{% endblock %}
