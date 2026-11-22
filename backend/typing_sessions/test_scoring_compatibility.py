@@ -206,6 +206,17 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         self.assertEqual(result["mistake_categories"]["omission"], 1)
         self.assertEqual(result["mistake_categories"]["substitution"], 0)
 
+    def test_rkc_diagnostics_do_not_mark_suffix_after_final_typo_as_omitted(self):
+        result = calculate_result(
+            reference="one two three four",
+            typed="one too ",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        self.assertEqual(result["mistake_categories"]["substitution"], 1)
+        self.assertEqual(result["mistake_categories"]["omission"], 0)
+        self.assertEqual(result["mistake_categories"]["addition"], 0)
+
     def test_zero_duration_is_clamped_to_one_second(self):
         result = calculate_result(
             reference="a",
