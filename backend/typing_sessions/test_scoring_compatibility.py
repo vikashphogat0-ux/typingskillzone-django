@@ -217,6 +217,42 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
         self.assertEqual(result["mistake_categories"]["omission"], 0)
         self.assertEqual(result["mistake_categories"]["addition"], 0)
 
+    def test_rkc_joined_two_reference_words_counts_two_wrong_words(self):
+        result = calculate_result(
+            reference="New York is beautiful",
+            typed="NewYork is beautiful",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        categories = result["mistake_categories"]
+        self.assertEqual(categories["substitution"], 2)
+        self.assertEqual(categories["omission"], 0)
+        self.assertEqual(result["mistake_analysis"]["total_detected_errors"], 2)
+
+    def test_rkc_internal_omission_counts_as_one_error(self):
+        result = calculate_result(
+            reference="India is great",
+            typed="India great",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        categories = result["mistake_categories"]
+        self.assertEqual(categories["omission"], 1)
+        self.assertEqual(categories["substitution"], 0)
+        self.assertEqual(result["mistake_analysis"]["total_detected_errors"], 1)
+
+    def test_rkc_timeout_remainder_is_not_an_error_or_omission(self):
+        result = calculate_result(
+            reference="India is great",
+            typed="India",
+            duration_seconds=60,
+            rules={"scoring_mode": "GENERIC"},
+        )
+        categories = result["mistake_categories"]
+        self.assertEqual(categories["omission"], 0)
+        self.assertEqual(categories["substitution"], 0)
+        self.assertEqual(result["mistake_analysis"]["total_detected_errors"], 0)
+
     def test_zero_duration_is_clamped_to_one_second(self):
         result = calculate_result(
             reference="a",
