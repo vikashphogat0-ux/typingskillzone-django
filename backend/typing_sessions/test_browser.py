@@ -244,8 +244,8 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
                 f"{self.publication.passage_id}/"
             )
             page.goto(self.live_server_url + detail_url)
-            expect(page.locator("#passage_id")).to_be_visible(timeout=10000)
-            page.locator("#passage_id").select_option(str(self.publication.serial_number))
+            # The passage detail page now starts the exact passage directly;
+            # its mode selector is the only choice before the POST start action.
             page.locator('input[name="display_mode"][value="normal"]').check()
             # Start the selected passage with the chosen fixed display mode.
             page.click('button[type="submit"]')
