@@ -139,13 +139,14 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     scoring_rules = rules.get("scoring_rules") or {}
     scoring_mode = rules.get("scoring_mode", "GENERIC")
 
-    mistake_analysis = None
+    # Always retain the same RKC-style diagnostic classification for every display mode.
+    # The configured exam scoring formula below remains authoritative for the numeric result.
+    mistake_analysis = classify_typing_mistakes(reference, typed)
 
     if (
         scoring_mode == "CUSTOM"
         and scoring_rules.get("formula") == "STROKE_NET_WPM"
     ):
-        mistake_analysis = classify_typing_mistakes(reference, typed)
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
     else:
