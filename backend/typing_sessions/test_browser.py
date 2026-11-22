@@ -243,30 +243,32 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
                 f"{self.publication.passage_id}/"
             )
             page.goto(self.live_server_url + detail_url)
-            page.locator('input[name="display_mode"][value="normal"]').check()
+            # Highlighted mode exposes word-level status on the passage itself;
+            # live numeric diagnostics remain absent in every exam mode.
+            page.locator('input[name="display_mode"][value="highlighted"]').check()
             page.click('button[type="submit"]')
             page.wait_for_load_state("networkidle", timeout=10000)
+            for counter in ("#rkc-correct", "#rkc-wrong", "#rkc-omitted", "#rkc-extra"):
+                expect(page.locator(counter)).to_have_count(0)
 
             # One misspelt committed word is one error; later correct words
             # must realign sequentially without marking the passage suffix omitted.
             page.fill("#typed-text", "The quick brwn ")
-            expect(page.locator("#rkc-correct")).to_have_text("2")
-            expect(page.locator("#rkc-wrong")).to_have_text("1")
-            expect(page.locator("#rkc-omitted")).to_have_text("0")
-            expect(page.locator("#rkc-extra")).to_have_text("0")
+            expect(page.locator("#reference .word.ok")).to_have_count(2)
+            expect(page.locator("#reference .word.bad")).to_have_count(1)
+            expect(page.locator("#reference .word.miss")).to_have_count(0)
 
             # Skipping "quick" and then typing "brown" is one omission.
             page.fill("#typed-text", "The brown ")
-            expect(page.locator("#rkc-correct")).to_have_text("2")
-            expect(page.locator("#rkc-wrong")).to_have_text("0")
-            expect(page.locator("#rkc-omitted")).to_have_text("1")
+            expect(page.locator("#reference .word.ok")).to_have_count(2)
+            expect(page.locator("#reference .word.bad")).to_have_count(0)
+            expect(page.locator("#reference .word.miss")).to_have_count(1)
 
-            # The final untyped passage suffix is never counted as omitted.
+            # The final untyped passage suffix is never marked as omitted.
             page.fill("#typed-text", "The quick brown ")
-            expect(page.locator("#rkc-correct")).to_have_text("3")
-            expect(page.locator("#rkc-wrong")).to_have_text("0")
-            expect(page.locator("#rkc-omitted")).to_have_text("0")
-            expect(page.locator("#rkc-extra")).to_have_text("0")
+            expect(page.locator("#reference .word.ok")).to_have_count(3)
+            expect(page.locator("#reference .word.bad")).to_have_count(0)
+            expect(page.locator("#reference .word.miss")).to_have_count(0)
 
         self._run_playwright(flow)
 
