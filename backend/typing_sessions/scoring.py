@@ -736,8 +736,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification = None
         qualification_note = "Qualification is provisional/pending because the configured profile is not officially verified."
     elif qualification is not None:
-        provisional_prefix = "PROVISIONAL_" if rules.get("verification_status") == "PARTIAL" else ""
+        provisional_prefix = "PROVISIONAL_" if rules.get("verification_status") != "VERIFIED" else ""
         qualification_status = provisional_prefix + ("QUALIFIED" if qualification else "NOT_QUALIFIED")
+
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_HCM_2025" and qualification is not None:
+        provisional_prefix = "PROVISIONAL_" if rules.get("verification_status") != "VERIFIED" else ""
+        qualification_status = provisional_prefix + ("QUALIFIED" if qualification else "DISQUALIFIED")
 
     # Minimum marks qualify a verified CORRECT_WORD_MARKS attempt when no explicit
     # qualification rules are configured. Unverified attempts never receive a claim.
@@ -796,7 +800,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "net_wpm": net_wpm,
         "qualification": qualification,
         "qualification_status": qualification_status,
-        "disqualified": qualification_status.endswith("NOT_QUALIFIED"),
+        "disqualified": qualification_status.endswith("NOT_QUALIFIED") or qualification_status.endswith("DISQUALIFIED"),
         "disqualification_reason": (
             f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
             if qualification_status.endswith("NOT_QUALIFIED") and rules.get("minimum_wpm") is not None
