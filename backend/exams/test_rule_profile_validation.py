@@ -11,7 +11,7 @@ def complete_profile():
         "interaction": {
             "backspace": "FULL", "allow_backspace": True, "delete": True,
             "paste": False, "copy": False, "cut": False, "arrow_navigation": True,
-            "enter": "NEW_LINE", "space": "NORMAL", "tab": "UNSPECIFIED",
+            "enter": "NEW_LINE", "space": "NORMAL", "tab": "INSERT_SPACES",
         },
         "passage": {
             "source_mode": "SCREEN", "format": "PARAGRAPHS", "layout": "PARAGRAPHS",
