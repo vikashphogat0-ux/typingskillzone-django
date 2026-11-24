@@ -167,3 +167,42 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "DELHI_POLICE_HCM_2025")
         self.assertEqual(defaults["scoring_rules"]["minimum_wpm"], 25)
         self.assertEqual(defaults["scoring_rules"]["marks_bands"][0]["minimum_wpm"], 45)
+
+    def test_ssc_chsl_2025_english_candidate_has_official_cycle_error_caps(self):
+        profile = {
+            "number": 1,
+            "profile_id": "ssc-chsl-2025-english",
+            "name": "1. SSC CHSL 2025 English Test (TCS Interface)",
+            "source_text": [
+                "Duration & Target: 10 minutes • 35 WPM (10,500 KDPH / ~1,750 key depressions).",
+                "Qualifying Criteria: Category error limits apply.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SSC_CHSL_2025_ENGLISH")
+        self.assertEqual(candidate["minimum_wpm"], 35)
+        self.assertEqual(candidate["minimum_strokes"], 1750)
+        self.assertEqual(candidate["category_error_caps"]["UR"], 7)
+        self.assertEqual(candidate["category_error_caps"]["VH"], 10)
+        self.assertFalse(candidate["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+
+    def test_ssc_chsl_2025_vh_candidate_keeps_compensatory_time_separate(self):
+        profile = {
+            "number": 2,
+            "profile_id": "ssc-chsl-2025-vh",
+            "name": "2. SSC CHSL 2025 VH Category English",
+            "source_text": [
+                "Duration & Target: Extended time (15 minutes, including 5 minutes compensatory time) • 35 WPM.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SSC_CHSL_2025_VH_ENGLISH")
+        self.assertEqual(candidate["standard_duration_seconds"], 600)
+        self.assertEqual(candidate["compensatory_duration_seconds"], 900)
+        self.assertEqual(candidate["minimum_strokes_compensatory"], 2625)
+        self.assertEqual(candidate["category_error_caps"]["PWD"], 10)
+        self.assertTrue(candidate["compensatory_time_enabled"])
+        self.assertFalse(candidate["executable"])
