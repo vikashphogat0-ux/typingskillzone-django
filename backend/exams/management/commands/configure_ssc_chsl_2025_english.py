@@ -93,8 +93,8 @@ class Command(BaseCommand):
                     {"metric": "error_percent", "operator": "lte", "value": 7},
                 ],
             },
-            "verification_status": ExamConfiguration.Verification.PARTIAL,
-            "source_title": "User-provided SSC CHSL 2025 English simulator rules",
+            "verification_status": ExamConfiguration.Verification.VERIFIED,
+            "source_title": "Internal rule profile: user-verified SSC CHSL 2025 English TCS simulator specification",
             "source_checked_at": date.today(),
             "rule_config_version": 1,
             "rule_notes": (
@@ -106,7 +106,7 @@ class Command(BaseCommand):
                 "full mistakes count 1 and half mistakes count 0.5; error percentage "
                 "uses the total reference passage word count; UR cap 7%, reserved-category "
                 "cap 10%; qualifying-only. Eligible PwBD/scribe candidates can select a 5-minute "
-                "compensatory extension (15-minute total). Qualification remains "
+                "compensatory extension (15-minute total). The user has confirmed this complete rule profile for internal TypingSkillZone use. "
                 "provisional until the complete recruitment-cycle rule profile is verified."
             ),
         }
