@@ -86,7 +86,7 @@ def _explicit_keyboard_layout(name, text):
 
 
 
-def _rrb_scoring_candidate(lines):
+def _shared_five_percent_penalty_candidate(lines):
     # Formula source lines often quote variable names; normalize those quotes first.
     text = re.sub(r'["“”]', "", " ".join(lines)).lower()
     allowance_is_five_percent = bool(
@@ -99,7 +99,7 @@ def _rrb_scoring_candidate(lines):
     )
     if allowance_is_five_percent and ten_word_penalty:
         return {
-            "candidate_formula": "RRB_CBTST_5_PERCENT",
+            "candidate_formula": "SHARED_5_PERCENT_10_WORD_PENALTY",
             "mistake_allowance_percent": 5,
             "excess_mistake_deduction_words": 10,
             "executable": False,
@@ -290,7 +290,7 @@ def build_draft_defaults(profile):
         or line.startswith("Accuracy %") or line.startswith("(Where a ")
     ]
 
-    scoring_candidate = _rrb_scoring_candidate(lines)
+    scoring_candidate = _shared_five_percent_penalty_candidate(lines)
     if scoring_candidate is None:
         scoring_candidate = _delhi_police_hcm_scoring_candidate(name)
     if scoring_candidate is None:
