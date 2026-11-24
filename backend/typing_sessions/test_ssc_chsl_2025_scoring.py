@@ -161,3 +161,57 @@ class SSCCHSL2025ScoringTests(SimpleTestCase):
         )
         self.assertFalse(result["qualification"])
         self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+
+class SSCCGL2025DESTScoringTests(SimpleTestCase):
+    def _result(self, standard):
+        reference = "alpha " * 100
+        typed = ("bravo " * 10) + ("alpha " * 90)
+        return calculate_result(
+            reference=reference,
+            typed=typed,
+            duration_seconds=900,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "verification_status": "VERIFIED",
+                "candidate_category": "UR",
+                "scoring_rules": {
+                    "formula": "SSC_CGL_2025_DEST",
+                    "standard_type": standard,
+                    "normal_error_caps": {"UR": 20, "OBC": 25, "EWS": 25, "SC": 30, "ST": 30, "ESM": 30, "OH": 30, "HH": 30, "VH": 30, "PWD": 30},
+                    "higher_error_caps": {"UR": 5, "OBC": 7, "EWS": 7, "SC": 7, "ST": 7, "ESM": 7, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+                },
+            },
+        )
+
+    def test_cgl_normal_ur_standard_uses_20_percent_error_ceiling(self):
+        result = self._result("NORMAL")
+        self.assertEqual(result["error_percent"], 10)
+        self.assertEqual(result["category_error_cap"], 20)
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+
+    def test_cgl_higher_ur_standard_uses_5_percent_error_ceiling(self):
+        result = self._result("HIGHER")
+        self.assertEqual(result["error_percent"], 10)
+        self.assertEqual(result["category_error_cap"], 5)
+        self.assertFalse(result["qualification"])
+        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+
+    def test_cgl_2000_passage_size_is_not_a_candidate_minimum(self):
+        result = calculate_result(
+            reference="alpha " * 100,
+            typed="alpha " * 100,
+            duration_seconds=900,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "verification_status": "VERIFIED",
+                "candidate_category": "UR",
+                "scoring_rules": {
+                    "formula": "SSC_CGL_2025_DEST",
+                    "standard_type": "NORMAL",
+                    "normal_error_caps": {"UR": 20},
+                },
+            },
+        )
+        self.assertIsNone(result["required_keystrokes"])
+        self.assertTrue(result["qualification"])
