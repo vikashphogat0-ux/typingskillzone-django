@@ -392,6 +392,9 @@
       if (remainingDemo <= 0) {
         phase = "exam";
         input.value = "";
+        keyDepressionCount = 0;
+        keystrokeField.value = "0";
+        policyEvents = 0;
         reference = actualReference;
         if (referenceElement) referenceElement.textContent = actualReference;
         const note = document.getElementById("dpa-phase-note");
