@@ -140,6 +140,37 @@ def _ssc_chsl_2025_scoring_candidate(name):
             "official_notice_reference": "SSC CHSL 2025 Notice, para 13.8.13.7; 5-minute compensatory time for eligible scribe candidates",
             "cycle_cutoff_reference": "SSC CHSLE 2025 FRTA, 17 August 2026, paragraph 6(ii): VH/PwBD typing-test error ceiling 10%",
         }
+    if "ssc chsl 2025 hindi (kurtidev)" in normalized:
+        return {
+            "candidate_formula": "SSC_CHSL_2025_HINDI_KRUTIDEV",
+            "minimum_wpm": 30, "minimum_kdph": 9000, "minimum_strokes": 1500,
+            "keyboard_layout": "Remington Gail / Kruti Dev 010 (rulebook claim; SSC notice does not specify layout)",
+            "font": "Kruti Dev 010 (rulebook claim; requires cycle-specific confirmation)",
+            "category_error_caps": {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "compensatory_duration_seconds": 900, "standard_duration_seconds": 600,
+            "executable": False,
+            "verification_note": "SSC CHSL 2025 notice confirms Hindi 30 WPM, 9000 KDPH, 10 minutes and 5-minute scribe compensatory time; it does not specify Kruti Dev or Remington layout. Keep font/layout inactive pending official centre instructions.",
+        }
+    if "ssc chsl 2025 hindi (mangal font)" in normalized:
+        return {
+            "candidate_formula": "SSC_CHSL_2025_HINDI_MANGAL",
+            "minimum_wpm": 30, "minimum_kdph": 9000, "minimum_strokes": 1500,
+            "keyboard_layout": "Inscript / Remington Gail (rulebook claim; requires cycle-specific confirmation)",
+            "font": "Mangal Unicode (rulebook claim; requires cycle-specific confirmation)",
+            "category_error_caps": {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "compensatory_duration_seconds": 900, "standard_duration_seconds": 600,
+            "executable": False,
+            "verification_note": "SSC CHSL 2025 notice confirms Hindi 30 WPM, 9000 KDPH, 10 minutes and 5-minute scribe compensatory time; it does not specify Mangal or keyboard layout. Keep font/layout inactive pending official centre instructions.",
+        }
+    if "ssc chsl 2025 hindi" in normalized:
+        return {
+            "candidate_formula": "SSC_CHSL_2025_HINDI",
+            "minimum_wpm": 30, "minimum_kdph": 9000, "minimum_strokes": 1500,
+            "category_error_caps": {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "compensatory_duration_seconds": 900, "standard_duration_seconds": 600,
+            "executable": False,
+            "verification_note": "SSC CHSL 2025 notice confirms Hindi 30 WPM, 9000 KDPH, 10 minutes and 5-minute scribe compensatory time. Font/layout not specified.",
+        }
     if "ssc chsl 2025 english test" in normalized:
         return {
             "candidate_formula": "SSC_CHSL_2025_ENGLISH",
