@@ -78,8 +78,9 @@ def activate_session(*, session_id, learner, compensatory_time=False):
             session.started_at = now
             scoring_rules = session.rules_snapshot.get("scoring_rules") or {}
             compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
+            vh_profile = scoring_rules.get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
             if (
-                compensatory_time
+                (vh_profile or compensatory_time)
                 and scoring_rules.get("compensatory_time_enabled")
                 and compensatory_seconds
             ):
@@ -90,7 +91,10 @@ def activate_session(*, session_id, learner, compensatory_time=False):
             **session.rules_snapshot,
             "timer_started": True,
             "compensatory_time_applied": bool(
-                compensatory_time
+                (
+                    (session.rules_snapshot.get("scoring_rules") or {}).get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
+                    or compensatory_time
+                )
                 and session.duration_seconds == int(
                     (session.rules_snapshot.get("scoring_rules") or {}).get("compensatory_duration_seconds") or 0
                 )
