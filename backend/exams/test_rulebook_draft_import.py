@@ -134,3 +134,36 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["scoring_rules"]["excess_mistake_deduction_words"], 10)
         self.assertFalse(defaults["scoring_rules"]["executable"])
         self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+
+    def test_delhi_police_hcm_2025_english_marks_are_extracted_as_draft(self):
+        profile = {
+            "number": 43,
+            "profile_id": "delhi-police-hc-english",
+            "name": "Delhi Police HC English Test",
+            "source_text": [
+                "Exam Pattern & Qualifying Nature: Marks-bearing typing test.",
+                "Duration & Target: 10 minutes • 30 WPM minimum qualifying speed.",
+                "WPM & Error Formula:",
+                '"GWPM"="Total Keystrokes"/(5×10)',
+                '"NWPM"=("Gross Words"-("Full"+0.5("Half")))/10',
+                "Qualifying Criteria & Marking: 30 WPM minimum; 25 marks.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "DELHI_POLICE_HCM_2025")
+        self.assertEqual(defaults["scoring_rules"]["minimum_wpm"], 30)
+        self.assertEqual(defaults["scoring_rules"]["maximum_marks"], 25)
+        self.assertFalse(defaults["scoring_rules"]["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+
+    def test_delhi_police_hcm_2025_hindi_marks_are_extracted_as_draft(self):
+        profile = {
+            "number": 44,
+            "profile_id": "delhi-police-hc-hindi",
+            "name": "Delhi Police HC Hindi Test",
+            "source_text": ["Duration & Target: 10 minutes • 25 WPM minimum."],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "DELHI_POLICE_HCM_2025")
+        self.assertEqual(defaults["scoring_rules"]["minimum_wpm"], 25)
+        self.assertEqual(defaults["scoring_rules"]["marks_bands"][0]["minimum_wpm"], 45)
