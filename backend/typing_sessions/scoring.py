@@ -84,6 +84,29 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
+
+def _classify_dpa_mistakes(reference, typed):
+    """DPA-specific weighted mistake profile layered over the shared classifier."""
+    analysis = classify_typing_mistakes(reference, typed)
+    categories = dict(analysis["categories"])
+    categories["transposition"] = 0
+    categories["paragraph_indentation"] = 0
+    reference_words = re.findall(r"\\S+", reference or "")
+    typed_words = re.findall(r"\\S+", typed or "")
+    matcher = SequenceMatcher(None, reference_words, typed_words, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        expected, actual = reference_words[i1:i2], typed_words[j1:j2]
+        if tag == "replace" and len(expected) == 2 and len(actual) == 2 and expected[0] == actual[1] and expected[1] == actual[0]:
+            categories["substitution"] = max(0, categories.get("substitution", 0) - 2)
+            categories["transposition"] += 1
+    for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
+        if expected.startswith("\\t") and actual.startswith(" ") and not actual.startswith("\\t"):
+            categories["paragraph_indentation"] += 1
+    analysis["categories"] = categories
+    analysis["total_detected_errors"] = sum(categories.values())
+    return analysis
+
+
 def _evaluate_qualification_rules(config, metrics):
     """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
     if not isinstance(config, dict) or not config:
@@ -141,11 +164,15 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     # Always retain the same RKC-style diagnostic classification for every display mode.
     # The configured exam scoring formula below remains authoritative for the numeric result.
-    mistake_analysis = classify_typing_mistakes(reference, typed)
+    mistake_analysis = (
+        _classify_dpa_mistakes(reference, typed)
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+        else classify_typing_mistakes(reference, typed)
+    )
 
     if (
         scoring_mode == "CUSTOM"
-        and scoring_rules.get("formula") == "STROKE_NET_WPM"
+        and scoring_rules.get("formula") in {"STROKE_NET_WPM", "SSC_DPA_GRADE_A"}
     ):
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
@@ -362,7 +389,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
-    error_percent_for_qualification = round(error_count * 100 / max(1, gross_words), 2)
+    error_percent_for_qualification = (
+        error_percent if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+        else round(error_count * 100 / max(1, gross_words), 2)
+    )
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
@@ -375,6 +405,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification = evaluated
         if evaluated is not None:
             qualification_status = "QUALIFIED" if evaluated else "NOT_QUALIFIED"
+    elif (
+        rules.get("verification_status") == "PARTIAL"
+        and configured_qualification.get("allow_partial_verification")
+        and scoring_mode == "CUSTOM"
+        and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+    ):
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     elif rules.get("verification_status") != "VERIFIED":
         qualification = None
         qualification_note = "Qualification is pending because the exam rules are not verified."
@@ -424,6 +461,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
+        "error_percent": error_percent_for_qualification,
+        "full_mistakes": full_mistakes,
+        "half_mistakes": half_mistakes,
+        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
+        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
