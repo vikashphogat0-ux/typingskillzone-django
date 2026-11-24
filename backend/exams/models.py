@@ -186,8 +186,11 @@ class ExamConfiguration(models.Model):
             if not self.presentation_reference_url or not self.presentation_reference_title or not self.presentation_reference_checked_at:
                 raise ValidationError("Verified presentation requires an authoritative source URL, title and checked date.")
         if self.verification_status == self.Verification.VERIFIED:
-            if not self.official_source_url or not self.source_title or not self.source_checked_at:
-                raise ValidationError("Verified rules require an official source URL, source title and checked date.")
+            internal_profile = (self.source_title or "").startswith("Internal rule profile:")
+            if not self.source_title or not self.source_checked_at:
+                raise ValidationError("Verified rules require a source title and checked date.")
+            if not internal_profile and not self.official_source_url:
+                raise ValidationError("Externally verified rules require an official source URL.")
             if not self.duration_seconds:
                 raise ValidationError("Verified rules require a confirmed test duration.")
 
