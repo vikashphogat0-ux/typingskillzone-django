@@ -114,3 +114,23 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertNotIn("tab_behavior", defaults)
         self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.UNCONFIGURED)
         self.assertEqual(defaults["passage_source_mode"], ExamConfiguration.PassageSourceMode.UNSPECIFIED)
+    def test_rrb_formula_is_recorded_as_non_executable_candidate(self):
+        profile = {
+            "number": 32,
+            "profile_id": "rrb-ntpc-example",
+            "name": "RRB NTPC Typing Test English",
+            "source_text": [
+                "Exam Pattern & Qualifying Nature: Qualifying typing test.",
+                "Duration & Target: 10 minutes • 30 WPM (minimum 300 words).",
+                "WPM & Error Formula:",
+                '"Ignored Mistakes"=0.05×"Typed Words"',
+                '"Penalty Words"=max(0,"Total Mistakes"-"Ignored Mistakes")×10',
+                '"Net WPM"=("Typed Words"-"Penalty Words")/10',
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "RRB_CBTST_5_PERCENT")
+        self.assertEqual(defaults["scoring_rules"]["mistake_allowance_percent"], 5)
+        self.assertEqual(defaults["scoring_rules"]["excess_mistake_deduction_words"], 10)
+        self.assertFalse(defaults["scoring_rules"]["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
