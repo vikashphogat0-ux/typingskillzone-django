@@ -9,6 +9,7 @@ from . import views
 app_name = "accounts"
 
 urlpatterns = [
+    path("register/", views.registration_options, name="registration_options"),
     path(
         "password-reset/",
         ThrottledPasswordResetView.as_view(),
