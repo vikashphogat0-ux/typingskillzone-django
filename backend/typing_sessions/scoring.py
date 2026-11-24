@@ -310,7 +310,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             }
             error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
-            minimum_strokes = int(scoring_rules.get("minimum_strokes", 1750))
+            minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
+            minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
             speed_met = gross_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
             error_cap_met = error_percent <= error_cap
@@ -472,7 +473,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if mistake_analysis is not None
             else None
 ),
-        "error_count_method": "word" if count_word_errors else "character",
+        "error_count_method": "weighted_full_half" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else ("word" if count_word_errors else "character"),
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
