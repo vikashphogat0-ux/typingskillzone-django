@@ -44,13 +44,22 @@ def start_session(*, learner, publication):
         publication=publication,
         captured_at=now,
     )
+    reference_text = publication.rendered_content
+    if exam.code == "ssc-data-processing-assistant-grade-a":
+        import re
+
+        paragraphs = [part for part in re.split(r"\\n\\s*\\n", reference_text) if part.strip()]
+        reference_text = "\\n\\n".join(
+            part if part.startswith("\\t") else "\\t" + part.lstrip(" \\t")
+            for part in paragraphs
+        )
     return TypingSession.objects.create(
         learner=learner,
         publication=publication,
         started_at=now,
         deadline_at=None,
         duration_seconds=duration,
-        reference_text=publication.rendered_content,
+        reference_text=reference_text,
         rules_snapshot=snapshot,
     )
 
