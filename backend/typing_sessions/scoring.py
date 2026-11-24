@@ -581,7 +581,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 ("PROVISIONAL_" if rules.get("verification_status") == "PARTIAL" else "")
                 + ("QUALIFIED" if evaluated else "NOT_QUALIFIED")
             )
-    elif rules.get("verification_status") != "VERIFIED":
+    elif (
+        rules.get("verification_status") != "VERIFIED"
+        and not (
+            scoring_mode == "CUSTOM"
+            and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH"
+        )
+    ):
         qualification = None
         qualification_note = "Qualification is provisional/pending because the configured profile is not officially verified."
     elif qualification is not None:
