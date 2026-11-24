@@ -51,15 +51,15 @@ def start_session(*, learner, publication):
         passage_range = (exam.scoring_rules or {}).get("passage_character_range") or {}
         minimum_chars = int(passage_range.get("minimum", 3700))
         maximum_chars = int(passage_range.get("maximum", 4000))
-        if not minimum_chars <= len(reference_text) <= maximum_chars:
-            raise ValidationError(
-                f"SSC DPA Grade-A passage must contain {minimum_chars}–{maximum_chars} characters."
-            )
         paragraphs = [part for part in re.split(r"\n\s*\n", reference_text) if part.strip()]
         reference_text = "\n\n".join(
             part if part.startswith("\t") else "\t" + part.lstrip(" \t")
             for part in paragraphs
         )
+        if not minimum_chars <= len(reference_text) <= maximum_chars:
+            raise ValidationError(
+                f"SSC DPA Grade-A passage must contain {minimum_chars}–{maximum_chars} characters including paragraph tabs."
+            )
     return TypingSession.objects.create(
         learner=learner,
         publication=publication,
