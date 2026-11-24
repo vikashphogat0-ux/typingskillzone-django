@@ -37,7 +37,7 @@ class SSCCHSL2025ScoringTests(SimpleTestCase):
         self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
 
     def test_standard_chsl_english_uses_cycle_specific_category_error_caps(self):
-        reference = "word " * 700
+        reference = "word " * 350
         result = calculate_result(
             reference=reference,
             typed=reference,
