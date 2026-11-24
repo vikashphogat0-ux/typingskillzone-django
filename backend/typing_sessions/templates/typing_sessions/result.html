@@ -88,6 +88,22 @@
   </dl>
   <p class="muted">Typing test is qualifying only; it does not add marks to merit. Error percentage is calculated to two decimal places.</p>
   {% endif %}
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CGL_2025_DEST" or attempt.rules_snapshot.scoring_rules.formula == "SSC_CGL_2025_VH_DEST" %}
+  <h3 style="margin-top:22px">SSC CGL 2025 DEST qualifying calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>DEST standard</dt><dd>{{ attempt.rules_snapshot.scoring_rules.standard_type|default:"NORMAL" }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ attempt.result_snapshot.duration_seconds }} seconds</dd></div>
+    <div><dt>Gross strokes</dt><dd>{{ attempt.result_snapshot.gross_strokes }}</dd></div>
+    <div><dt>Gross KDPH</dt><dd>{{ attempt.result_snapshot.gross_kdph }}</dd></div>
+    <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
+    <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
+    <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
+    <div><dt>Error percentage</dt><dd>{{ attempt.result_snapshot.error_percent }}% / {{ attempt.result_snapshot.category_error_cap }}% maximum</dd></div>
+    <div><dt>Candidate category</dt><dd>{{ attempt.result_snapshot.candidate_category }}</dd></div>
+    <div><dt>Final result</dt><dd>{{ attempt.result_snapshot.qualification_status|default:"PENDING" }}</dd></div>
+  </dl>
+  <p class="muted">DEST is qualifying only. The approximately 2,000 key-depression passage is not used as a minimum candidate keystroke gate. Normal and higher error standards are distinct; the higher standard applies only to the relevant post group and must be selected from the applicable cycle notice.</p>
+  {% endif %}
   {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_HINDI" or attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_HINDI_KRUTIDEV" or attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_HINDI_MANGAL" %}
   <h3 style="margin-top:22px">SSC CHSL 2025 Hindi qualifying calculation</h3>
   <dl class="pattern-grid">
