@@ -200,12 +200,18 @@ class Command(BaseCommand):
                 "marks_configuration_status": "PENDING_OFFICIAL_SCHEDULE" if formula == "MODEL_D" else None,
                 "source_rulebook_mode": mode,
             }
+            conditions = []
+            if target is not None:
+                metric = "gross_wpm" if formula == "MODEL_A" else "net_wpm"
+                conditions.append({"metric": metric, "operator": "gte", "value": target})
+            if error_cap is not None and formula == "MODEL_A":
+                conditions.append({"metric": "error_percent", "operator": "lte", "value": error_cap})
+            if strokes is not None:
+                conditions.append({"metric": "keystrokes", "operator": "gte", "value": strokes})
             exam.qualification_rules = {
                 "status": "PENDING_OFFICIAL_VERIFICATION",
                 "requires_all_languages": language in {"ENGLISH", "HINDI"},
-                "minimum_wpm": target,
-                "maximum_error_percent": error_cap,
-                "required_keystrokes": strokes,
+                "all": conditions,
                 "qualification_is_provisional": True,
             }
             exam.verification_status = ExamConfiguration.Verification.PARTIAL
