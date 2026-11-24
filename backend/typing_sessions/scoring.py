@@ -501,7 +501,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     error_denominator = (
         len(re.findall(r"\S+", reference))
-        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D"}
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH"}
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
@@ -564,7 +564,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "score_note": score_note,
         "full_mistakes": full_mistakes,
         "half_mistakes": half_mistakes,
-        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D" else None,
+        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH"} else None,
         "error_percent": error_percent_for_qualification,
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
