@@ -155,6 +155,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("json_path", help="Path to exam_rulebook_profiles.json")
         parser.add_argument("--expected-count", type=int, default=161)
+        parser.add_argument("--refresh-existing-drafts", action="store_true", help="Refresh only inactive rows previously imported from this rulebook; never touch active or manually sourced profiles.")
 
     def handle(self, *args, **options):
         path = Path(options["json_path"]).expanduser()
@@ -178,16 +179,23 @@ class Command(BaseCommand):
         created = preserved = 0
         for profile in profiles:
             code = slugify(profile["profile_id"])[:180]
-            _, was_created = ExamConfiguration.objects.get_or_create(
-                code=code, defaults={"code": code, **build_draft_defaults(profile)}
-            )
-            created += int(was_created)
-            preserved += int(not was_created)
+            defaults = {"code": code, **build_draft_defaults(profile)}
+            exam, was_created = ExamConfiguration.objects.get_or_create(code=code, defaults=defaults)
+            if was_created:
+                created += 1
+            elif options["refresh_existing_drafts"] and not exam.is_active and exam.source_title == "Master Exam Rulebook — source-preserved draft":
+                for field, value in defaults.items():
+                    setattr(exam, field, value)
+                exam.save()
+                preserved += 1
+            else:
+                preserved += 1
 
         self.stdout.write(self.style.SUCCESS(
             f"Rulebook import complete: {created} inactive drafts created; "
             f"{preserved} existing profiles preserved; {len(profiles)} source entries processed."
         ))
         self.stdout.write(self.style.WARNING(
-            "Imported drafts remain inactive. Extracted hints are not official verification or executable scoring."
+            "Imported drafts remain inactive. Extracted hints are not official verification or executable scoring. "
+            "Existing rows are only refreshed when --refresh-existing-drafts is supplied and the row is inactive with the exact importer source marker."
         ))
