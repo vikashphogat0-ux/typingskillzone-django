@@ -84,6 +84,43 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
+def _classify_dpa_mistakes(reference, typed):
+    """DPA-specific weighted mistake profile layered over the shared classifier."""
+    analysis = classify_typing_mistakes(reference, typed)
+    categories = dict(analysis["categories"])
+    categories.setdefault("transposition", 0)
+    categories.setdefault("paragraph_indentation", 0)
+    reference_words = re.findall(r"\S+", reference or "")
+    typed_words = re.findall(r"\S+", typed or "")
+    matcher = SequenceMatcher(None, reference_words, typed_words, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        expected, actual = reference_words[i1:i2], typed_words[j1:j2]
+        if tag == "replace" and len(expected) > 1 and len(actual) == 1:
+            clean_expected = "".join(re.sub(r"[^\w]", "", word).casefold() for word in expected)
+            clean_actual = re.sub(r"[^\w]", "", actual[0]).casefold()
+            if clean_expected == clean_actual:
+                categories["substitution"] = max(0, categories.get("substitution", 0) - len(expected))
+                categories["word_spacing"] = categories.get("word_spacing", 0) + 1
+    for index in range(min(len(reference_words), len(typed_words)) - 1):
+        if reference_words[index] == typed_words[index + 1] and reference_words[index + 1] == typed_words[index]:
+            if categories.get("omission", 0) and categories.get("addition", 0):
+                categories["omission"] -= 1
+                categories["addition"] -= 1
+            elif categories.get("substitution", 0) >= 2:
+                categories["substitution"] -= 2
+            categories["transposition"] += 1
+    for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
+        if expected.startswith("\t") and actual.startswith(" ") and not actual.startswith("\t"):
+            if categories.get("word_spacing", 0):
+                categories["word_spacing"] -= 1
+            elif categories.get("paragraph_breaks", 0):
+                categories["paragraph_breaks"] -= 1
+            categories["paragraph_indentation"] += 1
+    analysis["categories"] = categories
+    analysis["total_detected_errors"] = sum(categories.values())
+    return analysis
+
+
 def _evaluate_qualification_rules(config, metrics):
     """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
     if not isinstance(config, dict) or not config:
@@ -141,9 +178,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     # Always retain the same RKC-style diagnostic classification for every display mode.
     # The configured exam scoring formula below remains authoritative for the numeric result.
-    mistake_analysis = classify_typing_mistakes(reference, typed)
+    mistake_analysis = (
+        _classify_dpa_mistakes(reference, typed)
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+        else classify_typing_mistakes(reference, typed)
+    )
 
-    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D":
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_DPA_GRADE_A"}:
         categories = mistake_analysis["categories"]
         full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
         half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"))
@@ -215,6 +256,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification_note = "Qualification is not configured."
     permitted_error_count = excess_error_count = net_words = None
     marks_minimum = None
+    gross_kdph = error_percent = candidate_category = error_cap = None
     if scoring_mode == "CORRECT_WORDS":
         net_wpm = round(correct_words / minutes, 2)
     elif scoring_mode == "NET_WPM":
@@ -352,7 +394,34 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if isinstance(qualification_rules, dict):
                 qualification = None
                 qualification_note = score_note
-        if formula == "SSC_CHSL_2025_ENGLISH":
+        if formula == "SSC_DPA_GRADE_A":
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition", "spelling", "incomplete_word", "repeated_word"))
+            half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "paragraph_indentation", "transposition"))
+            error_count = full_mistakes + (half_mistakes * 0.5)
+            count_word_errors = True
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_words_from_strokes = gross_strokes / strokes_per_word
+            gross_kdph = round(gross_strokes * 3600 / duration, 2)
+            gross_wpm = round(gross_words_from_strokes / minutes, 2)
+            gross_words = gross_words_from_strokes
+            reference_word_count = len(re.findall(r"\S+", reference))
+            error_percent = round(error_count * 100 / max(1, reference_word_count), 2)
+            minimum_kdph = int(scoring_rules.get("minimum_kdph", 15000))
+            minimum_strokes = (minimum_kdph * duration + 3599) // 3600
+            required_keystrokes = minimum_strokes
+            required_keystrokes_met = gross_strokes >= minimum_strokes
+            candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
+            caps = scoring_rules.get("category_error_caps") or {"UR": 5, "OBC": 7, "EWS": 7, "SC": 10, "ST": 10, "PWD": 10, "OTHER_RESERVED": 10}
+            error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            net_words = max(0, gross_words_from_strokes - error_count)
+            net_wpm = round(net_words / minutes, 2)
+            permitted_error_count = reference_word_count * error_cap / 100
+            excess_error_count = max(0, error_count - permitted_error_count)
+            qualification = bool(required_keystrokes_met and error_percent <= error_cap)
+            qualification_note = f"DPA Grade-A: {gross_kdph:.0f} KDPH; weighted errors {error_percent:.2f}% / {error_cap:g}% ({candidate_category})."
+            score = None
+        elif formula == "SSC_CHSL_2025_ENGLISH":
             categories = mistake_analysis["categories"]
             full_mistakes = sum(categories.get(key, 0) for key in (
                 "omission", "substitution", "addition"
@@ -549,11 +618,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     error_denominator = (
         len(re.findall(r"\S+", reference))
-        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"}
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
-    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A":
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
+    elif scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
         qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
         qualification_note = (
             f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English criteria: "
@@ -575,7 +646,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         rules.get("verification_status") == "VERIFIED"
         or (qualification_uses_partial and rules.get("verification_status") == "PARTIAL")
     )
-    if can_evaluate_qualification and configured_qualification:
+    if can_evaluate_qualification and configured_qualification and scoring_rules.get("formula") != "SSC_DPA_GRADE_A":
         evaluated, qualification_note = _evaluate_qualification_rules(configured_qualification, qualification_metrics)
         qualification = evaluated
         if evaluated is not None:
@@ -628,7 +699,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "score_note": score_note,
         "full_mistakes": full_mistakes,
         "half_mistakes": half_mistakes,
-        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
+        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
         "error_percent": error_percent_for_qualification,
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
@@ -643,9 +714,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
-        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
-        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
-        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
+        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
+        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
         "reference_word_count": reference_word_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
         "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
         "correct_wpm": correct_wpm,
