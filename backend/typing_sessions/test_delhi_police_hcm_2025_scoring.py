@@ -37,7 +37,7 @@ class DelhiPoliceHCM2025ScoringTests(SimpleTestCase):
     def test_english_below_minimum_is_disqualified_and_gets_zero(self):
         result = self._result(words=290)
         self.assertEqual(result["score"], 0)
-        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+        self.assertEqual(result["qualification_status"], "DISQUALIFIED")
 
     def test_one_mistake_deducts_one_word_from_speed(self):
         result = self._result(words=310, mistakes=1)
