@@ -339,8 +339,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             gross_wpm = gross_words / minutes
             tentative_wpm = gross_wpm
             net_wpm = max(0, gross_wpm - (error_count / minutes))
-            # Whole-WPM bands are applied by flooring the calculated speed.
-            band_speed = int(net_wpm)
+            # Compare unrounded speed directly to the published integer band boundaries.
+            # The notice does not specify a separate rounding rule.
+            band_speed = net_wpm
             language = str(rules.get("language") or rules.get("language_code") or "").upper()
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 25 if language in {"HINDI", "HI"} else 30))
             default_bands = (
@@ -355,7 +356,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             score = 0
             for band in scoring_rules.get("marks_bands") or default_bands:
                 try:
-                    if band_speed >= int(band["minimum_wpm"]):
+                    if band_speed >= float(band["minimum_wpm"]):
                         score = max(score, float(band["marks"]))
                 except (TypeError, ValueError, KeyError):
                     continue
