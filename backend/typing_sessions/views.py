@@ -127,7 +127,7 @@ def typing_session(request, session_id):
 @require_POST
 def activate_typing_session(request, session_id):
     try:
-        attempt = activate_session(session_id=session_id, learner=request.user)
+        attempt = activate_session(session_id=session_id, learner=request.user, compensatory_time=request.POST.get('compensatory_time') == '1')
     except TypingSession.DoesNotExist:
         return JsonResponse({"error": "Session not found."}, status=404)
     except (PermissionDenied, ValidationError) as error:
