@@ -332,7 +332,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             ))
             error_count = full_mistakes + (half_mistakes / 2)
             count_word_errors = True
-            gross_words = len(re.findall(r"\\S+", typed))
+            gross_words = len(re.findall(r"\S+", typed))
             ignored_mistakes = gross_words * float(scoring_rules.get("mistake_allowance_percent", 5)) / 100
             excess_error_count = max(0, error_count - ignored_mistakes)
             permitted_error_count = ignored_mistakes
