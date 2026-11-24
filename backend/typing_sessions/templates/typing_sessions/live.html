@@ -438,7 +438,7 @@
   const finishButton = document.getElementById("finish-button");
   if (dpaAutoSubmit) finishButton.disabled = true;
   form.addEventListener("submit", event => {
-    if (dpaAutoSubmit && deadline !== null && Date.now() + clockOffset < deadline) {
+    if (dpaAutoSubmit && (deadline === null || Date.now() + clockOffset < deadline)) {
       event.preventDefault();
       return;
     }
