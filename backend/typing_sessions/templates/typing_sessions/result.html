@@ -28,9 +28,19 @@
     <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
     <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default_if_none:"–" }}</strong><small>seconds</small></article>
     <article class="metric-card"><span>Characters typed</span><strong>{{ attempt.submitted_text|length }}</strong><small>{{ attempt.result_snapshot.correct_words|default_if_none:"0" }} correct words</small></article>
-    {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}</strong><small>Exam scoring result</small></article>{% endif %}
+    {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}{% if attempt.rules_snapshot.scoring_rules.maximum_marks %} / {{ attempt.rules_snapshot.scoring_rules.maximum_marks }}{% endif %}</strong><small>Exam scoring result</small></article>{% elif attempt.result_snapshot.score_note %}<article class="metric-card"><span>Marks</span><strong>Pending</strong><small>Official speed-to-marks bands required</small></article>{% endif %}
     {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
   </div>
+  {% if attempt.result_snapshot.full_mistakes != None %}
+  <h3 style="margin-top:22px">Delhi Police weighted mistake calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
+    <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
+    <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
+    <div><dt>Error percentage</dt><dd>{{ attempt.result_snapshot.error_percent }}%</dd></div>
+  </dl>
+  {% endif %}
+  {% if attempt.result_snapshot.score_note %}<p class="muted" style="margin-top:12px">{{ attempt.result_snapshot.score_note }}</p>{% endif %}
   <h3 style="margin-top:22px">Error breakdown</h3>
   <dl class="pattern-grid">
     <div><dt>Word errors</dt><dd>{{ attempt.result_snapshot.word_errors|default_if_none:"0" }}</dd></div>
