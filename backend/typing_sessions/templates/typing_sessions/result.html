@@ -31,6 +31,18 @@
     {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}{% if attempt.rules_snapshot.scoring_rules.maximum_marks %} / {{ attempt.rules_snapshot.scoring_rules.maximum_marks }}{% endif %}</strong><small>Exam scoring result</small></article>{% elif attempt.result_snapshot.score_note %}<article class="metric-card"><span>Marks</span><strong>Pending</strong><small>Official speed-to-marks bands required</small></article>{% endif %}
     {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
   </div>
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_VH_ENGLISH" %}
+  <h3 style="margin-top:22px">VH English qualifying calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>Gross speed</dt><dd>{{ attempt.result_snapshot.gross_wpm }} WPM</dd></div>
+    <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
+    <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
+    <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
+    <div><dt>Reference passage error rate</dt><dd>{{ attempt.result_snapshot.error_percent }}% / 10% maximum</dd></div>
+    <div><dt>Compensatory extension</dt><dd>{% if attempt.rules_snapshot.compensatory_time_applied %}Applied — 15 minutes{% else %}Not applied — 10 minutes{% endif %}</dd></div>
+    <div><dt>Final result</dt><dd>{{ attempt.result_snapshot.qualification_status|default:"PENDING" }}</dd></div>
+  </dl>
+  {% endif %}
   {% if attempt.result_snapshot.full_mistakes != None %}
   <h3 style="margin-top:22px">Delhi Police weighted mistake calculation</h3>
   <dl class="pattern-grid">
