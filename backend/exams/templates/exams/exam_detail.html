@@ -21,7 +21,7 @@
         <div><dt>Duration</dt><dd>{% if duration_minutes %}{{ duration_minutes }} minutes{% else %}Not set{% endif %}</dd></div>
         <div><dt>Language</dt><dd>{{ exam.language|title }}</dd></div>
         <div><dt>Keyboard layout</dt><dd>{{ exam.keyboard_layout|default:"Not specified" }}</dd></div>
-        <div><dt>Interface</dt><dd>{{ exam.interface_type|default:'Not specified' }}</dd></div>
+        <div><dt>Interface</dt><dd>{{ exam.interface_type|default:"Not specified" }}</dd></div>
         <div><dt>Backspace</dt><dd>{{ exam.get_backspace_policy_display }}</dd></div>
         <div><dt>Scoring</dt><dd>{% if exam.scoring_rules.qualifying_only %}Qualifying only{% else %}{{ exam.get_scoring_mode_display }}{% endif %}</dd></div>
         {% if exam.minimum_wpm %}<div><dt>Minimum speed</dt><dd>{{ exam.minimum_wpm }} WPM</dd></div>{% endif %}
@@ -60,65 +60,11 @@
           <label class="mode-option"><input type="radio" name="display_mode" value="highlighted"> Highlighted</label>
           <label class="mode-option"><input type="radio" name="display_mode" value="offscreen"> Off-screen</label>
         </div>
-        <p class="muted">Practice mode can be changed only before the timer starts.</p>
+        <p class="muted">Your selected mode is locked when the test starts. It cannot be changed during an attempt.</p>
       {% else %}
         <p class="muted">Exam interface is fixed to the configured TCS-style normal, no-highlight display. Practice display modes are disabled for this exam.</p>
       {% endif %}
       <button class="btn btn-primary" type="submit" style="margin-top:16px">{% if exam.scoring_mode == "GENERIC" or not exam.scoring_rules %}Start practice{% else %}Start exam{% endif %}</button>
-    </form>
-    {% else %}
-      <p class="muted">No passages are currently available for this examination.</p>
-    {% endif %}
-    <div style="margin-top:24px"><a href="{% url 'accounts:student_result_history' %}?exam={{ exam.code|urlencode }}">View results for this examination</a></div>
-  </section>
-</div>
-{% endblock %}
-{% block simulator_content %}
-<section class="page-head">
-  <span class="eyebrow">Selected examination</span>
-  <h1>{{ exam.name }}</h1>
-  <p class="lead">{{ published_count }} available passages · {{ exam.language|title }}{% if duration_minutes %} · {{ duration_minutes }} minutes{% endif %}</p>
-  {% if exam.verification_status == "VERIFIED" %}<span class="status ok">Rules verified</span>{% else %}<span class="status warn">Practice only · not an official qualification</span>{% endif %}
-</section>
-<div class="exam-layout">
-  <section class="card pattern">
-    <h2>Exam pattern</h2>
-    {% if not_published %}
-      <p class="muted">The pattern for this examination is not yet published. You can still practise its available passages.</p>
-    {% else %}
-      <dl class="pattern-grid">
-        <div><dt>Duration</dt><dd>{% if duration_minutes %}{{ duration_minutes }} minutes{% else %}Not set{% endif %}</dd></div>
-        <div><dt>Language</dt><dd>{{ exam.language|title }}</dd></div>
-        <div><dt>Keyboard layout</dt><dd>{{ exam.keyboard_layout|default:"Not specified" }}</dd></div>
-        <div><dt>Text encoding</dt><dd>{{ exam.text_encoding|default:"Not specified" }}</dd></div>
-        <div><dt>Backspace</dt><dd>{{ exam.get_backspace_policy_display }}</dd></div>
-        <div><dt>Scoring</dt><dd>{{ exam.get_scoring_mode_display }}</dd></div>
-        <div><dt>Minimum speed</dt><dd>{% if exam.minimum_wpm %}{{ exam.minimum_wpm }} WPM{% else %}Not set{% endif %}</dd></div>
-      </dl>
-      {% if exam.rule_notes %}<p class="pattern-note">{{ exam.rule_notes }}</p>{% endif %}
-    {% endif %}
-  </section>
-  <section class="card">
-    <h2>Choose a passage for practice</h2>
-    {% if recent_passages %}
-    <form method="post" action="{% url 'typing_sessions:start_selected' exam.code %}" id="exam-start-form">
-      {% csrf_token %}
-      <label for="passage_id"><strong>Available passages</strong></label>
-      <select class="workspace-select" id="passage_id" name="passage_id" required>
-        {% for passage in recent_passages %}
-        <option value="{{ passage.serial_number }}"{% if selected_passage_id == passage.serial_number|stringformat:"s" %} selected{% endif %}>
-          Passage {{ passage.serial_number }} · {{ passage.source.title }}{% if passage.release_date %} · {{ passage.release_date|date:"d M Y" }}{% endif %}
-        </option>
-        {% endfor %}
-      </select>
-      <h3 style="margin-top:22px">Select practice mode</h3>
-      <div class="mode-options" role="radiogroup" aria-label="Practice mode">
-        <label class="mode-option"><input type="radio" name="display_mode" value="normal" checked> Normal</label>
-        <label class="mode-option"><input type="radio" name="display_mode" value="highlighted"> Highlighted</label>
-        <label class="mode-option"><input type="radio" name="display_mode" value="offscreen"> Off-screen</label>
-      </div>
-      <p class="muted">Your selected mode is locked when the test starts. It cannot be changed during an attempt.</p>
-      <button class="btn btn-primary" type="submit" style="margin-top:16px">Start practice</button>
     </form>
     {% else %}
       <p class="muted">No passages are currently available for this examination.</p>
