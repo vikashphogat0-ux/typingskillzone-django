@@ -529,9 +529,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "qualification_status": qualification_status,
         "disqualified": qualification_status in {"NOT_QUALIFIED", "PROVISIONAL_NOT_QUALIFIED"},
         "disqualification_reason": (
-            f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
-            if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
-            else None
+            "Minimum 15,000 KDPH stroke floor not met."
+            if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" and not required_keystrokes_met
+            else (
+                f"Weighted error rate exceeds the selected category ceiling of {error_cap:g}%."
+                if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" and error_percent > error_cap
+                else (
+                    f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
+                    if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
+                    else None
+                )
+            )
         ),
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."
