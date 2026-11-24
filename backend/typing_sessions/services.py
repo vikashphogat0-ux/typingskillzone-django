@@ -44,12 +44,29 @@ def start_session(*, learner, publication):
         publication=publication,
         captured_at=now,
     )
+    reference_text = publication.rendered_content
+    if exam.code == "ssc-data-processing-assistant-grade-a":
+        import re
+
+        passage_range = (exam.scoring_rules or {}).get("passage_character_range") or {}
+        minimum_chars = int(passage_range.get("minimum", 3700))
+        maximum_chars = int(passage_range.get("maximum", 4000))
+        paragraphs = [part for part in re.split(r"\n\s*\n", reference_text) if part.strip()]
+        reference_text = "\n\n".join(
+            part if part.startswith("\t") else "\t" + part.lstrip(" \t")
+            for part in paragraphs
+        )
+        if not minimum_chars <= len(reference_text) <= maximum_chars:
+            raise ValidationError(
+                f"SSC DPA Grade-A passage must contain {minimum_chars}–{maximum_chars} characters including paragraph tabs."
+            )
+
     if exam.code in {"ssc-chsl-2025-vh-category-english", "ssc-chsl-2025-english-test-tcs-interface"}:
         import re
         word_range = (exam.scoring_rules or {}).get("passage_word_range") or {}
         minimum_words = int(word_range.get("minimum", 350))
         maximum_words = int(word_range.get("maximum", 400))
-        passage_words = len(re.findall(r"\\S+", publication.rendered_content or ""))
+        passage_words = len(re.findall(r"\S+", publication.rendered_content or ""))
         if not minimum_words <= passage_words <= maximum_words:
             raise ValidationError(
                 f"{exam.name} passage must contain {minimum_words}–{maximum_words} words."
@@ -60,7 +77,7 @@ def start_session(*, learner, publication):
         started_at=now,
         deadline_at=None,
         duration_seconds=duration,
-        reference_text=publication.rendered_content,
+        reference_text=reference_text,
         rules_snapshot=snapshot,
     )
 
