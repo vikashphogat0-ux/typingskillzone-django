@@ -1,0 +1,28 @@
+{% extends "passages/site_base.html" %}
+{% block title %}Choose an account · TypingSkillZone{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="section-head">
+    <span class="kicker">Join TypingSkillZone</span>
+    <h1>Choose your registration type</h1>
+    <p>Select the account that matches how you will use TypingSkillZone.</p>
+  </div>
+  <div class="grid grid-2 registration-options">
+    <article class="card">
+      <div class="icon">S</div>
+      <h2>Student Account</h2>
+      <p>Register as an independent learner, practise available exams, and keep your typing results and progress history in one place.</p>
+      <a class="btn btn-primary" href="{% url 'accounts:student_register' %}">Register as Student</a>
+      <p class="help">Already registered? <a href="{% url 'accounts:student_login' %}">Student login</a></p>
+    </article>
+    <article class="card">
+      <div class="icon">I</div>
+      <h2>Institute Owner Account</h2>
+      <p>Submit your institute for approval. Once approved, manage institute members, staff access and the institute workspace.</p>
+      <a class="btn btn-primary" href="{% url 'institutes:register' %}">Register an Institute</a>
+      <p class="help">Already have an owner account? <a href="{% url 'institutes:owner_login' %}">Owner login</a></p>
+    </article>
+  </div>
+  <p class="registration-note">Institute staff and members do not self-register. Their access is created or provided by the institute and they can sign in using the links in the header.</p>
+</section>
+{% endblock %}
