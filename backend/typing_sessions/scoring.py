@@ -115,6 +115,10 @@ def _classify_dpa_mistakes(reference, typed):
 
     for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
         if expected.startswith("\t") and actual.startswith(" ") and not actual.startswith("\t"):
+            if categories.get("word_spacing", 0):
+                categories["word_spacing"] -= 1
+            elif categories.get("paragraph_breaks", 0):
+                categories["paragraph_breaks"] -= 1
             categories["paragraph_indentation"] += 1
 
     analysis["categories"] = categories
