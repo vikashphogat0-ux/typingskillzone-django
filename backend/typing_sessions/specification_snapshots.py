@@ -17,6 +17,7 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
         "passage_id": publication.passage_id,
         "language": exam.language,
         "script": exam.script,
+        "interface_type": exam.interface_type,
         "allow_backspace": exam.allow_backspace,
         "backspace_policy": exam.backspace_policy,
         "allow_delete": exam.allow_delete,
