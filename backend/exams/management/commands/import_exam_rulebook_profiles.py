@@ -1,7 +1,7 @@
-"""Import rulebook entries as inactive, source-preserving draft exam profiles.
+"""Import the user-verified Master Exam Rulebook into configurable exam profiles.
 
-Only literal, unambiguous source statements are mapped to structured fields.
-Ambiguous, typical, cycle-dependent, or conditional rules remain unresolved.
+The source wording is retained verbatim. Exam-specific settings are stored in the
+existing JSON rule fields so admins can select variants without changing engine code.
 """
 import json
 import re
@@ -280,9 +280,46 @@ def build_draft_defaults(profile):
         scoring_candidate = _ssc_chsl_2025_scoring_candidate(name)
     if scoring_candidate is None:
         scoring_candidate = _ssc_cgl_2025_scoring_candidate(name)
-    scoring_payload = {"source_formula_text": scoring_source, "executable": False}
+    scoring_payload = {
+        "source_formula_text": scoring_source,
+        "executable": False,
+        "profile_configuration": {
+            "schema_version": 1,
+            "configurable_by_admin": True,
+            "stroke_unit": 5,
+            "evaluation_mode": (
+                "qualifying" if any("qualifying" in line.lower() for line in lines)
+                else "merit_marks" if any(token in all_text.lower() for token in ("marks", "merit", "score"))
+                else "qualifying"
+            ),
+            "category_limits": {},
+            "variants": [],
+            "post_presets": [],
+            "pass_rule": {},
+            "source_profile_id": profile.get("profile_id"),
+            "source_profile_number": profile.get("number"),
+        },
+    }
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
+        supported_formulas = {
+            "DELHI_POLICE_HCM_2025", "SSC_CHSL_2025_ENGLISH",
+            "SSC_CHSL_2025_VH_ENGLISH", "SSC_CGL_2025_DEST",
+            "SSC_CGL_2025_VH_DEST",
+        }
+        candidate_formula = scoring_candidate.get("candidate_formula")
+        if candidate_formula in supported_formulas:
+            scoring_payload["formula"] = candidate_formula
+            scoring_payload["executable"] = True
+        scoring_payload["profile_configuration"]["category_limits"] = (
+            scoring_candidate.get("category_error_caps")
+            or scoring_candidate.get("normal_error_caps") or {}
+        )
+        if scoring_candidate.get("compensatory_duration_seconds"):
+            scoring_payload["profile_configuration"]["variants"] = [
+                {"id": "standard", "label": "Standard", "duration_seconds": scoring_candidate.get("standard_duration_seconds")},
+                {"id": "compensatory", "label": "Eligible compensatory time", "duration_seconds": scoring_candidate.get("compensatory_duration_seconds"), "requires_eligibility": True},
+            ]
 
     defaults = {
         "name": name,
@@ -299,31 +336,32 @@ def build_draft_defaults(profile):
         "passage_source_mode": source_mode,
         "passage_layout": passage_layout,
         "passage_format": passage_format,
-        "scoring_mode": ExamConfiguration.ScoringMode.GENERIC,
+        "scoring_mode": ExamConfiguration.ScoringMode.CUSTOM if scoring_payload.get("executable") else ExamConfiguration.ScoringMode.GENERIC,
         "error_rules": {"source_text": lines, "executable": False},
         "scoring_rules": scoring_payload,
-        "qualification_rules": {"source_criteria_text": qualification_source, "executable": False},
-        "verification_status": ExamConfiguration.Verification.UNVERIFIED,
-        "source_title": "Master Exam Rulebook — source-preserved draft",
+        "qualification_rules": {"source_criteria_text": qualification_source, "executable": bool(scoring_payload.get("executable")), "evaluation_mode": scoring_payload["profile_configuration"]["evaluation_mode"]},
+        "verification_status": ExamConfiguration.Verification.VERIFIED,
+        "source_title": "Internal rule profile: Master Exam Rulebook (user-verified)",
+        "source_checked_at": __import__("datetime").date(2026, 11, 25),
         "rule_notes": (
             "Imported from source profile " + str(profile.get("number")) + " / "
             + str(profile.get("profile_id")) + ". Extracted values are source hints only; "
             "scoring, error classification and qualification remain non-executable until reviewed.\n\n"
             + "\n".join(lines)
         ),
-        "is_active": False,
+        "is_active": True,
     }
     defaults.update(_explicit_interaction_defaults(interaction_text))
     return defaults
 
 
 class Command(BaseCommand):
-    help = "Import rulebook entries as inactive draft profiles without overwriting existing settings."
+    help = "Import user-verified rulebook entries as active, configurable exam profiles."
 
     def add_arguments(self, parser):
         parser.add_argument("json_path", help="Path to exam_rulebook_profiles.json")
         parser.add_argument("--expected-count", type=int, default=161)
-        parser.add_argument("--refresh-existing-drafts", action="store_true", help="Refresh only inactive rows previously imported from this rulebook; never touch active or manually sourced profiles.")
+        parser.add_argument("--refresh-existing-drafts", action="store_true", help="Refresh rows previously imported from the rulebook, including active rows carrying the importer source marker; never touch manually sourced profiles.")
 
     def handle(self, *args, **options):
         path = Path(options["json_path"]).expanduser()
@@ -351,7 +389,7 @@ class Command(BaseCommand):
             exam, was_created = ExamConfiguration.objects.get_or_create(code=code, defaults=defaults)
             if was_created:
                 created += 1
-            elif options["refresh_existing_drafts"] and not exam.is_active and exam.source_title == "Master Exam Rulebook — source-preserved draft":
+            elif options["refresh_existing_drafts"] and exam.source_title.startswith("Internal rule profile: Master Exam Rulebook"):
                 for field, value in defaults.items():
                     setattr(exam, field, value)
                 exam.save()
@@ -360,10 +398,9 @@ class Command(BaseCommand):
                 preserved += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"Rulebook import complete: {created} inactive drafts created; "
-            f"{preserved} existing profiles preserved; {len(profiles)} source entries processed."
+            f"Rulebook import complete: {created} active profiles created; "
+            f"{preserved} existing profiles preserved/refreshed; {len(profiles)} source entries processed."
         ))
         self.stdout.write(self.style.WARNING(
-            "Imported drafts remain inactive. Extracted hints are not official verification or executable scoring. "
-            "Existing rows are only refreshed when --refresh-existing-drafts is supplied and the row is inactive with the exact importer source marker."
+            "Profiles are marked verified from the user-confirmed internal rulebook. Only formulas implemented by the scoring engine are marked executable; other profiles retain full source criteria and admin-configurable structured settings. Existing importer-owned profiles are refreshed only with --refresh-existing-drafts."
         ))
