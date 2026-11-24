@@ -283,7 +283,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             # Rulebook Model D: speed-graded merit marks (0-25) with a 5% weighted
             # mistake cap. The supplied rulebook does not publish mark conversion
             # bands, so score remains unassigned until an administrator configures them.
-            error_percent = round(error_count * 100 / max(1, len(re.findall(r"\\S+", reference))), 2)
+            error_percent = round(error_count * 100 / max(1, len(re.findall(r"\S+", reference))), 2)
             net_wpm = gross_wpm
             bands = scoring_rules.get("score_bands") or []
             eligible_marks = []
@@ -389,7 +389,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
     error_denominator = (
-        len(re.findall(r"\\S+", reference))
+        len(re.findall(r"\S+", reference))
         if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D"
         else gross_words
     )
