@@ -73,7 +73,7 @@
     <h2>Start as a student, or manage an institute</h2>
   </div>
   <div class="grid grid-3">
-    <article class="card"><div class="icon">S</div><h3>Students</h3><p>Practise on your own, track your results, and build speed at your own pace.</p><a class="more" href="{% url 'accounts:student_register' %}">Create an account &rarr;</a><a class="stretched" href="{% url 'accounts:student_register' %}" aria-label="Create a student account"></a></article>
+    <article class="card"><div class="icon">S</div><h3>Students</h3><p>Practise on your own, track your results, and build speed at your own pace.</p><a class="more" href="{% url 'accounts:registration_options' %}">Create an account &rarr;</a><a class="stretched" href="{% url 'accounts:registration_options' %}" aria-label="Create a student account"></a></article>
     <article class="card"><div class="icon">I</div><h3>Institute owners</h3><p>Register your institute, then add students and staff once your application is approved.</p><a class="more" href="{% url 'institutes:register' %}">Register an institute &rarr;</a><a class="stretched" href="{% url 'institutes:register' %}" aria-label="Register an institute"></a></article>
     <article class="card"><div class="icon">T</div><h3>Staff</h3><p>Sign in to the approved institute workspace you have been given access to.</p><a class="more" href="{% url 'institutes:staff_login' %}">Staff sign in &rarr;</a><a class="stretched" href="{% url 'institutes:staff_login' %}" aria-label="Staff sign in"></a></article>
   </div>
@@ -99,7 +99,7 @@
       <h2>Ready to practise?</h2>
       <p>Create your student account and take your first timed passage today.</p>
     </div>
-    <a class="btn btn-light" href="{% url 'accounts:student_register' %}">Create a student account</a>
+    <a class="btn btn-light" href="{% url 'accounts:registration_options' %}">Create a student account</a>
   </div>
 </section>
 {% endblock %}
