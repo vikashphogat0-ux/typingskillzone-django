@@ -389,7 +389,7 @@ class TypingScoringTests(TestCase):
                 "omission": 0, "substitution": 0, "addition": 0,
                 "capitalization": 0, "punctuation": 0,
                 "internal_spacing": 0, "word_spacing": 0,
-                "paragraph_breaks": 0,
+                "paragraph_breaks": 0, "transposition": 0,
             },
         )
         self.assertEqual(result.result_snapshot["mistake_analysis"]["total_detected_errors"], 0)
