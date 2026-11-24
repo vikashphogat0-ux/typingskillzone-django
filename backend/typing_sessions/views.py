@@ -55,11 +55,13 @@ def start_typing_session(request, exam_code, passage_id):
 
         requested_mode = (request.POST.get("display_mode") or "").strip().lower()
         current_mode = attempt.rules_snapshot.get("display_mode")
-        if requested_mode in DISPLAY_MODES and attempt.deadline_at is None and not attempt.rules_snapshot.get("timer_started") and requested_mode != current_mode:
-            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": requested_mode}
-            attempt.save(update_fields=("rules_snapshot",))
-        elif not current_mode:
-            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": "normal"}
+        selected_mode = (
+            "normal"
+            if exam.code == "ssc-chsl-2025-english-test-tcs-interface"
+            else (requested_mode if requested_mode in DISPLAY_MODES else current_mode or "normal")
+        )
+        if attempt.deadline_at is None and not attempt.rules_snapshot.get("timer_started") and selected_mode != current_mode:
+            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": selected_mode}
             attempt.save(update_fields=("rules_snapshot",))
     except PermissionDenied as error:
         logger.warning(
@@ -156,6 +158,7 @@ def submit_typing_session(request, session_id):
             typed_text=typed_text,
             reported_keystrokes=reported_keystrokes,
             client_policy_events=client_policy_events,
+            candidate_category=request.POST.get("candidate_category", "UR"),
         )
     except TypingSession.DoesNotExist:
         return JsonResponse({"error": "Session not found."}, status=404)
