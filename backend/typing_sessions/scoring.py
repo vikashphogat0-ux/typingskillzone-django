@@ -501,7 +501,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             ))
             half_mistakes = sum(categories.get(key, 0) for key in (
                 "capitalization", "punctuation", "internal_spacing",
-                "word_spacing", "paragraph_breaks"
+                "word_spacing", "paragraph_breaks", "transposition"
             ))
             weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
             error_count = weighted_mistakes
@@ -547,7 +547,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             ))
             half_mistakes = sum(categories.get(key, 0) for key in (
                 "capitalization", "punctuation", "internal_spacing",
-                "word_spacing", "paragraph_breaks",
+                "word_spacing", "paragraph_breaks", "transposition",
             ))
             weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
             error_count = weighted_mistakes
