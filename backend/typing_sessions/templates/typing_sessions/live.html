@@ -40,8 +40,7 @@
       <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
       <input type="hidden" id="policy-events" name="policy_events" value="0">
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_VH_ENGLISH" %}
-      <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> Apply the 5-minute compensatory extension (15 minutes total)</label>
-      <p class="muted">VH English · 35 WPM · 2,625 keystrokes · weighted full/half mistake scoring · 10% error ceiling</p>
+      <p class="muted">VH English · 15 minutes total · 35 WPM benchmark · 1,750 keystroke scoring threshold · weighted full/half mistake scoring · 10% error ceiling</p>
       {% endif %}
       <label for="typed-text">Type Here</label>
       <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
@@ -65,7 +64,6 @@
   const referenceElement = document.getElementById("reference");
   const mode = rules.display_mode || "normal";
   const activateUrl = "{% url 'typing_sessions:activate' attempt.pk %}";
-  const compensatoryTimeInput = document.getElementById("compensatory-time");
   const countdown = document.getElementById("countdown");
   const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   let startedAt = null;
@@ -345,9 +343,6 @@
       method: "POST",
       credentials: "same-origin",
       headers: {"X-CSRFToken": csrf},
-      body: new URLSearchParams({
-        compensatory_time: compensatoryTimeInput && compensatoryTimeInput.checked ? "1" : "0"
-      }),
     }).then(response => {
       if (!response.ok) throw new Error("Unable to start exam timer");
       return response.json();
