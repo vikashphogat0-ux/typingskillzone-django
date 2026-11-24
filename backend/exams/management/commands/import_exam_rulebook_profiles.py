@@ -96,7 +96,7 @@ def _rrb_scoring_candidate(lines):
         re.search(r"(?:10|ten)[- ]words?[- ]per[- ](?:excess[- ])?mistake|(?:10|ten) words? (?:per|for each) (?:excess|remaining)?\s*mistake|10\s*words?\s*(?:deducted|penalty)", text)
         or re.search(r"(?:mistakes?|errors?).{0,100}(?:×|\*)\s*10|(?:×|\*)\s*10.{0,100}(?:mistakes?|errors?)", text)
     )
-    if allowance_is_five_percent and ten_word_penalty and "full" in text and "half" in text:
+    if allowance_is_five_percent and ten_word_penalty:
         return {
             "candidate_formula": "RRB_CBTST_5_PERCENT",
             "mistake_allowance_percent": 5,
