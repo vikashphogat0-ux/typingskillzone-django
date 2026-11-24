@@ -123,6 +123,40 @@ def _delhi_police_hcm_scoring_candidate(name):
     }
 
 
+def _ssc_chsl_2025_scoring_candidate(name):
+    normalized = (name or "").lower()
+    if "ssc chsl 2025 vh category english" in normalized:
+        return {
+            "candidate_formula": "SSC_CHSL_2025_VH_ENGLISH",
+            "minimum_wpm": 35,
+            "minimum_kdph": 10500,
+            "standard_duration_seconds": 600,
+            "compensatory_duration_seconds": 900,
+            "minimum_strokes_standard": 1750,
+            "minimum_strokes_compensatory": 2625,
+            "category_error_caps": {"PWD": 10},
+            "compensatory_time_enabled": True,
+            "executable": False,
+            "official_notice_reference": "SSC CHSL 2025 Notice, para 13.8.13.7; 5-minute compensatory time for eligible scribe candidates",
+            "cycle_cutoff_reference": "SSC CHSLE 2025 FRTA, 17 August 2026, paragraph 6(ii): VH/PwBD typing-test error ceiling 10%",
+        }
+    if "ssc chsl 2025 english test" in normalized:
+        return {
+            "candidate_formula": "SSC_CHSL_2025_ENGLISH",
+            "minimum_wpm": 35,
+            "minimum_kdph": 10500,
+            "minimum_strokes": 1750,
+            "category_error_caps": {
+                "UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10,
+                "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10,
+                "OTHER_RESERVED": 10,
+            },
+            "executable": False,
+            "official_notice_reference": "SSC CHSL 2025 Notice, paras 13.8.13.1-13.8.13.7",
+            "cycle_cutoff_reference": "SSC CHSLE 2025 FRTA, 17 August 2026, paragraph 6(ii): UR 7%; all listed reserved/horizontal categories 10%",
+        }
+    return None
+
 def build_draft_defaults(profile):
     """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
@@ -168,6 +202,8 @@ def build_draft_defaults(profile):
     scoring_candidate = _rrb_scoring_candidate(lines)
     if scoring_candidate is None:
         scoring_candidate = _delhi_police_hcm_scoring_candidate(name)
+    if scoring_candidate is None:
+        scoring_candidate = _ssc_chsl_2025_scoring_candidate(name)
     scoring_payload = {"source_formula_text": scoring_source, "executable": False}
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
