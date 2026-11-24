@@ -806,7 +806,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
                 "stroke_count_for_speed": stroke_count_for_speed,
-        "gross_strokes": stroke_count_for_speed if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_HCM_2025", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"} else None,
+        "gross_strokes": stroke_count_for_speed if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_HCM_2025", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
         "stroke_count_source": stroke_count_source,
         "tentative_wpm": tentative_wpm,
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
