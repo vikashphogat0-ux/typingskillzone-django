@@ -84,6 +84,10 @@
   let phase = rules.scoring_rules && rules.scoring_rules.formula === "SSC_DPA_GRADE_A" && Number(rules.trial_seconds) > 0 ? "demo" : "exam";
   const demoSeconds = phase === "demo" ? Number(rules.trial_seconds) : 0;
   const demoDeadline = demoSeconds ? Date.now() + demoSeconds * 1000 : null;
+  if (phase === "demo") {
+    reference = "Accurate data entry requires steady rhythm, careful attention to detail, and consistent use of the keyboard. During this demonstration, practise entering names, dates, reference numbers, amounts, and ordinary punctuation. Keep one space after punctuation and use the Tab key when a paragraph begins with an indentation.\n\nA reliable operator checks each field before moving to the next one. Avoid rushing through unfamiliar figures, and maintain a comfortable posture while keeping your eyes on the displayed text. This practice passage is only for checking the keyboard and screen; it is not part of the evaluated test.";
+    if (referenceElement) referenceElement.textContent = reference;
+  }
   let deadline = clock.deadline_ms;
   let submitting = false;
   let policyEvents = 0;
