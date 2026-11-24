@@ -352,6 +352,52 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if isinstance(qualification_rules, dict):
                 qualification = None
                 qualification_note = score_note
+        if formula == "SSC_CHSL_2025_ENGLISH":
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in (
+                "omission", "substitution", "addition"
+            ))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing",
+                "word_spacing", "paragraph_breaks"
+            ))
+            weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
+            error_count = weighted_mistakes
+            count_word_errors = True
+            reference_word_count = len(re.findall(r"\S+", reference))
+            error_percent = round(
+                weighted_mistakes * 100 / max(1, reference_word_count), 2
+            )
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_wpm = round(gross_strokes / 5 / minutes, 2)
+            gross_kdph = round(gross_strokes * 60 / minutes, 2)
+            net_wpm = gross_wpm
+            candidate_category = str(
+                rules.get("candidate_category")
+                or scoring_rules.get("candidate_category_default")
+                or "UR"
+            ).upper()
+            caps = scoring_rules.get("category_error_caps") or {
+                "UR": 7, "OBC": 10, "EWS": 10, "SC": 10,
+                "ST": 10, "PWD": 10, "OTHER_RESERVED": 10,
+            }
+            error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
+            minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
+            minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
+            required_keystrokes = minimum_strokes
+            speed_met = gross_wpm >= minimum_wpm
+            stroke_floor_met = gross_strokes >= minimum_strokes
+            required_keystrokes_met = stroke_floor_met
+            error_cap_met = error_percent <= error_cap
+            qualification = bool(speed_met and stroke_floor_met and error_cap_met)
+            qualification_note = (
+                f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English "
+                f"criteria: {gross_wpm:.2f} WPM (minimum {minimum_wpm:g}), "
+                f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
+                f"{gross_strokes}/{minimum_strokes} keystrokes."
+            )
+            score = None
         elif formula == "SSC_CHSL_2025_VH_ENGLISH":
             categories = mistake_analysis["categories"]
             full_mistakes = sum(categories.get(key, 0) for key in (
@@ -503,7 +549,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     error_denominator = (
         len(re.findall(r"\S+", reference))
-        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH"}
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
@@ -566,7 +612,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "score_note": score_note,
         "full_mistakes": full_mistakes,
         "half_mistakes": half_mistakes,
-        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH"} else None,
+        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
         "error_percent": error_percent_for_qualification,
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
