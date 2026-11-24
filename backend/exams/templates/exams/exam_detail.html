@@ -37,7 +37,7 @@
     {% endif %}
   </section>
   <section class="card">
-    <h2>Choose a passage {% if exam.scoring_rules.formula == "SSC_DPA_GRADE_A" %}for the evaluated test{% else %}to begin{% endif %}</h2>
+    <h2>{% if exam.scoring_mode == "GENERIC" or not exam.scoring_rules %}Choose a passage for practice{% elif exam.scoring_rules.formula == "SSC_DPA_GRADE_A" %}Choose a passage for the evaluated test{% else %}Choose a passage to begin{% endif %}</h2>
     {% if recent_passages %}
     <form method="post" action="{% url 'typing_sessions:start_selected' exam.code %}" id="exam-start-form">
       {% csrf_token %}
