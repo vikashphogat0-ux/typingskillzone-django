@@ -13,6 +13,9 @@
     </div>
   </header>
   <div class="exam-language-bar">Language: {{ attempt.rules_snapshot.language|default:"ENGLISH"|title }}</div>
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
+  <p class="practice-note" id="dpa-phase-note">5-minute keyboard and interface demo. This practice is not evaluated. The 15-minute test starts after the demo.</p>
+  {% endif %}
   {% if attempt.rules_snapshot.display_mode == "offscreen" %}
   <div class="offscreen-tools"><button type="button" class="btn btn-primary btn-small" id="exam-sound-button">Start Exam Hall Sound</button></div>
   {% endif %}
@@ -39,6 +42,19 @@
       {% csrf_token %}
       <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
       <input type="hidden" id="policy-events" name="policy_events" value="0">
+      {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
+      <label for="candidate-category">Candidate category for the configured error ceiling</label>
+      <select id="candidate-category" name="candidate_category">
+        <option value="UR">UR — 5%</option>
+        <option value="OBC">OBC — 7%</option>
+        <option value="EWS">EWS — 7%</option>
+        <option value="SC">SC — 10%</option>
+        <option value="ST">ST — 10%</option>
+        <option value="PWD">PwBD — 10%</option>
+        <option value="OTHER_RESERVED">Other reserved — 10%</option>
+      </select>
+      <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for 5 minutes compensatory time (20-minute test)</label>
+      {% endif %}
       <label for="typed-text">Type Here</label>
       <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
       <div class="finish-row">
@@ -57,13 +73,17 @@
   const rules = JSON.parse(document.getElementById("typing-rules").textContent);
   const input = document.getElementById("typed-text");
   const form = document.getElementById("typing-form");
-  const reference = JSON.parse(document.getElementById("reference-data").textContent);
+  let reference = JSON.parse(document.getElementById("reference-data").textContent);
+  const actualReference = reference;
   const referenceElement = document.getElementById("reference");
   const mode = rules.display_mode || "normal";
   const activateUrl = "{% url 'typing_sessions:activate' attempt.pk %}";
   const countdown = document.getElementById("countdown");
   const clock = JSON.parse(document.getElementById("typing-clock").textContent);
   let startedAt = null;
+  let phase = rules.scoring_rules && rules.scoring_rules.formula === "SSC_DPA_GRADE_A" && Number(rules.trial_seconds) > 0 ? "demo" : "exam";
+  const demoSeconds = phase === "demo" ? Number(rules.trial_seconds) : 0;
+  const demoDeadline = demoSeconds ? Date.now() + demoSeconds * 1000 : null;
   let deadline = clock.deadline_ms;
   let submitting = false;
   let policyEvents = 0;
@@ -327,8 +347,10 @@
     renderRkcErrorIdentification(typed);
   }
   input.addEventListener("input",() => {
-    if (!startedAt) startedAt = Date.now();
-    ensureTimerStarted();
+    if (phase === "exam") {
+      if (!startedAt) startedAt = Date.now();
+      ensureTimerStarted();
+    }
     updateStats();
   });
   updateStats();
@@ -336,10 +358,12 @@
   async function ensureTimerStarted() {
     if (deadline !== null || activationPromise) return activationPromise;
     const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    const compensatory = document.getElementById("compensatory-time");
     activationPromise = fetch(activateUrl, {
       method: "POST",
       credentials: "same-origin",
-      headers: {"X-CSRFToken": csrf},
+      headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({compensatory_time: compensatory && compensatory.checked ? "1" : "0"}),
     }).then(response => {
       if (!response.ok) throw new Error("Unable to start exam timer");
       return response.json();
@@ -354,6 +378,21 @@
   }
   function tick() {
     if(submitting)return;
+    if (phase === "demo") {
+      const remainingDemo = Math.max(0, Math.ceil((demoDeadline - Date.now()) / 1000));
+      countdown.textContent = "Demo " + String(Math.floor(remainingDemo/60)).padStart(2,"0") + ":" + String(remainingDemo%60).padStart(2,"0");
+      if (remainingDemo <= 0) {
+        phase = "exam";
+        input.value = "";
+        reference = actualReference;
+        if (referenceElement) referenceElement.textContent = actualReference;
+        const note = document.getElementById("dpa-phase-note");
+        if (note) note.textContent = "Demo completed. Your evaluated 15-minute typing test is ready; the timer starts with your first key.";
+        updateStats();
+        input.focus();
+      }
+      return;
+    }
     if(deadline === null){
       countdown.textContent = clock.duration_ms ? "Starts on first key" : "No limit";
       return;
@@ -363,13 +402,25 @@
     countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
     if(remaining<=0){submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);form.submit();}
   }
-  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);document.getElementById("finish-button").disabled=true;});
+  const dpaAutoSubmit = rules.scoring_rules && rules.scoring_rules.formula === "SSC_DPA_GRADE_A";
+  const finishButton = document.getElementById("finish-button");
+  if (dpaAutoSubmit) finishButton.disabled = true;
+  form.addEventListener("submit", event => {
+    if (dpaAutoSubmit && deadline !== null && Date.now() + clockOffset < deadline) {
+      event.preventDefault();
+      return;
+    }
+    submitting=true;
+    input.readOnly=true;
+    document.getElementById("policy-events").value=String(policyEvents);
+    finishButton.disabled=true;
+  });
   // Autosave: store the current text every 15 seconds if it changed. Drafts are never scored.
   const draftUrl = "{% url 'typing_sessions:draft' attempt.pk %}";
   const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
   let lastSaved = input.value;
   async function saveDraft() {
-    if (submitting || input.value === lastSaved) return;
+    if (phase === "demo" || submitting || input.value === lastSaved) return;
     const snapshot = input.value;
     try {
       const response = await fetch(draftUrl, {
