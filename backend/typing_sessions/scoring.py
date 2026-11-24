@@ -581,6 +581,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_VH_ENGLISH" else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
