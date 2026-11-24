@@ -158,6 +158,10 @@
     if (event.inputType === "insertReplacementText" && backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   });
   input.addEventListener("paste", event => { if (rules.allow_paste === false) event.preventDefault(); });
+  if (rules.scoring_rules && rules.scoring_rules.formula === "SSC_DPA_GRADE_A") {
+    input.addEventListener("contextmenu", event => event.preventDefault());
+    if (referenceElement) referenceElement.addEventListener("contextmenu", event => event.preventDefault());
+  }
   input.addEventListener("copy", event => { if (rules.allow_copy === false) event.preventDefault(); });
   input.addEventListener("cut", event => { if (rules.allow_cut === false) event.preventDefault(); });
   input.addEventListener("input", () => {
