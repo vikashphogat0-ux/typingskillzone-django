@@ -116,6 +116,8 @@ def _delhi_police_hcm_scoring_candidate(name):
         "maximum_marks": 25,
         "marks_bands": marks_bands,
         "mistake_penalty_words": 1,
+        "official_source_url": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_DPHCM_2025.pdf",
+        "official_source_reference": "SSC Notice of Head Constable (Ministerial) in Delhi Police Examination, 2025, paragraphs 24-24.2",
         "executable": False,
         "verification_note": "Candidate mapped to SSC DPHCM 2025 paras 24-24.2; admin source verification is still required before activation.",
     }
