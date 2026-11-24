@@ -107,7 +107,6 @@ class Command(BaseCommand):
                 "uses the total reference passage word count; UR cap 7%, reserved-category "
                 "cap 10%; qualifying-only. Eligible PwBD/scribe candidates can select a 5-minute "
                 "compensatory extension (15-minute total). The user has confirmed this complete rule profile for internal TypingSkillZone use. "
-                "provisional until the complete recruitment-cycle rule profile is verified."
             ),
         }
         for field, value in profile.items():
