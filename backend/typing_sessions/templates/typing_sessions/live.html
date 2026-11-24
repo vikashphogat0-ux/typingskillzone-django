@@ -40,6 +40,7 @@
       <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
       <input type="hidden" id="policy-events" name="policy_events" value="0">
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
+      <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for the 5-minute PwBD/scribe compensatory extension (15 minutes total)</label>
       <label for="candidate-category">Candidate category for error allowance</label>
       <select id="candidate-category" name="candidate_category">
         <option value="UR">UR — 7% maximum errors</option>
@@ -84,6 +85,7 @@
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
   const categorySelect = document.getElementById("candidate-category");
+  const compensatoryCheckbox = document.getElementById("compensatory-time");
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
@@ -113,6 +115,7 @@
   }
   input.addEventListener("keydown", event => {
     if (categorySelect && !input.readOnly) categorySelect.disabled = true;
+    if (compensatoryCheckbox && !input.readOnly) compensatoryCheckbox.disabled = true;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a" && rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH") {
       event.preventDefault();
       return;
@@ -369,7 +372,8 @@
     activationPromise = fetch(activateUrl, {
       method: "POST",
       credentials: "same-origin",
-      headers: {"X-CSRFToken": csrf},
+      headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({compensatory_time: compensatoryCheckbox && compensatoryCheckbox.checked ? "1" : "0"}),
     }).then(response => {
       if (!response.ok) throw new Error("Unable to start exam timer");
       return response.json();
