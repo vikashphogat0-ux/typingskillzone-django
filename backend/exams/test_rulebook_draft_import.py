@@ -41,3 +41,41 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["backspace_policy"], ExamConfiguration.BackspacePolicy.DISABLED)
         self.assertFalse(defaults["scoring_rules"]["executable"])
         self.assertFalse(defaults["qualification_rules"]["executable"])
+
+
+    def test_explicit_tcs_layout_and_keyboard_hints_are_extracted(self):
+        profile = {
+            "number": 1,
+            "profile_id": "ssc-chsl-example",
+            "name": "SSC CHSL Hindi (Mangal Font)",
+            "source_text": [
+                "Duration & Target: 10 minutes • 30 WPM (9,000 KDPH / ~1,500 key depressions in 10 minutes).",
+                "Interface, Passage & Keyboard Rules: TCS iON split-screen with Mangal (Inscript / Remington Gail) layout. Backspace is allowed; copy/paste disabled.",
+                "Qualifying Criteria: Meet the applicable benchmark.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertEqual(defaults["duration_seconds"], 600)
+        self.assertEqual(defaults["minimum_wpm"], 30.0)
+        self.assertEqual(defaults["required_keystrokes"], 1500)
+        self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.TCS)
+        self.assertEqual(defaults["passage_source_mode"], ExamConfiguration.PassageSourceMode.SCREEN)
+        self.assertEqual(defaults["keyboard_layout"], "Remington Gail")
+        self.assertFalse(defaults["allow_copy"])
+        self.assertFalse(defaults["allow_paste"])
+        self.assertFalse(defaults["is_active"])
+
+    def test_notification_dependent_or_multiple_wpm_values_are_not_collapsed(self):
+        profile = {
+            "number": 2,
+            "profile_id": "conditional-example",
+            "name": "State Typing English",
+            "source_text": [
+                "Duration & Target: 10 minutes • 30–35 WPM depending on post.",
+                "Interface, Passage & Keyboard Rules: English QWERTY.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertIsNone(defaults["minimum_wpm"])
+        self.assertEqual(defaults["keyboard_layout"], "QWERTY")
+        self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.UNCONFIGURED)
