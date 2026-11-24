@@ -71,6 +71,23 @@
   </dl>
   <p class="muted">Qualifying-only simulator. Typing marks are not added to final merit.</p>
   {% endif %}
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
+  <h3 style="margin-top:22px">SSC CHSL 2025 English qualifying calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>Gross strokes</dt><dd>{{ attempt.result_snapshot.gross_strokes }}</dd></div>
+    <div><dt>Gross KDPH</dt><dd>{{ attempt.result_snapshot.gross_kdph }}</dd></div>
+    <div><dt>Gross speed</dt><dd>{{ attempt.result_snapshot.gross_wpm }} WPM</dd></div>
+    <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
+    <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
+    <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
+    <div><dt>Error percentage</dt><dd>{{ attempt.result_snapshot.error_percent }}% / {{ attempt.result_snapshot.category_error_cap }}% maximum</dd></div>
+    <div><dt>Required strokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}</dd></div>
+    <div><dt>Category</dt><dd>{{ attempt.result_snapshot.candidate_category }}</dd></div>
+    <div><dt>Speed requirement</dt><dd>{% if attempt.result_snapshot.speed_requirement_met %}Met{% else %}Not met{% endif %}</dd></div>
+    <div><dt>Final result</dt><dd>{{ attempt.result_snapshot.qualification_status|default:"PENDING" }}</dd></div>
+  </dl>
+  <p class="muted">Typing test is qualifying only; it does not add marks to merit. Error percentage is calculated to two decimal places.</p>
+  {% endif %}
   {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_VH_ENGLISH" %}
   <h3 style="margin-top:22px">VH English qualifying calculation</h3>
   <dl class="pattern-grid">
@@ -78,7 +95,9 @@
     <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
     <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
     <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
-    <div><dt>Reference passage error rate</dt><dd>{{ attempt.result_snapshot.error_percent }}% / 10% maximum</dd></div>
+    <div><dt>Gross KDPH</dt><dd>{{ attempt.result_snapshot.gross_kdph }}</dd></div>
+    <div><dt>Required strokes for this duration</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}</dd></div>
+    <div><dt>Reference passage error rate</dt><dd>{{ attempt.result_snapshot.error_percent }}% / {{ attempt.result_snapshot.category_error_cap }}% maximum</dd></div>
     <div><dt>Compensatory extension</dt><dd>{% if attempt.rules_snapshot.compensatory_time_applied %}Applied — 15 minutes{% else %}Not applied — 10 minutes{% endif %}</dd></div>
     <div><dt>Final result</dt><dd>{{ attempt.result_snapshot.qualification_status|default:"PENDING" }}</dd></div>
   </dl>
