@@ -53,13 +53,20 @@ def start_typing_session(request, exam_code, passage_id):
         if attempt is None or attempt.rules_snapshot.get("timer_started"):
             attempt = start_session(learner=request.user, publication=publication)
 
+        # Official exam interface architecture is immutable for an exam attempt.
+        # Learner-selected display modes remain available to practice profiles.
         requested_mode = (request.POST.get("display_mode") or "").strip().lower()
         current_mode = attempt.rules_snapshot.get("display_mode")
-        if requested_mode in DISPLAY_MODES and attempt.deadline_at is None and not attempt.rules_snapshot.get("timer_started") and requested_mode != current_mode:
-            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": requested_mode}
-            attempt.save(update_fields=("rules_snapshot",))
-        elif not current_mode:
-            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": "normal"}
+        fixed_modes = {
+            "TCS_ION_STANDARD": "normal",
+            "TCS_ION_WORD_LOCKED": "highlighted",
+            "RRB_CAPF_STRICT": "normal",
+            "NTA_COURT_SPLIT_PANE": "highlighted",
+        }
+        fixed_mode = fixed_modes.get(exam.interface_type)
+        selected_mode = fixed_mode or (requested_mode if requested_mode in DISPLAY_MODES else current_mode or "normal")
+        if attempt.deadline_at is None and not attempt.rules_snapshot.get("timer_started") and selected_mode != current_mode:
+            attempt.rules_snapshot = {**attempt.rules_snapshot, "display_mode": selected_mode}
             attempt.save(update_fields=("rules_snapshot",))
     except PermissionDenied as error:
         logger.warning(
