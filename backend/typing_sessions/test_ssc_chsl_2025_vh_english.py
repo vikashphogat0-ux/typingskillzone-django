@@ -37,7 +37,7 @@ class SSCCHSL2025VHEnglishScoringTests(SimpleTestCase):
             },
         }
 
-    def test_fifteen_minute_attempt_uses_ten_minute_speed_scoring_base(self):
+    def test_fifteen_minute_attempt_uses_fifteen_minute_scoring_period(self):
         result = calculate_result(
             reference=self.reference,
             typed=self.reference,
@@ -51,5 +51,5 @@ class SSCCHSL2025VHEnglishScoringTests(SimpleTestCase):
         self.assertEqual(result["error_percent"], 0)
         self.assertEqual(result["qualification_status"], "QUALIFIED")
         self.assertTrue(result["qualification"])
-        self.assertEqual(result["stroke_count_for_speed"], 1750)
+        self.assertEqual(result["stroke_count_for_speed"], 2625)
         self.assertEqual(result["stroke_count_source"], "server_derived")
