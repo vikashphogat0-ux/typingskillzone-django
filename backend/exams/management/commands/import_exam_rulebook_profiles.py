@@ -321,6 +321,109 @@ def build_draft_defaults(profile):
                 {"id": "compensatory", "label": "Eligible compensatory time", "duration_seconds": scoring_candidate.get("compensatory_duration_seconds"), "requires_eligibility": True},
             ]
 
+
+    profile_config = scoring_payload["profile_configuration"]
+    normalized_name = name.lower()
+    # Explicit selectors from the user-approved profile resolution specification.
+    if "ssc chsl 2025" in normalized_name and "vh category" not in normalized_name:
+        profile_config["variants"] = profile_config.get("variants") or [
+            {"id": "standard", "label": "Standard", "duration_seconds": 600},
+            {"id": "scribe_pwbd", "label": "Eligible scribe/PwBD", "duration_seconds": 900, "requires_eligibility": True},
+        ]
+        profile_config["category_limits"] = profile_config.get("category_limits") or {
+            "UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "PwBD": 10, "ESM": 10
+        }
+    if "ssc chsl 2025 vh category english" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "vh_compensatory", "label": "VH / eligible scribe", "duration_seconds": 900, "locked": True}
+        ]
+        profile_config["accessibility"] = {"vh": True, "compensatory_time": True}
+    if "ssc cgl 2025" in normalized_name and "more strokes" not in normalized_name:
+        profile_config["variants"] = [
+            {"id": "normal", "label": "Normal standard", "standard_type": "NORMAL", "duration_seconds": 900},
+            {"id": "higher", "label": "Higher standard post", "standard_type": "HIGHER", "duration_seconds": 900, "requires_post_eligibility": True},
+        ]
+        if "vh category" in normalized_name:
+            profile_config["variants"].append(
+                {"id": "vh_compensatory", "label": "VH / eligible scribe", "duration_seconds": 1200, "requires_eligibility": True}
+            )
+    if "ssc mts" in normalized_name or "selection post" in normalized_name:
+        profile_config["post_presets"] = [
+            {"id": "english", "language": "ENGLISH", "minimum_wpm": 35, "duration_seconds": 600},
+            {"id": "hindi", "language": "HINDI", "minimum_wpm": 30, "duration_seconds": 600},
+        ]
+    if "ssc gd" in normalized_name:
+        profile_config["conditional_activation"] = True
+        profile_config["post_presets"] = [
+            {"id": "english", "language": "ENGLISH", "minimum_wpm": 35, "duration_seconds": 600},
+            {"id": "hindi", "language": "HINDI", "minimum_wpm": 30, "duration_seconds": 600},
+        ]
+    if "ssc cag deo" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "grade_a", "label": "Grade A", "target_kdph": 8000, "duration_seconds": 900},
+            {"id": "grade_b", "label": "Grade B", "target_kdph": 15000, "duration_seconds": 900},
+        ]
+    if "bombay high court" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "penalty_20", "label": "20-mark penalty", "scoring_sub_mode": "penalty_20"},
+            {"id": "proportional_accuracy", "label": "Proportional accuracy", "scoring_sub_mode": "proportional_accuracy"},
+        ]
+    if "andhra pradesh" in normalized_name or "aphc" in normalized_name:
+        profile_config["post_presets"] = [
+            {"id": "post_35", "label": "35 WPM post", "minimum_wpm": 35, "duration_seconds": 600},
+            {"id": "post_40", "label": "40 WPM post", "minimum_wpm": 40, "duration_seconds": 600},
+        ]
+    if "allahabad high court" in normalized_name or "ro & aro" in normalized_name:
+        profile_config["pass_rule"] = {"max_marks": 100, "per_mistake_deduction": None, "min_qualifying_marks": None, "admin_configurable": True}
+    if "telangana high court" in normalized_name:
+        profile_config["post_presets"] = [
+            {"id": "speed_30", "minimum_wpm": 30}, {"id": "speed_35", "minimum_wpm": 35},
+            {"id": "speed_40", "minimum_wpm": 40}, {"id": "speed_45", "minimum_wpm": 45},
+        ]
+        profile_config["category_limits"] = {"pass_percent": "admin_configurable"}
+    if "gujarat high court" in normalized_name:
+        profile_config["pass_rule"] = {"max_error_percent": 5, "admin_configurable_range": [5, 10]}
+    if "patna high court" in normalized_name:
+        profile_config["post_presets"] = [
+            {"id": "english", "language": "ENGLISH", "minimum_wpm": 40, "duration_seconds": 600},
+            {"id": "hindi", "language": "HINDI", "minimum_wpm": 30, "font": "Mangal", "layout": "Remington Gail", "duration_seconds": 600},
+        ]
+    if "punjab" in normalized_name and "haryana" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "english", "language": "ENGLISH", "minimum_wpm": 30, "duration_seconds": 600},
+            {"id": "notified_regional", "language": "NOTIFIED_REGIONAL", "minimum_wpm": 30, "duration_seconds": 600},
+        ]
+        profile_config["linked_skill_stages"] = {"spreadsheet": False, "office_test": False, "admin_configurable": True}
+    if "maharashtra state typing" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "english_qwerty", "language": "ENGLISH", "layout": "qwerty", "stroke_floor": 2000, "duration_seconds": 600},
+            {"id": "marathi_remington", "language": "MARATHI", "layout": "mangal_remington_gail", "stroke_floor": 1500, "duration_seconds": 600},
+            {"id": "hindi_inscript", "language": "HINDI", "layout": "mangal_inscript", "stroke_floor": 1500, "duration_seconds": 600},
+            {"id": "hindi_krutidev_055", "language": "HINDI", "layout": "krutidev_055", "stroke_floor": 1500, "duration_seconds": 600},
+            {"id": "hindi_krutidev_010", "language": "HINDI", "layout": "krutidev_010", "stroke_floor": 1500, "duration_seconds": 600},
+        ]
+    if "mp state typing" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "mpesb", "authority": "MPESB"}, {"id": "mphc", "authority": "MPHC"},
+            {"id": "spmcil_bnp", "authority": "SPMCIL/BNP"}, {"id": "mp_cpct", "authority": "MP-CPCT"},
+        ]
+    if "mp high court" in normalized_name and "hindi" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "mangal_remington_gail", "font_layout": "Mangal Remington Gail"},
+            {"id": "mangal_inscript", "font_layout": "Mangal Inscript"},
+            {"id": "krutidev_010", "font_layout": "Kruti Dev 010"},
+        ]
+    if "mp-cpct" in normalized_name or "cpct" in normalized_name:
+        profile_config["variants"] = [
+            {"id": "english", "language": "ENGLISH", "duration_seconds": 900, "minimum_wpm": 30,
+             "slabs": [{"min_wpm": 30, "max_wpm": 40, "percent": 50}, {"min_wpm": 41, "max_wpm": 50, "percent": 60}, {"min_wpm": 51, "max_wpm": 60, "percent": 70}, {"min_wpm": 61, "max_wpm": 80, "percent": 80}, {"min_wpm": 81, "percent": 100}]},
+            {"id": "hindi", "language": "HINDI", "duration_seconds": 900, "minimum_wpm": 20,
+             "slabs": [{"min_wpm": 20, "max_wpm": 25, "percent": 50}, {"min_wpm": 26, "max_wpm": 30, "percent": 60}, {"min_wpm": 31, "max_wpm": 40, "percent": 70}, {"min_wpm": 41, "max_wpm": 50, "percent": 80}, {"min_wpm": 51, "percent": 100}]},
+        ]
+        profile_config["evaluation_mode"] = "slab"
+        profile_config["pass_rule"] = {"min_slab_percent": 50}
+    profile_config["configurable_by_admin"] = True
+
     defaults = {
         "name": name,
         "category": category,
