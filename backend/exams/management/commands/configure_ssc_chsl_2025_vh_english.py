@@ -57,6 +57,7 @@ class Command(BaseCommand):
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
                 "minimum_strokes": 2625,
+                "scoring_duration_seconds": 900,
                 "strokes_per_word": 5,
                 "passage_word_range": {"minimum": 350, "maximum": 400},
                 "category_error_caps": {"PWD": 10, "OTHER_RESERVED": 10},
@@ -68,7 +69,7 @@ class Command(BaseCommand):
                     "/ total_reference_passage_words * 100"
                 ),
                 "gross_wpm_formula": "server_derived_keystrokes / 5 / 15_minutes",
-                "gross_kdph_formula": "server_derived_keystrokes * 60 / 900_seconds",
+                "gross_kdph_formula": "server_derived_keystrokes * 3600 / 900_seconds",
                 "compensatory_time_enabled": True,
                 "compensatory_duration_seconds": 900,
                 "base_duration_seconds": 600,
