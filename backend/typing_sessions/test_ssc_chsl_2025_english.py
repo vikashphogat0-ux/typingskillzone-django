@@ -48,6 +48,21 @@ class SSCCHSL2025EnglishScoringTests(SimpleTestCase):
         self.assertTrue(result["qualification"])
         self.assertEqual(result["qualification_status"], "PROVISIONAL_QUALIFIED")
 
+
+    def test_fifteen_minute_compensatory_attempt_scales_target_to_2625_strokes(self):
+        result = calculate_result(
+            reference=self.reference,
+            typed=self.reference,
+            duration_seconds=900,
+            reported_keystrokes=2625,
+            rules=chsl_rules(),
+        )
+        self.assertEqual(result["gross_wpm"], 35)
+        self.assertEqual(result["gross_kdph"], 10500)
+        self.assertEqual(result["required_keystrokes"], 2625)
+        self.assertTrue(result["required_keystrokes_met"])
+        self.assertTrue(result["qualification"])
+
     def test_error_percent_uses_total_reference_passage_words(self):
         typed_words = list(self.words)
         typed_words[:25] = [f"wrong{i}" for i in range(25)]
