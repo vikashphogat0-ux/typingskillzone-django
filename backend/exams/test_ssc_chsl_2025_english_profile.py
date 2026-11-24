@@ -29,7 +29,7 @@ class SSCCHSL2025EnglishProfileTests(TestCase):
         self.assertEqual(exam.scoring_rules["category_error_caps"]["UR"], 7)
         self.assertEqual(exam.scoring_rules["category_error_caps"]["SC"], 10)
         self.assertEqual(exam.scoring_rules["compensatory_duration_seconds"], 900)
-        self.assertEqual(exam.verification_status, ExamConfiguration.Verification.PARTIAL)
+        self.assertEqual(exam.verification_status, ExamConfiguration.Verification.VERIFIED)
 
         # A sibling CHSL language/layout profile must remain untouched.
         self.assertIsNone(other.duration_seconds)
