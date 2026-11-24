@@ -367,14 +367,16 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             reference_word_count = len(re.findall(r"\\S+", reference))
             error_percent = round(weighted_mistakes * 100 / max(1, reference_word_count), 2)
             gross_strokes = max(0, int(stroke_count_for_speed or 0))
-            gross_wpm = round(gross_strokes / 5 / minutes, 2)
-            gross_kdph = round(gross_strokes * 60 / minutes, 2)
+            scoring_duration = max(1, int(scoring_rules.get("scoring_duration_seconds", 600)))
+            scoring_minutes = scoring_duration / 60
+            gross_wpm = round(gross_strokes / 5 / scoring_minutes, 2)
+            gross_kdph = round(gross_strokes * 60 / scoring_duration, 2)
             net_wpm = gross_wpm
             candidate_category = "PWD"
             error_cap = float(scoring_rules.get("category_error_caps", {}).get("PWD", 10))
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
             minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
-            minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
+            minimum_strokes = int(scoring_rules.get("minimum_strokes", 1750))
             required_keystrokes = minimum_strokes
             speed_met = gross_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
