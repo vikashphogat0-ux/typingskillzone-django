@@ -580,6 +580,42 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 f"{gross_strokes}/{minimum_strokes} keystrokes."
             )
             score = None
+        elif formula in {"SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"}:
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
+            # Hindi typewriting has no capitalization distinction; count spelling/spacing/punctuation/transposition per SSC evaluation categories.
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"
+            ))
+            weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
+            error_count = weighted_mistakes
+            count_word_errors = True
+            reference_word_count = len(re.findall(r"\S+", reference))
+            error_percent = round(weighted_mistakes * 100 / max(1, reference_word_count), 2)
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            scoring_duration = max(1, int(duration))
+            scoring_minutes = scoring_duration / 60
+            gross_wpm = round(gross_strokes / 5 / scoring_minutes, 2)
+            gross_kdph = round(gross_strokes * 3600 / scoring_duration, 2)
+            net_wpm = gross_wpm
+            candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
+            caps = scoring_rules.get("category_error_caps") or {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10}
+            error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            minimum_wpm = float(scoring_rules.get("minimum_wpm", 30))
+            minimum_kdph = float(scoring_rules.get("minimum_kdph", 9000))
+            minimum_strokes = int((minimum_kdph * scoring_duration + 3599) // 3600)
+            required_keystrokes = minimum_strokes
+            speed_met = gross_wpm >= minimum_wpm
+            stroke_floor_met = gross_strokes >= minimum_strokes
+            required_keystrokes_met = stroke_floor_met
+            error_cap_met = error_percent <= error_cap
+            qualification = bool(speed_met and stroke_floor_met and error_cap_met)
+            qualification_note = (
+                f"{'QUALIFIED' if qualification else 'NOT QUALIFIED'} — CHSL Hindi: {gross_wpm:.2f} WPM / {gross_kdph:.0f} KDPH; "
+                f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%); {gross_strokes}/{minimum_strokes} strokes."
+            )
+            score = None
+
         elif formula == "DELHI_POLICE_MODEL_D":
             # Rulebook Model D: speed-graded merit marks (0-25) with a 5% weighted
             # mistake cap. The supplied rulebook does not publish mark conversion
@@ -693,7 +729,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     error_denominator = (
         len(re.findall(r"\S+", reference))
-        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"}
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"}
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
@@ -803,10 +839,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph,
         "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
-        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_DPA_GRADE_A"} else None,
-        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_DPA_GRADE_A"} else None,
+        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
+        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "reference_word_count": reference_word_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
-        "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"} else None,
+        "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
