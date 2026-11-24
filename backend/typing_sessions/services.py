@@ -66,7 +66,7 @@ def start_session(*, learner, publication):
 
 
 @transaction.atomic
-def activate_session(*, session_id, learner):
+def activate_session(*, session_id, learner, compensatory_time=False):
     """Start the server-owned exam clock on the learner's first input."""
     _require_active_student(learner)
     session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
@@ -76,10 +76,28 @@ def activate_session(*, session_id, learner):
         now = timezone.now()
         if session.deadline_at is None:
             session.started_at = now
+            scoring_rules = session.rules_snapshot.get("scoring_rules") or {}
+            compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
+            applied_compensatory = bool(
+                compensatory_time
+                and scoring_rules.get("compensatory_time_enabled")
+                and compensatory_seconds
+            )
+            if applied_compensatory:
+                session.duration_seconds = int(compensatory_seconds)
             if session.duration_seconds:
                 session.deadline_at = now + timedelta(seconds=session.duration_seconds)
-        session.rules_snapshot = {**session.rules_snapshot, "timer_started": True}
-        session.save(update_fields=("started_at", "deadline_at", "rules_snapshot"))
+        session.rules_snapshot = {
+            **session.rules_snapshot,
+            "timer_started": True,
+            "compensatory_time_applied": bool(
+                compensatory_time
+                and session.duration_seconds == int(
+                    (session.rules_snapshot.get("scoring_rules") or {}).get("compensatory_duration_seconds") or 0
+                )
+            ),
+        }
+        session.save(update_fields=("started_at", "deadline_at", "duration_seconds", "rules_snapshot"))
     return session
 
 
