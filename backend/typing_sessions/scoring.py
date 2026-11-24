@@ -323,6 +323,50 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "CUSTOM":
         formula = scoring_rules.get("formula")
 
+        if formula == "DELHI_POLICE_HCM_2025":
+            categories = mistake_analysis["categories"]
+            # SSC Notice 2025, para 24.2: one word is deducted per mistake.
+            # The listed error types are charged as whole mistakes, not half mistakes.
+            full_mistakes = sum(categories.get(key, 0) for key in (
+                "omission", "substitution", "addition", "capitalization",
+                "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks"
+            )) + (2 * categories.get("transposition", 0))
+            half_mistakes = 0
+            error_count = full_mistakes
+            count_word_errors = True
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_words = gross_strokes / 5
+            gross_wpm = gross_words / minutes
+            net_wpm = max(0, gross_wpm - (error_count / minutes))
+            # Whole-WPM bands are applied by flooring the calculated speed.
+            band_speed = int(net_wpm)
+            language = str(rules.get("language") or rules.get("language_code") or "").upper()
+            minimum_wpm = float(scoring_rules.get("minimum_wpm", 25 if language in {"HINDI", "HI"} else 30))
+            default_bands = (
+                [{"minimum_wpm": 45, "marks": 25}, {"minimum_wpm": 41, "marks": 21},
+                 {"minimum_wpm": 36, "marks": 18}, {"minimum_wpm": 31, "marks": 15},
+                 {"minimum_wpm": 26, "marks": 12}, {"minimum_wpm": 25, "marks": 10}]
+                if minimum_wpm == 25 else
+                [{"minimum_wpm": 51, "marks": 25}, {"minimum_wpm": 46, "marks": 21},
+                 {"minimum_wpm": 41, "marks": 18}, {"minimum_wpm": 36, "marks": 15},
+                 {"minimum_wpm": 31, "marks": 12}, {"minimum_wpm": 30, "marks": 10}]
+            )
+            score = 0
+            for band in scoring_rules.get("marks_bands") or default_bands:
+                try:
+                    if band_speed >= int(band["minimum_wpm"]):
+                        score = max(score, float(band["marks"]))
+                except (TypeError, ValueError, KeyError):
+                    continue
+            qualification = net_wpm >= minimum_wpm
+            if not qualification:
+                score = 0
+            score_note = (
+                f"Delhi Police HCM 2025: {gross_strokes} strokes / 5 = {gross_words:.2f} words; "
+                f"tentative speed {gross_wpm:.2f} WPM; {error_count} mistakes deducted; "
+                f"actual speed {net_wpm:.2f} WPM; marks {score:g}/25."
+            )
+            error_percent = None
         if formula == "RRB_CBTST_5_PERCENT":
             categories = mistake_analysis["categories"]
             full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
@@ -644,6 +688,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_HCM_2025":
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A":
         qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     elif scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
