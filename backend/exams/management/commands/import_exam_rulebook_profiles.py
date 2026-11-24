@@ -1,7 +1,7 @@
 """Import rulebook entries as inactive, source-preserving draft exam profiles.
 
-The importer deliberately does not translate prose into executable scoring or
-qualification logic. Admin review is required before activation.
+Only literal, unambiguous source statements are mapped to structured fields.
+Ambiguous, typical, cycle-dependent, or conditional rules remain unresolved.
 """
 import json
 import re
@@ -20,25 +20,62 @@ def _source_lines(profile, prefix):
 
 def _first_duration_seconds(lines):
     for line in lines:
-        match = re.search(r"(\d+)\s*minutes?", line, re.IGNORECASE)
+        match = re.search(r"(\\d+)\\s*minutes?", line, re.IGNORECASE)
         if match:
             return int(match.group(1)) * 60
     return None
 
 
+def _explicit_number(pattern, text, cast=int):
+    match = re.search(pattern, text, re.IGNORECASE)
+    return cast(match.group(1)) if match else None
+
+
 def _backspace_policy(lines):
     text = " ".join(lines).lower()
-    if re.search(r"backspace\s+(?:is\s+)?disabled", text):
+    if re.search(r"backspace\\s+(?:is\\s+)?disabled", text):
         return ExamConfiguration.BackspacePolicy.DISABLED
-    if re.search(r"backspace\s+is\s+allowed", text):
+    if re.search(r"backspace\\s+is\\s+allowed", text):
         return ExamConfiguration.BackspacePolicy.FULL
     if "backspace behavior depends" in text or "backspace behaviour depends" in text:
         return ExamConfiguration.BackspacePolicy.NOT_SPECIFIED
     return ExamConfiguration.BackspacePolicy.NOT_SPECIFIED
 
 
+def _explicit_interaction_defaults(text):
+    """Return only interaction settings directly stated in source wording."""
+    values = {}
+    lower = text.lower()
+    if re.search(r"copy\\s*/\\s* paste.*disabled|copy/paste disabled|copy and paste.*disabled", lower):
+        values.update(allow_copy=False, allow_paste=False)
+    elif re.search(r"copy\\s*/\\s* paste.*allowed|copy/paste allowed|copy and paste.*allowed", lower):
+        values.update(allow_copy=True, allow_paste=True)
+    if re.search(r"delete key.*disabled|deletion.*disabled", lower):
+        values["allow_delete"] = False
+    elif re.search(r"delete key.*allowed|deletion.*allowed", lower):
+        values["allow_delete"] = True
+    if re.search(r"arrow keys?.*disabled|arrow navigation.*disabled", lower):
+        values["allow_arrow_navigation"] = False
+    elif re.search(r"arrow keys?.*allowed|arrow navigation.*allowed", lower):
+        values["allow_arrow_navigation"] = True
+    return values
+
+
+def _explicit_keyboard_layout(name, text):
+    combined = (name + " " + text).lower()
+    if "kruti dev 010" in combined or "krutidev 010" in combined:
+        return "Kruti Dev 010 Remington"
+    if "remington gail" in combined or "mangal-gail" in combined or "mangal gail" in combined:
+        return "Remington Gail"
+    if "inscript" in combined:
+        return "Inscript"
+    if "qwerty" in combined:
+        return "QWERTY"
+    return ""
+
+
 def build_draft_defaults(profile):
-    """Extract only safe identity/timing/input hints; preserve all rule prose."""
+    """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
     lines = profile.get("source_text") or []
     all_text = " ".join(lines)
@@ -54,7 +91,23 @@ def build_draft_defaults(profile):
     if duration is None:
         duration = _first_duration_seconds(lines)
 
-    # Store source wording verbatim. It is intentionally not executable.
+    interaction_lines = _source_lines(profile, "Interface, Passage & Keyboard Rules:")
+    interaction_text = " ".join(interaction_lines)
+    backspace = _backspace_policy(interaction_lines)
+    keyboard_layout = _explicit_keyboard_layout(name, interaction_text)
+
+    # Extract a speed only when the source gives one single explicit WPM value.
+    wpm_values = set(re.findall(r"(\\d+(?:\\.\\d+)?)\\s*WPM", " ".join(_source_lines(profile, "Duration & Target:")), re.IGNORECASE))
+    minimum_wpm = float(next(iter(wpm_values))) if len(wpm_values) == 1 else None
+    required_keystrokes = _explicit_number(r"(\\d[\\d,]*)\\s*key\\s*depressions", " ".join(_source_lines(profile, "Duration & Target:")))
+    if required_keystrokes is not None:
+        required_keystrokes = int(str(required_keystrokes).replace(",", ""))
+
+    is_tcs = "tcs ion" in interaction_text.lower() or "tcs-style" in interaction_text.lower()
+    passage_layout = ExamConfiguration.PassageLayout.TCS if is_tcs else ExamConfiguration.PassageLayout.UNCONFIGURED
+    passage_format = ExamConfiguration.PassageFormat.TCS if is_tcs else ExamConfiguration.PassageFormat.CUSTOM
+    source_mode = ExamConfiguration.PassageSourceMode.SCREEN if is_tcs else ExamConfiguration.PassageSourceMode.UNSPECIFIED
+
     scoring_source = [line for line in lines if "Formula:" in line or "Formula" in line or line.startswith('"')]
     qualification_source = [
         line for line in lines
@@ -62,44 +115,38 @@ def build_draft_defaults(profile):
         or line.startswith("WPM & Error Formula") or line.startswith("Marks")
         or line.startswith("Accuracy %") or line.startswith("(Where a ")
     ]
-    interaction_source = _source_lines(profile, "Interface, Passage & Keyboard Rules:")
 
-    return {
+    defaults = {
         "name": name,
         "category": category,
         "language": language,
         "script": script,
         "interface_type": interface,
         "duration_seconds": duration,
-        "backspace_policy": _backspace_policy(interaction_source),
-        "allow_backspace": _backspace_policy(interaction_source) != ExamConfiguration.BackspacePolicy.DISABLED,
-        "passage_source_mode": ExamConfiguration.PassageSourceMode.UNSPECIFIED,
-        "passage_layout": ExamConfiguration.PassageLayout.UNCONFIGURED,
-        "passage_format": ExamConfiguration.PassageFormat.CUSTOM,
+        "minimum_wpm": minimum_wpm,
+        "required_keystrokes": required_keystrokes,
+        "keyboard_layout": keyboard_layout,
+        "backspace_policy": backspace,
+        "allow_backspace": backspace != ExamConfiguration.BackspacePolicy.DISABLED,
+        "passage_source_mode": source_mode,
+        "passage_layout": passage_layout,
+        "passage_format": passage_format,
         "scoring_mode": ExamConfiguration.ScoringMode.GENERIC,
-        "error_rules": {
-            "source_text": lines,
-            "executable": False,
-        },
-        "scoring_rules": {
-            "source_formula_text": scoring_source,
-            "executable": False,
-        },
-        "qualification_rules": {
-            "source_criteria_text": qualification_source,
-            "executable": False,
-        },
+        "error_rules": {"source_text": lines, "executable": False},
+        "scoring_rules": {"source_formula_text": scoring_source, "executable": False},
+        "qualification_rules": {"source_criteria_text": qualification_source, "executable": False},
         "verification_status": ExamConfiguration.Verification.UNVERIFIED,
         "source_title": "Master Exam Rulebook — source-preserved draft",
         "rule_notes": (
             "Imported from source profile " + str(profile.get("number")) + " / "
-            + str(profile.get("profile_id")) + ". Source text is preserved in error_rules, "
-            "scoring_rules and qualification_rules. These values are NOT executable rules. "
-            "Review notification-dependent wording, conflicts, and exact scoring before activation.\n\n"
+            + str(profile.get("profile_id")) + ". Extracted values are source hints only; "
+            "scoring, error classification and qualification remain non-executable until reviewed.\n\n"
             + "\n".join(lines)
         ),
         "is_active": False,
     }
+    defaults.update(_explicit_interaction_defaults(interaction_text))
+    return defaults
 
 
 class Command(BaseCommand):
@@ -130,12 +177,9 @@ class Command(BaseCommand):
 
         created = preserved = 0
         for profile in profiles:
-            profile_id = profile["profile_id"]
-            defaults = build_draft_defaults(profile)
-            # The stable profile_id is the unique code. Existing rows are never overwritten.
+            code = slugify(profile["profile_id"])[:180]
             _, was_created = ExamConfiguration.objects.get_or_create(
-                code=slugify(profile_id)[:180],
-                defaults={"code": slugify(profile_id)[:180], **defaults},
+                code=code, defaults={"code": code, **build_draft_defaults(profile)}
             )
             created += int(was_created)
             preserved += int(not was_created)
@@ -145,6 +189,5 @@ class Command(BaseCommand):
             f"{preserved} existing profiles preserved; {len(profiles)} source entries processed."
         ))
         self.stdout.write(self.style.WARNING(
-            "Imported drafts are inactive and use non-executable source text. "
-            "Do not activate until each profile has been reviewed and mapped to its exact exam rules."
+            "Imported drafts remain inactive. Extracted hints are not official verification or executable scoring."
         ))
