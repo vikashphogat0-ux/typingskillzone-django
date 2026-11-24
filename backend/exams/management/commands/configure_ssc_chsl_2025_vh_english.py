@@ -102,7 +102,7 @@ class Command(BaseCommand):
                 "This internal verification is based on the user's explicit confirmation, "
                 "not a claim that every interface detail is independently prescribed by "
                 "SSC. Profile: 15-minute total duration (10-minute base plus 5-minute "
-                "compensatory extension), 35 WPM / 10,500 KDPH / 2,625 keystrokes, "
+                "compensatory extension), 35 WPM / 10,500 KDPH / 1,750 keystrokes scored against the 10-minute base, "
                 "350–400-word English passage, unrestricted Backspace, full mistakes "
                 "weighted 1.0, half mistakes weighted 0.5, denominator equal to total "
                 "reference passage words, 10% error ceiling, and qualifying-only result. "
