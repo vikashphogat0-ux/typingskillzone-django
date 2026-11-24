@@ -818,7 +818,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         rules.get("verification_status") != "VERIFIED"
         and not (
             scoring_mode == "CUSTOM"
-            and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A", "DELHI_POLICE_HCM_2025"}
+            and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A", "DELHI_POLICE_HCM_2025"}
         )
     ):
         qualification = None
@@ -849,7 +849,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
                 "stroke_count_for_speed": stroke_count_for_speed,
-        "gross_strokes": stroke_count_for_speed if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_HCM_2025", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
+        "gross_strokes": stroke_count_for_speed if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"DELHI_POLICE_HCM_2025", "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
         "stroke_count_source": stroke_count_source,
         "tentative_wpm": tentative_wpm,
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
@@ -881,7 +881,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph,
-        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
         "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "reference_word_count": reference_word_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
