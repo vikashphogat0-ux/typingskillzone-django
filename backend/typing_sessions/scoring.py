@@ -635,10 +635,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
-        "score": score, "correct_words": correct_words, "word_errors": word_errors,\n        "keystrokes": stroke_count_for_speed,
+        "score": score, "correct_words": correct_words, "word_errors": word_errors,
+        "keystrokes": stroke_count_for_speed,
     }
     qualification_status = "PENDING"
-    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A":
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
+    elif scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
         qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     configured_qualification = rules.get("qualification_rules") or {}
     qualification_uses_partial = bool(configured_qualification.get("allow_partial_verification")) if isinstance(configured_qualification, dict) else False
@@ -658,7 +661,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         rules.get("verification_status") != "VERIFIED"
         and not (
             scoring_mode == "CUSTOM"
-            and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH"
+            and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"}
         )
     ):
         qualification = None
@@ -711,7 +714,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if mistake_analysis is not None
             else None
 ),
-        "error_count_method": "word" if count_word_errors else "character",
+        "error_count_method": "full_half_weighted" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else ("word" if count_word_errors else "character"),
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
