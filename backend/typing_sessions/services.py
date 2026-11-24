@@ -150,6 +150,11 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
         session.rules_snapshot = {**session.rules_snapshot, "timer_started": True}
         session.save(update_fields=("started_at", "deadline_at", "rules_snapshot"))
     expired = bool(session.deadline_at and now >= session.deadline_at)
+    if (
+        (session.rules_snapshot.get("scoring_rules") or {}).get("formula") == "SSC_DPA_GRADE_A"
+        and not expired
+    ):
+        raise ValidationError("SSC DPA Grade-A submissions are accepted only when the evaluated test timer expires.")
     effective_end = min(now, session.deadline_at) if session.deadline_at else now
     elapsed = max(1, int((effective_end - session.started_at).total_seconds()))
     if session.duration_seconds:
