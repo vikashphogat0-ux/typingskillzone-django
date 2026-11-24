@@ -44,7 +44,8 @@
       <input type="hidden" id="policy-events" name="policy_events" value="0">
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
       <label for="candidate-category">Candidate category for the configured error ceiling</label>
-      <select id="candidate-category" name="candidate_category">
+      <input type="hidden" id="candidate-category-value" name="candidate_category" value="UR">
+      <select id="candidate-category">
         <option value="UR">UR — 5%</option>
         <option value="OBC">OBC — 7%</option>
         <option value="EWS">EWS — 7%</option>
@@ -94,6 +95,12 @@
   let clockOffset = clock.server_now_ms - Date.now();
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
+  const categorySelect = document.getElementById("candidate-category");
+  const categoryValue = document.getElementById("candidate-category-value");
+  if (categorySelect && categoryValue) {
+    categoryValue.value = categorySelect.value;
+    categorySelect.addEventListener("change", () => { categoryValue.value = categorySelect.value; });
+  }
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
@@ -356,6 +363,7 @@
   }
   input.addEventListener("input",() => {
     if (phase === "exam") {
+      if (categorySelect) categorySelect.disabled = true;
       if (!startedAt) startedAt = Date.now();
       ensureTimerStarted();
     }
