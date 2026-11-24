@@ -114,3 +114,50 @@ class SSCCHSL2025ScoringTests(SimpleTestCase):
         self.assertFalse(ur["qualification"])
         self.assertEqual(reserved["error_percent"], 7.14)
         self.assertTrue(reserved["qualification"])
+
+    def test_chsl_hindi_uses_30_wpm_9000_kdph_and_no_capitalization_half_errors(self):
+        reference = "राम " * 375
+        result = calculate_result(
+            reference=reference,
+            typed=reference,
+            duration_seconds=600,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "verification_status": "VERIFIED",
+                "candidate_category": "UR",
+                "scoring_rules": {
+                    "formula": "SSC_CHSL_2025_HINDI_MANGAL",
+                    "minimum_wpm": 30,
+                    "minimum_kdph": 9000,
+                    "category_error_caps": {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+                },
+            },
+        )
+        self.assertEqual(result["gross_wpm"], 30)
+        self.assertEqual(result["gross_kdph"], 9000)
+        self.assertEqual(result["required_keystrokes"], 1500)
+        self.assertEqual(result["half_mistakes"], 0)
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+
+    def test_chsl_hindi_uses_category_error_cutoff(self):
+        reference = "राम " * 375
+        typed = ("श्याम " * 30) + ("राम " * 345)
+        result = calculate_result(
+            reference=reference,
+            typed=typed,
+            duration_seconds=600,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "verification_status": "VERIFIED",
+                "candidate_category": "UR",
+                "scoring_rules": {
+                    "formula": "SSC_CHSL_2025_HINDI_KRUTIDEV",
+                    "minimum_wpm": 30,
+                    "minimum_kdph": 9000,
+                    "category_error_caps": {"UR": 7, "OBC": 10},
+                },
+            },
+        )
+        self.assertFalse(result["qualification"])
+        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
