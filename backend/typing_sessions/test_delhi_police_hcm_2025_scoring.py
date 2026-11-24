@@ -6,12 +6,9 @@ from typing_sessions.scoring import calculate_result
 class DelhiPoliceHCM2025ScoringTests(SimpleTestCase):
     def _result(self, *, words, minimum_wpm=30, language="ENGLISH", mistakes=0):
         # A controlled passage makes each detected mismatch deterministic.
-        reference_words = [f"word{i}" for i in range(words)]
-        typed_words = list(reference_words)
-        for index in range(mistakes):
-            typed_words[index] = f"wrong{index}"
-        reference = " ".join(reference_words)
-        typed = " ".join(typed_words)
+        # SSC calculation uses total strokes / 5, not whitespace token count.
+        reference = "a" * (words * 5)
+        typed = ("b" * mistakes) + reference[mistakes:]
         return calculate_result(
             reference=reference,
             typed=typed,
