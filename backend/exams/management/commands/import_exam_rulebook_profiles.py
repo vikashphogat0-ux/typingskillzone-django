@@ -448,8 +448,7 @@ def build_draft_defaults(profile):
         "source_checked_at": __import__("datetime").date(2026, 11, 25),
         "rule_notes": (
             "Imported from source profile " + str(profile.get("number")) + " / "
-            + str(profile.get("profile_id")) + ". Extracted values are source hints only; "
-            "scoring, error classification and qualification remain non-executable until reviewed.\n\n"
+            + str(profile.get("profile_id")) + ". Rulebook source text is retained verbatim. Structured scoring is executable only where a matching engine formula is implemented; other profile rules remain admin-configurable.\n\n"
             + "\n".join(lines)
         ),
         "is_active": True,
@@ -492,7 +491,10 @@ class Command(BaseCommand):
             exam, was_created = ExamConfiguration.objects.get_or_create(code=code, defaults=defaults)
             if was_created:
                 created += 1
-            elif options["refresh_existing_drafts"] and exam.source_title.startswith("Internal rule profile: Master Exam Rulebook"):
+            elif options["refresh_existing_drafts"] and (
+                exam.source_title.startswith("Internal rule profile: Master Exam Rulebook")
+                or (not exam.is_active and exam.source_title == "Master Exam Rulebook — source-preserved draft")
+            ):
                 for field, value in defaults.items():
                     setattr(exam, field, value)
                 exam.save()
