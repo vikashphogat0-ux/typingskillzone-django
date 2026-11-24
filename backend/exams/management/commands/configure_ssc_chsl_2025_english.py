@@ -31,7 +31,7 @@ class Command(BaseCommand):
             "minimum_wpm": 35,
             "required_keystrokes": 1750,
             "strokes_per_word": 5,
-            "error_allowance_percent": 7,
+            "error_allowance_percent": 10,
             "allow_backspace": True,
             "backspace_policy": ExamConfiguration.BackspacePolicy.FULL,
             "allow_paste": False,
