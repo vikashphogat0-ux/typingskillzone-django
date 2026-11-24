@@ -29,7 +29,7 @@ class Command(BaseCommand):
             "passage_source_mode": ExamConfiguration.PassageSourceMode.SCREEN,
             "keyboard_layout": "English QWERTY",
             "minimum_wpm": 35,
-            "required_keystrokes": 2625,
+            "required_keystrokes": 1750,
             "strokes_per_word": 5,
             "error_allowance_percent": 10,
             "allow_backspace": True,
@@ -56,7 +56,7 @@ class Command(BaseCommand):
                 "profile_variant": "VH_CATEGORY_ENGLISH",
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
-                "minimum_strokes": 2625,
+                "minimum_strokes": 1750,
                 "strokes_per_word": 5,
                 "passage_word_range": {"minimum": 350, "maximum": 400},
                 "category_error_caps": {"PWD": 10, "OTHER_RESERVED": 10},
@@ -85,7 +85,7 @@ class Command(BaseCommand):
             "qualification_rules": {
                 "mode": "QUALIFYING_ONLY",
                 "minimum_wpm": 35,
-                "minimum_keystrokes": 2625,
+                "minimum_keystrokes": 1750,
                 "maximum_error_percent": 10,
                 "all": [
                     {"metric": "gross_wpm", "operator": "gte", "value": 35},
