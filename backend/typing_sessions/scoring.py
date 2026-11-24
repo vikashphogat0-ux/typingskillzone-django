@@ -289,6 +289,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 "word_spacing", "paragraph_breaks"
             ))
             weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
+            error_count = weighted_mistakes
+            count_word_errors = True
             reference_word_count = len(re.findall(r"\S+", reference))
             error_percent = round(
                 weighted_mistakes * 100 / max(1, reference_word_count), 2
