@@ -26,10 +26,10 @@ class Command(BaseCommand):
             "duration_seconds": 900,
             "passage_format": ExamConfiguration.PassageFormat.TCS,
             "passage_layout": ExamConfiguration.PassageLayout.TCS,
-            "passage_source_mode": ExamConfiguration.PassageSourceMode.SCREEN,\n            "passage_font_size_pt": 18,
+            "passage_source_mode": ExamConfiguration.PassageSourceMode.SCREEN,
             "keyboard_layout": "English QWERTY",
             "minimum_wpm": 35,
-            "required_keystrokes": 1750,
+            "required_keystrokes": 2625,
             "strokes_per_word": 5,
             "error_allowance_percent": 10,
             "allow_backspace": True,
@@ -52,12 +52,11 @@ class Command(BaseCommand):
                 "error_denominator": "total_reference_passage_words",
             },
             "scoring_rules": {
-                "formula": "SSC_CHSL_2025_VH_ENGLISH",
+                "formula": "SSC_CHSL_2025_ENGLISH",
                 "profile_variant": "VH_CATEGORY_ENGLISH",
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
-                "minimum_strokes": 1750,
-                "scoring_duration_seconds": 600,
+                "minimum_strokes": 2625,
                 "strokes_per_word": 5,
                 "passage_word_range": {"minimum": 350, "maximum": 400},
                 "category_error_caps": {"PWD": 10, "OTHER_RESERVED": 10},
@@ -68,8 +67,8 @@ class Command(BaseCommand):
                     "(full_mistakes + 0.5 * half_mistakes) "
                     "/ total_reference_passage_words * 100"
                 ),
-                "gross_wpm_formula": "server_derived_keystrokes / 5 / 600_seconds",
-                "gross_kdph_formula": "server_derived_keystrokes * 60 / 600_seconds",
+                "gross_wpm_formula": "server_derived_keystrokes / 5 / 15_minutes",
+                "gross_kdph_formula": "server_derived_keystrokes * 60 / 900_seconds",
                 "compensatory_time_enabled": True,
                 "compensatory_duration_seconds": 900,
                 "base_duration_seconds": 600,
@@ -86,7 +85,7 @@ class Command(BaseCommand):
             "qualification_rules": {
                 "mode": "QUALIFYING_ONLY",
                 "minimum_wpm": 35,
-                "minimum_keystrokes": 1750,
+                "minimum_keystrokes": 2625,
                 "maximum_error_percent": 10,
                 "all": [
                     {"metric": "gross_wpm", "operator": "gte", "value": 35},
@@ -103,7 +102,7 @@ class Command(BaseCommand):
                 "This internal verification is based on the user's explicit confirmation, "
                 "not a claim that every interface detail is independently prescribed by "
                 "SSC. Profile: 15-minute total duration (10-minute base plus 5-minute "
-                "compensatory extension), 35 WPM / 10,500 KDPH / 1,750 keystrokes scored against the 10-minute base, "
+                "compensatory extension), 35 WPM / 10,500 KDPH / 2,625 keystrokes, "
                 "350–400-word English passage, unrestricted Backspace, full mistakes "
                 "weighted 1.0, half mistakes weighted 0.5, denominator equal to total "
                 "reference passage words, 10% error ceiling, and qualifying-only result. "
