@@ -46,9 +46,9 @@ def _explicit_interaction_defaults(text):
     """Return only interaction settings directly stated in source wording."""
     values = {}
     lower = text.lower()
-    if re.search(r"copy\s*/\s* paste.*disabled|copy/paste disabled|copy and paste.*disabled", lower):
+    if re.search(r"copy\\s*/\\s*paste.*disabled|copy/paste disabled|copy and paste.*disabled", lower):
         values.update(allow_copy=False, allow_paste=False)
-    elif re.search(r"copy\s*/\s* paste.*allowed|copy/paste allowed|copy and paste.*allowed", lower):
+    elif re.search(r"copy\\s*/\\s*paste.*allowed|copy/paste allowed|copy and paste.*allowed", lower):
         values.update(allow_copy=True, allow_paste=True)
     if re.search(r"delete key.*disabled|deletion.*disabled", lower):
         values["allow_delete"] = False
@@ -58,8 +58,19 @@ def _explicit_interaction_defaults(text):
         values["allow_arrow_navigation"] = False
     elif re.search(r"arrow keys?.*allowed|arrow navigation.*allowed", lower):
         values["allow_arrow_navigation"] = True
+    if re.search(r"enter\\s+(?:key\\s+)?(?:inserts?|creates?)\\s+(?:a\\s+)?new\\s+line", lower):
+        values["enter_behavior"] = ExamConfiguration.EnterBehavior.NEW_LINE
+    if re.search(r"(?:normal\\s+)?spacebar", lower):
+        values["space_behavior"] = ExamConfiguration.SpaceBehavior.NORMAL
+    tab_match = re.search(r"tab\\s+inserts?\\s+(\\d+)\\s+spaces?", lower)
+    if tab_match:
+        values["tab_behavior"] = ExamConfiguration.TabBehavior.INSERT_SPACES
+        values["passage_tab_size"] = int(tab_match.group(1))
+    if "paragraph-based passage" in lower or "paragraph based passage" in lower:
+        values["passage_layout"] = ExamConfiguration.PassageLayout.PARAGRAPHS
+    if "on-screen" in lower or "on screen" in lower:
+        values["passage_source_mode"] = ExamConfiguration.PassageSourceMode.SCREEN
     return values
-
 
 def _explicit_keyboard_layout(name, text):
     combined = (name + " " + text).lower()
@@ -77,11 +88,15 @@ def _explicit_keyboard_layout(name, text):
 
 def _rrb_scoring_candidate(lines):
     text = " ".join(lines).lower()
-    if (
+    allowance_is_five_percent = bool(
         re.search(r"(?:5%|0\\.05)\\s*(?:of|×|\\*)?\\s*(?:(?:the )?(?:total )?words? typed|typed words)", text)
-        and re.search(r"(?:10|ten)[- ]words?[- ]per[- ](?:excess[- ])?mistake|(?:10|ten) words? (?:per|for each) (?:excess|remaining)?\\s*mistake|10\\s*words?\\s*(?:deducted|penalty)", text)
-        and "full" in text and "half" in text
-    ):
+        or re.search(r"(?:ignored|forgiven|allowance).{0,60}5\\s*%", text)
+    )
+    ten_word_penalty = bool(
+        re.search(r"(?:10|ten)[- ]words?[- ]per[- ](?:excess[- ])?mistake|(?:10|ten) words? (?:per|for each) (?:excess|remaining)?\\s*mistake|10\\s*words?\\s*(?:deducted|penalty)", text)
+        or re.search(r"(?:mistakes?|errors?).{0,100}(?:×|\\*)\\s*10|(?:×|\\*)\\s*10.{0,100}(?:mistakes?|errors?)", text)
+    )
+    if allowance_is_five_percent and ten_word_penalty and "full" in text and "half" in text:
         return {
             "candidate_formula": "RRB_CBTST_5_PERCENT",
             "mistake_allowance_percent": 5,
@@ -90,7 +105,6 @@ def _rrb_scoring_candidate(lines):
             "source_formula_text": [line for line in lines if "Formula" in line or "mistake" in line.lower()],
         }
     return None
-
 
 def _delhi_police_hcm_scoring_candidate(name):
     normalized = (name or "").lower()
@@ -254,8 +268,10 @@ def build_draft_defaults(profile):
     keyboard_layout = _explicit_keyboard_layout(name, interaction_text)
 
     # Extract a speed only when the source gives one single explicit WPM value.
-    wpm_values = set(re.findall(r"(\d+(?:\.\d+)?)\s*WPM", " ".join(_source_lines(profile, "Duration & Target:")), re.IGNORECASE))
-    minimum_wpm = float(next(iter(wpm_values))) if len(wpm_values) == 1 else None
+    duration_target_text = " ".join(_source_lines(profile, "Duration & Target:"))
+    has_wpm_range = re.search(r"\\d+(?:\\.\\d+)?\\s*(?:-|–|—|to)\\s*\\d+(?:\\.\\d+)?\\s*WPM", duration_target_text, re.IGNORECASE)
+    wpm_values = set(re.findall(r"(\\d+(?:\\.\\d+)?)\\s*WPM", duration_target_text, re.IGNORECASE))
+    minimum_wpm = float(next(iter(wpm_values))) if len(wpm_values) == 1 and not has_wpm_range else None
     required_keystrokes = _explicit_number(r"(\d[\d,]*)\s*key\s*depressions", " ".join(_source_lines(profile, "Duration & Target:")), cast=lambda value: int(value.replace(",", "")))
     if required_keystrokes is not None:
         required_keystrokes = int(str(required_keystrokes).replace(",", ""))
