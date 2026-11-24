@@ -281,7 +281,76 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "CUSTOM":
         formula = scoring_rules.get("formula")
 
-        if formula == "DELHI_POLICE_MODEL_D":
+        # Rulebook-wide scoring models. Each profile supplies its own thresholds,
+        # duration, stroke floor, and optional merit conversion in scoring_rules.
+        if formula in {"MODEL_A", "MODEL_B", "MODEL_C1", "MODEL_C2", "MODEL_D"}:
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in (
+                "omission", "substitution", "addition"
+            ))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing",
+                "word_spacing", "paragraph_breaks", "transposition"
+            ))
+            error_count = full_mistakes + half_mistakes / 2
+            count_word_errors = True
+            reference_word_count = len(re.findall(r"\\S+", reference))
+            gross_strokes = len(typed)
+            gross_words_from_strokes = gross_strokes / strokes_per_word
+            error_percent = round(error_count * 100 / max(1, reference_word_count), 2)
+            permitted_error_count = max(0, int(reference_word_count * float(rules.get("error_allowance_percent") or 0) / 100))
+            minimum_strokes = scoring_rules.get("minimum_strokes")
+            try:
+                minimum_strokes = int(minimum_strokes) if minimum_strokes is not None else None
+            except (TypeError, ValueError):
+                minimum_strokes = None
+            stroke_floor_met = minimum_strokes is None or gross_strokes >= minimum_strokes
+
+            if formula == "MODEL_A":
+                net_wpm = round(gross_words_from_strokes / minutes, 2)
+                score_note = "Model A: qualification depends on the configured minimum stroke floor and category-specific weighted error cap."
+                if not stroke_floor_met:
+                    score = 0
+                    score_note = "Disqualified: minimum gross keystroke floor not met."
+            elif formula == "MODEL_B":
+                ignored_mistakes = 0.05 * gross_words_from_strokes
+                chargeable_mistakes = max(0, error_count - ignored_mistakes)
+                net_words = max(0, gross_words_from_strokes - chargeable_mistakes * 10)
+                net_wpm = round(net_words / minutes, 2)
+                permitted_error_count = round(ignored_mistakes, 2)
+                excess_error_count = round(chargeable_mistakes, 2)
+                score_note = "Model B: first 5% weighted mistakes are ignored; each excess mistake deducts 10 words."
+            elif formula == "MODEL_C1":
+                net_words = max(0, gross_words_from_strokes - error_count)
+                net_wpm = round(net_words / minutes, 2)
+                score_note = "Model C1: each full mistake deducts one word and each half mistake deducts half a word."
+            elif formula == "MODEL_C2":
+                penalty_strokes = error_count * 50
+                net_wpm = round(max(0, gross_strokes - penalty_strokes) / (strokes_per_word * minutes), 2)
+                score_note = "Model C2: each full mistake deducts 50 strokes and each half mistake deducts 25 strokes."
+            else:  # MODEL_D
+                net_wpm = round(gross_words_from_strokes / minutes, 2)
+                bands = scoring_rules.get("score_bands") or []
+                eligible_marks = []
+                for band in bands:
+                    try:
+                        threshold, marks = float(band[0]), float(band[1])
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                    if net_wpm >= threshold:
+                        eligible_marks.append(marks)
+                if eligible_marks:
+                    maximum = float(scoring_rules.get("maximum_marks", 100))
+                    score = min(maximum, max(0.0, max(eligible_marks)))
+                score_note = (
+                    "Model D: merit conversion bands are not configured; numeric marks are pending."
+                    if not bands else "Model D: marks calculated from the configured speed/merit bands."
+                )
+            qualification_rules = rules.get("qualification_rules") or {}
+            if isinstance(qualification_rules, dict):
+                qualification = None
+                qualification_note = score_note
+        elif formula == "DELHI_POLICE_MODEL_D":
             # Rulebook Model D: speed-graded merit marks (0-25) with a 5% weighted
             # mistake cap. The supplied rulebook does not publish mark conversion
             # bands, so score remains unassigned until an administrator configures them.
