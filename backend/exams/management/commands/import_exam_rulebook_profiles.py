@@ -78,8 +78,8 @@ def _explicit_keyboard_layout(name, text):
 def _rrb_scoring_candidate(lines):
     text = " ".join(lines).lower()
     if (
-        re.search(r"5% (?:of )?(?:the )?(?:total )?words? typed", text)
-        and re.search(r"(?:10|ten) words? (?:per|for each) (?:excess|remaining) mistake", text)
+        re.search(r"(?:5%|0\\.05)\\s*(?:of|×|\\*)?\\s*(?:the )?(?:total )?words? typed", text)
+        and re.search(r"(?:10|ten) words? (?:per|for each) (?:excess|remaining)?\\s*mistake|10\\s*words?\\s*(?:deducted|penalty)", text)
         and "full" in text and "half" in text
     ):
         return {
