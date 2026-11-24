@@ -339,7 +339,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             gross_wpm = round(gross_words_from_strokes / minutes, 2)
             gross_words = gross_words_from_strokes
             error_percent = round(error_count * 100 / max(1, gross_words_from_strokes), 2)
-            minimum_strokes = int(scoring_rules.get("minimum_strokes", 3750))
+            minimum_kdph = int(scoring_rules.get("minimum_kdph", 15000))
+            minimum_strokes = (minimum_kdph * duration + 3599) // 3600
+            required_keystrokes = minimum_strokes
+            required_keystrokes_met = gross_strokes >= minimum_strokes
             stroke_floor_met = gross_strokes >= minimum_strokes
             candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
             caps = scoring_rules.get("category_error_caps") or {"UR": 5, "OBC": 7, "EWS": 7, "SC": 10, "ST": 10, "PWD": 10, "OTHER_RESERVED": 10}
