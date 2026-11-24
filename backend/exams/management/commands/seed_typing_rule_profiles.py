@@ -9,20 +9,39 @@ PROFILES = {
     "Delhi Police HC English Test": {
         "duration_seconds": 600, "language": "ENGLISH", "minimum_wpm": 30,
         "passage_word_limit": 400, "passage_source_mode": "PRINTED",
-        "scoring_mode": "CUSTOM",
+        "allow_backspace": True, "backspace_policy": "FULL",
+        "scoring_mode": "CUSTOM", "strokes_per_word": 5,
         "error_rules": {"count_word_errors": True},
-        "scoring_rules": {"score_bands": [[30, 10], [31, 12], [36, 15], [41, 18], [46, 21], [51, 25]],
-                          "mistake_penalty_words": 1, "maximum_marks": 25},
-        "rule_notes": "Delhi Police HCM 2025: 10-minute English typing, minimum 30 WPM, printed passage minimum 400 words. Backspace restriction not specified in the notification; unrestricted is a practice default.",
+        "scoring_rules": {
+            "formula": "STROKE_NET_WPM", "mistake_penalty_wpm": 1,
+            "scoring_duration_seconds": 600,
+            "reference_minimum_words": 400, "reference_minimum_keystrokes": 2000,
+            "maximum_marks": 25,
+            "score_bands": [[30, 10], [31, 12], [36, 15], [41, 18], [46, 21], [51, 25]],
+        },
+        "qualification_rules": {"all": [{"metric": "net_wpm", "operator": "gte", "value": 30}]},
+        "verification_status": "VERIFIED",
+        "source_title": "Internal rule profile: Delhi Police HCM English rules supplied by the user; internally configured, not independently verified against an official notice",
+        "rule_notes": "Internally verified simulator profile based on user-supplied rules. Qualification: net WPM >= 30. Below 30 WPM: disqualified and 0 marks. Net WPM = (server-derived submitted text keystrokes / 5) / 10 - detected mistakes. One full detected mistake deducts exactly 1 WPM. Bands: 30=10; 31-35=12; 36-40=15; 41-45=18; 46-50=21; >50=25. Printed reference passage minimum 400 words / 2,000 keystrokes; this is not a completion target. Backspace enabled.",
     },
     "Delhi Police HC Hindi Test": {
         "duration_seconds": 600, "language": "HINDI", "minimum_wpm": 25,
         "passage_word_limit": 350, "passage_source_mode": "PRINTED",
-        "scoring_mode": "CUSTOM",
+        "allow_backspace": True, "backspace_policy": "FULL",
+        "scoring_mode": "CUSTOM", "strokes_per_word": 5,
         "error_rules": {"count_word_errors": True},
-        "scoring_rules": {"score_bands": [[25, 10], [26, 12], [31, 15], [36, 18], [41, 21], [46, 25]],
-                          "mistake_penalty_words": 1, "maximum_marks": 25},
-        "rule_notes": "Delhi Police HCM 2025: 10-minute Hindi typing, minimum 25 WPM, printed passage minimum 350 words. Backspace restriction not specified in the notification; unrestricted is a practice default.",
+        "scoring_rules": {
+            "formula": "STROKE_NET_WPM", "mistake_penalty_wpm": 1,
+            "scoring_duration_seconds": 600,
+            "reference_minimum_words": 350, "reference_minimum_keystrokes": 1750,
+            "maximum_marks": 25,
+            "score_bands": [[25, 10], [26, 12], [31, 15], [36, 18], [41, 21], [46, 25]],
+            "keyboard_layout_options": ["Mangal Inscript", "Remington GAIL", "Kruti Dev 010"],
+        },
+        "qualification_rules": {"all": [{"metric": "net_wpm", "operator": "gte", "value": 25}]},
+        "verification_status": "VERIFIED",
+        "source_title": "Internal rule profile: Delhi Police HCM Hindi rules supplied by the user; internally configured, not independently verified against an official notice",
+        "rule_notes": "Internally verified simulator profile based on user-supplied rules. Qualification: net WPM >= 25. Below 25 WPM: disqualified and 0 marks. Net WPM = (server-derived submitted text keystrokes / 5) / 10 - detected mistakes. One full detected mistake deducts exactly 1 WPM. Bands: 25=10; 26-30=12; 31-35=15; 36-40=18; 41-45=21; >45=25. Printed reference passage minimum 350 words / 1,750 keystrokes; this is not a completion target. Backspace enabled. Available layouts: Mangal Inscript, Remington GAIL, Kruti Dev 010.",
     },
     "Delhi Police AWO/TPO Test": {
         "duration_seconds": 900, "language": "ENGLISH", "required_keystrokes": 1000,
@@ -153,12 +172,12 @@ class Command(BaseCommand):
             if exam is None:
                 missing += 1
                 continue
-            if exam.rule_config_version >= 2:
+            if exam.rule_config_version >= 3:
                 skipped += 1
                 continue
             for field, value in settings.items():
                 setattr(exam, field, value)
-            exam.rule_config_version = 2
+            exam.rule_config_version = 3
             exam.save()
             applied += 1
         self.stdout.write(self.style.SUCCESS(
