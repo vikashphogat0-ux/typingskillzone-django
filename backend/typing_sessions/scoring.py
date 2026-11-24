@@ -88,7 +88,7 @@ def _evaluate_qualification_rules(config, metrics):
     """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
     if not isinstance(config, dict) or not config:
         return None, "Qualification is pending: no qualification conditions are configured."
-    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors"}
+    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors", "keystrokes"}
     operators = {
         "gte": lambda a, b: a >= b, "gt": lambda a, b: a > b,
         "lte": lambda a, b: a <= b, "lt": lambda a, b: a < b,
@@ -472,7 +472,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
-        "score": score, "correct_words": correct_words, "word_errors": word_errors,
+        "score": score, "correct_words": correct_words, "word_errors": word_errors,\n        "keystrokes": stroke_count_for_speed,
     }
     qualification_status = "PENDING"
     configured_qualification = rules.get("qualification_rules") or {}
