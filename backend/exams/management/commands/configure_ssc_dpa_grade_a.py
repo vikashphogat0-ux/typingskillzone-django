@@ -60,6 +60,8 @@ class Command(BaseCommand):
             "scoring_rules": {
                 "formula": "SSC_DPA_GRADE_A",
                 "minimum_strokes": 3750,
+                "compensatory_time_enabled": True,
+                "compensatory_duration_seconds": 1200,
                 "strokes_per_word": 5,
                 "qualifying_only": True,
                 "add_to_final_merit": False,
