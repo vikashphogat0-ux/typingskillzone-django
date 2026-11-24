@@ -553,6 +553,14 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
+        qualification_note = (
+            f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English criteria: "
+            f"{gross_wpm:.2f} WPM (minimum {minimum_wpm:g}), "
+            f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
+            f"{gross_strokes}/{minimum_strokes} keystrokes."
+        )
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
@@ -627,7 +635,11 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "error_count_method": "word" if count_word_errors else "character",
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
-        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_VH_ENGLISH" else None,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
+        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
+        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
+        "reference_word_count": reference_word_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} else None,
+        "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
