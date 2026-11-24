@@ -82,3 +82,35 @@ class SSCCHSL2025ScoringTests(SimpleTestCase):
         self.assertEqual(result["mistake_categories"]["transposition"], 1)
         self.assertEqual(result["half_mistakes"], 1)
         self.assertEqual(result["weighted_mistakes"], 0.5)
+
+    def test_chsl_2025_cycle_cutoff_uses_seven_percent_ur_and_ten_percent_reserved(self):
+        reference = "word " * 350
+        typed = ("wrong " * 25) + ("word " * 325)
+
+        def score(category):
+            return calculate_result(
+                reference=reference,
+                typed=typed,
+                duration_seconds=600,
+                rules={
+                    "scoring_mode": "CUSTOM",
+                    "verification_status": "VERIFIED",
+                    "candidate_category": category,
+                    "scoring_rules": {
+                        "formula": "SSC_CHSL_2025_ENGLISH",
+                        "minimum_wpm": 35,
+                        "minimum_kdph": 10500,
+                        "category_error_caps": {
+                            "UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10,
+                            "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10,
+                        },
+                    },
+                },
+            )
+
+        ur = score("UR")
+        reserved = score("OBC")
+        self.assertEqual(ur["error_percent"], 7.14)
+        self.assertFalse(ur["qualification"])
+        self.assertEqual(reserved["error_percent"], 7.14)
+        self.assertTrue(reserved["qualification"])
