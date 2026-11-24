@@ -5,6 +5,6 @@
 {% block dashboard_heading %}Institute workspace{% endblock %}
 {% block dashboard_nav %}
 <a href="{% url 'institutes:owner_dashboard' %}"{% if request.resolver_match.url_name == 'owner_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
-<a href="{% url 'exams:catalogue' %}">Exam Catalogue</a>
+<a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
 {% endblock %}
 {% block dashboard_account_action %}<form method="post" action="{% url 'institutes:owner_logout' %}">{% csrf_token %}<button class="dashboard-signout" type="submit">Sign out</button></form>{% endblock %}

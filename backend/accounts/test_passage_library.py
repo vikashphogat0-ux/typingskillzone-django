@@ -49,11 +49,7 @@ class PassageLibraryTests(TestCase):
     def test_library_requires_exam_selection_before_showing_passages(self):
         response = self.client.get(reverse("accounts:passage_library"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["exam_selection"])
-        self.assertContains(response, "Choose an examination")
-        self.assertContains(response, "SSC Typing Test")
-        self.assertNotContains(response, "Library passage")
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
 
     def test_selected_exam_shows_only_its_passages(self):
         response = self.client.get(

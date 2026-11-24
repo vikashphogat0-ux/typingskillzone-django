@@ -5,7 +5,7 @@
 {% block dashboard_nav %}
 <a href="{% url 'accounts:student_dashboard' %}"{% if request.resolver_match.url_name == 'student_dashboard' %} class="active" aria-current="page"{% endif %}>Overview</a>
 <a href="{% url 'accounts:passage_library' %}"{% if request.resolver_match.url_name == 'passage_library' %} class="active" aria-current="page"{% endif %}>Passage Library</a>
-<a href="{% url 'exams:catalogue' %}">Exam Catalogue</a>
+<a href="{% url 'exams:catalogue' %}">Exam catalogue</a>
 <a href="{% url 'accounts:student_result_history' %}"{% if request.resolver_match.url_name == 'student_result_history' %} class="active" aria-current="page"{% endif %}>My Results</a>
 <a href="{% url 'accounts:student_profile' %}"{% if request.resolver_match.url_name == 'student_profile' %} class="active" aria-current="page"{% endif %}>Profile</a>
 {% endblock %}

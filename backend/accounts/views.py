@@ -355,6 +355,8 @@ def passage_library(request):
     )
     exam_code = request.GET.get("exam", "").strip()
     if not exam_code:
+        return redirect("exams:catalogue")  # one exam catalogue for the whole site
+    if False:
         exam_counts = {
             row["exam_id"]: row["passage_count"]
             for row in base_passages.order_by().values("exam_id").annotate(passage_count=Count("pk"))
