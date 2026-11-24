@@ -493,9 +493,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "qualification_status": qualification_status,
         "disqualified": qualification_status in {"NOT_QUALIFIED", "PROVISIONAL_NOT_QUALIFIED"},
         "disqualification_reason": (
-            f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
-            if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
-            else None
+            "Speed requirement not met."
+            if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" and not speed_met
+            else (
+                "Category-specific weighted error ceiling exceeded."
+                if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH" and not error_cap_met
+                else (
+                    f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
+                    if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
+                    else None
+                )
+            )
         ),
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."
