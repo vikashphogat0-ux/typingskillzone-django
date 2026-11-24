@@ -105,8 +105,8 @@ class Command(BaseCommand):
                 "350–400 word passage; 35 WPM / 10,500 KDPH / 1,750 keystroke target; "
                 "full mistakes count 1 and half mistakes count 0.5; error percentage "
                 "uses the total reference passage word count; UR cap 7%, reserved-category "
-                "cap 10%; qualifying-only. Compensatory-time duration is not specified "
-                "in the supplied rules and is not fabricated. Qualification remains "
+                "cap 10%; qualifying-only. Eligible PwBD/scribe candidates can select a 5-minute "
+                "compensatory extension (15-minute total). Qualification remains "
                 "provisional until the complete recruitment-cycle rule profile is verified."
             ),
         }
