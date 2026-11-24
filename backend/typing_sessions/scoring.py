@@ -125,7 +125,7 @@ def _evaluate_qualification_rules(config, metrics):
     """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
     if not isinstance(config, dict) or not config:
         return None, "Qualification is pending: no qualification conditions are configured."
-    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors", "keystrokes"}
+    allowed_metrics = {"net_wpm", "gross_wpm", "accuracy_percent", "error_percent", "score", "correct_words", "word_errors", "keystrokes", "gross_words"}
     operators = {
         "gte": lambda a, b: a >= b, "gt": lambda a, b: a > b,
         "lte": lambda a, b: a <= b, "lt": lambda a, b: a < b,
@@ -323,6 +323,28 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "CUSTOM":
         formula = scoring_rules.get("formula")
 
+        if formula == "RRB_CBTST_5_PERCENT":
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing",
+                "word_spacing", "paragraph_breaks", "transposition"
+            ))
+            error_count = full_mistakes + (half_mistakes / 2)
+            count_word_errors = True
+            gross_words = len(re.findall(r"\\S+", typed))
+            ignored_mistakes = gross_words * float(scoring_rules.get("mistake_allowance_percent", 5)) / 100
+            excess_error_count = max(0, error_count - ignored_mistakes)
+            permitted_error_count = ignored_mistakes
+            deduction_words = int(scoring_rules.get("excess_mistake_deduction_words", 10))
+            net_words = max(0, gross_words - excess_error_count * deduction_words)
+            net_wpm = round(net_words / minutes, 2)
+            error_percent = round(error_count * 100 / max(1, gross_words), 2)
+            score_note = (
+                "RRB CBTST: "
+                + f"{ignored_mistakes:.2f} mistakes forgiven (5% of {gross_words} words); "
+                + f"{excess_error_count:.2f} excess weighted mistakes deducted at {deduction_words} words each."
+            )
         # Rulebook-wide scoring models. Each profile supplies its own thresholds,
         # duration, stroke floor, and optional merit conversion in scoring_rules.
         if formula in {"MODEL_A", "MODEL_B", "MODEL_C1", "MODEL_C2", "MODEL_D"}:
@@ -637,6 +659,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
         "score": score, "correct_words": correct_words, "word_errors": word_errors,
         "keystrokes": stroke_count_for_speed,
+        "gross_words": gross_words,
     }
     qualification_status = "PENDING"
     if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A":
