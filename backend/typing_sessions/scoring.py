@@ -802,8 +802,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "qualification_status": qualification_status,
         "disqualified": qualification_status.endswith("NOT_QUALIFIED") or qualification_status.endswith("DISQUALIFIED"),
         "disqualification_reason": (
-            f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
-            if qualification_status.endswith("NOT_QUALIFIED") and rules.get("minimum_wpm") is not None
+            f"Net speed below the minimum qualifying speed of {scoring_rules.get('minimum_wpm', rules.get('minimum_wpm'))} WPM."
+            if (qualification_status.endswith("NOT_QUALIFIED") or qualification_status.endswith("DISQUALIFIED"))
+            and (rules.get("minimum_wpm") is not None or scoring_rules.get("minimum_wpm") is not None)
             else None
         ),
         "qualification_note": (
