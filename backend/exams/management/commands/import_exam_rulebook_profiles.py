@@ -188,6 +188,49 @@ def _ssc_chsl_2025_scoring_candidate(name):
         }
     return None
 
+def _ssc_cgl_2025_scoring_candidate(name):
+    normalized = (name or "").lower()
+    if "ssc cgl 2025 vh category" in normalized:
+        return {
+            "candidate_formula": "SSC_CGL_2025_VH_DEST",
+            "standard_duration_seconds": 900,
+            "compensatory_duration_seconds": 1200,
+            "target_key_depressions": 2000,
+            "error_denominator": "typed_words",
+            "normal_error_caps": {"UR": 20, "OBC": 25, "EWS": 25, "SC": 30, "ST": 30, "ESM": 30, "OH": 30, "HH": 30, "VH": 30, "PWD": 30, "OTHER": 30},
+            "higher_error_caps": {"UR": 5, "OBC": 7, "EWS": 7, "SC": 7, "ST": 7, "ESM": 7, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "executable": False,
+            "official_notice_reference": "SSC CGL 2025 Notice, paras 13.8.10.1-13.8.10.7 and 16.2",
+            "verification_note": "Rulebook VH timing is 15 minutes plus 5 minutes for eligible scribe candidates. Select normal or higher standard only from the candidate's post eligibility and current cycle notice.",
+        }
+    if "ssc cgl 2025 typing test (tcs)" in normalized:
+        return {
+            "candidate_formula": "SSC_CGL_2025_DEST",
+            "duration_seconds": 900,
+            "target_key_depressions": 2000,
+            "error_denominator": "typed_words",
+            "normal_error_caps": {"UR": 20, "OBC": 25, "EWS": 25, "SC": 30, "ST": 30, "ESM": 30, "OH": 30, "HH": 30, "VH": 30, "PWD": 30, "OTHER": 30},
+            "higher_error_caps": {"UR": 5, "OBC": 7, "EWS": 7, "SC": 7, "ST": 7, "ESM": 7, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "higher_standard_posts": ["Tax Assistant (CBIC)", "Tax Assistant (CBDT)", "UDC/SSA (Central Bureau of Narcotics)", "Computer Proficiency posts listed in SSC CGL 2025 Notice para 13.8.9"],
+            "executable": False,
+            "official_notice_reference": "SSC CGL 2025 Notice, paras 13.8.10.1-13.8.10.7 and 16.2-16.14",
+            "cycle_cutoff_reference": "SSC CGL 2025 FRTA write-up, 08 April 2026, para 7(ii): higher DEST error limits UR 5%; OBC/SC/ST/EWS/ESM 7%; OH/HH/VH/PwBD-Others 10%",
+            "verification_note": "2000 key depressions is the approximate passage size, not a separately stated candidate minimum. Higher-standard posts require the separate 2025 FRTA cutoff; all posts must clear normal standard.",
+        }
+    if "ssc cgl 2025 more strokes test" in normalized:
+        return {
+            "candidate_formula": "SSC_CGL_MORE_STROKES_PRACTICE",
+            "duration_seconds": 900,
+            "practice_target_key_depressions": 2200,
+            "baseline_key_depressions": 2000,
+            "practice_error_caps": {"UR": 5, "OBC": 7, "EWS": 7, "SC": 7, "ST": 7, "ESM": 7, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+            "executable": False,
+            "official_exam": False,
+            "verification_note": "This is a rulebook-defined stamina practice simulator, not an SSC-prescribed separate examination or official qualification test. 2000 is the baseline and 2200+ is the training aim.",
+        }
+    return None
+
+
 def build_draft_defaults(profile):
     """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
@@ -235,6 +278,8 @@ def build_draft_defaults(profile):
         scoring_candidate = _delhi_police_hcm_scoring_candidate(name)
     if scoring_candidate is None:
         scoring_candidate = _ssc_chsl_2025_scoring_candidate(name)
+    if scoring_candidate is None:
+        scoring_candidate = _ssc_cgl_2025_scoring_candidate(name)
     scoring_payload = {"source_formula_text": scoring_source, "executable": False}
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
