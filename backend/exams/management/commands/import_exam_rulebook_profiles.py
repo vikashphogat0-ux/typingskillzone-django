@@ -74,6 +74,23 @@ def _explicit_keyboard_layout(name, text):
     return ""
 
 
+
+def _rrb_scoring_candidate(lines):
+    text = " ".join(lines).lower()
+    if (
+        re.search(r"5% (?:of )?(?:the )?(?:total )?words? typed", text)
+        and re.search(r"(?:10|ten) words? (?:per|for each) (?:excess|remaining) mistake", text)
+        and "full" in text and "half" in text
+    ):
+        return {
+            "candidate_formula": "RRB_CBTST_5_PERCENT",
+            "mistake_allowance_percent": 5,
+            "excess_mistake_deduction_words": 10,
+            "executable": False,
+            "source_formula_text": [line for line in lines if "Formula" in line or "mistake" in line.lower()],
+        }
+    return None
+
 def build_draft_defaults(profile):
     """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
@@ -116,6 +133,11 @@ def build_draft_defaults(profile):
         or line.startswith("Accuracy %") or line.startswith("(Where a ")
     ]
 
+    scoring_candidate = _rrb_scoring_candidate(lines)
+    scoring_payload = {"source_formula_text": scoring_source, "executable": False}
+    if scoring_candidate:
+        scoring_payload.update(scoring_candidate)
+
     defaults = {
         "name": name,
         "category": category,
@@ -133,7 +155,7 @@ def build_draft_defaults(profile):
         "passage_format": passage_format,
         "scoring_mode": ExamConfiguration.ScoringMode.GENERIC,
         "error_rules": {"source_text": lines, "executable": False},
-        "scoring_rules": {"source_formula_text": scoring_source, "executable": False},
+        "scoring_rules": scoring_payload,
         "qualification_rules": {"source_criteria_text": qualification_source, "executable": False},
         "verification_status": ExamConfiguration.Verification.UNVERIFIED,
         "source_title": "Master Exam Rulebook — source-preserved draft",
