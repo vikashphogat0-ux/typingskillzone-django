@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 "error_denominator": "total_reference_passage_words",
             },
             "scoring_rules": {
-                "formula": "SSC_CHSL_2025_ENGLISH",
+                "formula": "SSC_CHSL_2025_VH_ENGLISH",
                 "profile_variant": "VH_CATEGORY_ENGLISH",
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
