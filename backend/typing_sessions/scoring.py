@@ -730,7 +730,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         rules.get("verification_status") != "VERIFIED"
         and not (
             scoring_mode == "CUSTOM"
-            and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"}
+            and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A", "DELHI_POLICE_HCM_2025"}
         )
     ):
         qualification = None
