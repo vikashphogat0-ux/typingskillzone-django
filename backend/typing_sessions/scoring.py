@@ -337,6 +337,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             gross_strokes = max(0, int(stroke_count_for_speed or 0))
             gross_words = gross_strokes / 5
             gross_wpm = gross_words / minutes
+            tentative_wpm = gross_wpm
             net_wpm = max(0, gross_wpm - (error_count / minutes))
             # Whole-WPM bands are applied by flooring the calculated speed.
             band_speed = int(net_wpm)
@@ -761,6 +762,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "typed_characters": len(typed),
         "reported_keystrokes": reported_keystrokes,
                 "stroke_count_for_speed": stroke_count_for_speed,
+        "gross_strokes": stroke_count_for_speed if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_HCM_2025" else None,
         "stroke_count_source": stroke_count_source,
         "tentative_wpm": tentative_wpm,
         "keystroke_count_source": "client_reported" if reported_keystrokes is not None else None,
@@ -788,7 +790,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if mistake_analysis is not None
             else None
 ),
-        "error_count_method": "full_half_weighted" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else ("word" if count_word_errors else "character"),
+        "error_count_method": "one_word_deducted_per_mistake" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_HCM_2025" else ("full_half_weighted" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else ("word" if count_word_errors else "character")),
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_DPA_GRADE_A"} else None,
