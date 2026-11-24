@@ -467,7 +467,50 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if isinstance(qualification_rules, dict):
                 qualification = None
                 qualification_note = score_note
-        if formula == "SSC_DPA_GRADE_A":
+        if formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in (
+                "omission", "substitution", "addition", "spelling", "incomplete_word", "repeated_word"
+            ))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing", "word_spacing",
+                "paragraph_breaks", "paragraph_indentation", "transposition"
+            ))
+            error_count = full_mistakes + (half_mistakes * 0.5)
+            count_word_errors = True
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_kdph = round(gross_strokes * 3600 / duration, 2)
+            gross_wpm = round(gross_strokes / 5 / minutes, 2)
+            gross_words = len(re.findall(r"\S+", typed))
+            reference_word_count = len(re.findall(r"\S+", reference))
+            denominator_words = max(1, len(re.findall(r"\S+", typed)))
+            error_percent = round(error_count * 100 / denominator_words, 2)
+            candidate_category = str(
+                rules.get("candidate_category")
+                or scoring_rules.get("candidate_category_default")
+                or "UR"
+            ).upper()
+            standard = str(scoring_rules.get("standard_type") or "NORMAL").upper()
+            caps_key = "higher_error_caps" if standard == "HIGHER" else "normal_error_caps"
+            caps = scoring_rules.get(caps_key) or (
+                {"UR": 5, "OBC": 7, "EWS": 7, "SC": 7, "ST": 7, "ESM": 7, "OH": 10, "HH": 10, "VH": 10, "PWD": 10}
+                if standard == "HIGHER"
+                else {"UR": 20, "OBC": 25, "EWS": 25, "SC": 30, "ST": 30, "ESM": 30, "OH": 30, "HH": 30, "VH": 30, "PWD": 30}
+            )
+            error_cap = float(caps.get(candidate_category, caps.get("OTHER", 30)))
+            qualification = error_percent <= error_cap
+            net_wpm = gross_wpm
+            permitted_error_count = denominator_words * error_cap / 100
+            excess_error_count = max(0, error_count - permitted_error_count)
+            required_keystrokes = None
+            required_keystrokes_met = None
+            qualification_note = (
+                f"SSC CGL DEST {standard.lower()} standard: {error_percent:.2f}% weighted mistakes "
+                f"(maximum {error_cap:g}%, {candidate_category}); approximately {gross_strokes} strokes "
+                f"at {gross_kdph:.0f} KDPH. The ~2,000-stroke passage size is not treated as a candidate minimum."
+            )
+            score = None
+        elif formula == "SSC_DPA_GRADE_A":
             categories = mistake_analysis["categories"]
             full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition", "spelling", "incomplete_word", "repeated_word"))
             half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "paragraph_indentation", "transposition"))
