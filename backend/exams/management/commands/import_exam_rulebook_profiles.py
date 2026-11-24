@@ -87,7 +87,9 @@ def _explicit_keyboard_layout(name, text):
 
 
 def _rrb_scoring_candidate(lines):
-    # Formula source lines often quote variable names; remove quote glyphs so\n    # token matching works across the human-readable and spreadsheet-style forms.\n    text = re.sub(r"[\\\"“”]", "", " ".join(lines)).lower()\n    allowance_is_five_percent = bool(
+    # Formula source lines often quote variable names; normalize those quotes first.
+    text = re.sub(r'["“”]', "", " ".join(lines)).lower()
+    allowance_is_five_percent = bool(
         re.search(r"(?:5%|0\.05)\s*(?:of|×|\*)?\s*(?:(?:the )?(?:total )?words? typed|typed words)", text)
         or re.search(r"(?:ignored|forgiven|allowance).{0,60}5\s*%", text)
     )
