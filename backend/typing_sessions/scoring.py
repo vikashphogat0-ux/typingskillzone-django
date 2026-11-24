@@ -209,6 +209,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     qualification = None
     qualification_note = "Qualification is not configured."
     permitted_error_count = excess_error_count = net_words = None
+    full_mistakes = half_mistakes = gross_kdph = reference_word_count = None
+    error_percent = candidate_category = error_cap = None
+    speed_met = error_cap_met = None
     marks_minimum = None
     if scoring_mode == "CORRECT_WORDS":
         net_wpm = round(correct_words / minutes, 2)
