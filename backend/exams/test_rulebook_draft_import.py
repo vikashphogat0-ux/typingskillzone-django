@@ -135,7 +135,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertFalse(defaults["scoring_rules"]["executable"])
         self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
 
-    def test_delhi_police_hcm_2025_english_marks_are_extracted_as_draft(self):
+    def test_delhi_police_hcm_2025_english_formula_is_executable(self):
         profile = {
             "number": 43,
             "profile_id": "delhi-police-hc-english",
@@ -153,8 +153,8 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "DELHI_POLICE_HCM_2025")
         self.assertEqual(defaults["scoring_rules"]["minimum_wpm"], 30)
         self.assertEqual(defaults["scoring_rules"]["maximum_marks"], 25)
-        self.assertFalse(defaults["scoring_rules"]["executable"])
-        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+        self.assertTrue(defaults["scoring_rules"]["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.CUSTOM)
 
     def test_delhi_police_hcm_2025_hindi_marks_are_extracted_as_draft(self):
         profile = {
