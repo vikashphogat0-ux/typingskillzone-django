@@ -51,6 +51,7 @@
         <option value="OTHER_RESERVED">Other reserved — 10%</option>
       </select>
       <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for 5 minutes compensatory time (20-minute evaluated test)</label>
+      <p class="muted">DPA Grade-A · 15-minute evaluated test · optional 20 minutes for eligible candidates · 15,000 KDPH / 3,750 strokes · 3,700–4,000 characters · manual scrolling · no live highlighting · Backspace enabled · Tab paragraph indentation</p>
       {% endif %}
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
       <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for the 5-minute PwBD/scribe compensatory extension (15 minutes total)</label>
@@ -68,7 +69,6 @@
       {% endif %}
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_VH_ENGLISH" %}
       <p class="muted">VH English · 15 minutes total (10-minute base + 5-minute compensatory extension) · 35 WPM / 10,500 KDPH · 2,625 keystroke threshold · 350–400-word passage · no live highlighting · manual scrolling · weighted full/half mistakes · 10% error ceiling</p>
-      <p class="muted">DPA Grade-A · 15-minute evaluated test · optional 20 minutes for eligible candidates · 15,000 KDPH / 3,750 strokes · 3,700–4,000 characters · manual scrolling · no live highlighting · Backspace enabled · Tab paragraph indentation</p>
       {% endif %}
       <label for="typed-text">Type Here</label>
       <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
