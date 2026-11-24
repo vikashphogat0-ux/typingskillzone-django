@@ -93,6 +93,13 @@ def student_login(request):
     return render(request, "accounts/student_login.html", {"form": form})
 
 
+def registration_options(request):
+    """Show the account types visitors can register for."""
+    if request.user.is_authenticated:
+        return redirect(dashboard_url_for(request.user))
+    return render(request, "accounts/registration_options.html")
+
+
 def student_register(request):
     if request.user.is_authenticated:
         return redirect(dashboard_url_for(request.user))
