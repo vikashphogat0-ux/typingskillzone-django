@@ -261,3 +261,102 @@ class LegacyScoringCompatibilityTests(SimpleTestCase):
             rules={},
         )
         self.assertEqual(result["duration_seconds"], 1)
+
+
+class DelhiPoliceHCMRuleTests(SimpleTestCase):
+    def hcm_rules(self, minimum_wpm=30):
+        return {
+            "scoring_mode": "CUSTOM",
+            "verification_status": "VERIFIED",
+            "minimum_wpm": minimum_wpm,
+            "strokes_per_word": 5,
+            "error_rules": {"count_word_errors": True},
+            "scoring_rules": {
+                "formula": "STROKE_NET_WPM",
+                "mistake_penalty_wpm": 1,
+                "scoring_duration_seconds": 600,
+                "score_bands": [[30, 10], [31, 12], [36, 15], [41, 18], [46, 21], [51, 25]],
+                "maximum_marks": 25,
+            },
+            "qualification_rules": {
+                "all": [{"metric": "net_wpm", "operator": "gte", "value": minimum_wpm}]
+            },
+        }
+
+    def test_hcm_english_official_example_boundary_qualifies_for_10_marks(self):
+        words = ["abcd"] * 400
+        typed_words = ["wxyz"] * 10 + words[10:]
+        typed = " ".join(typed_words) + " "
+        self.assertEqual(len(typed), 2000)
+
+        result = calculate_result(
+            reference=" ".join(words) + " ",
+            typed=typed,
+            duration_seconds=600,
+            rules=self.hcm_rules(30),
+        )
+
+        self.assertEqual(result["tentative_wpm"], 40)
+        self.assertEqual(result["error_count"], 10)
+        self.assertEqual(result["net_wpm"], 30)
+        self.assertEqual(result["score"], 10)
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+        self.assertFalse(result["disqualified"])
+
+    def test_hcm_below_minimum_speed_is_disqualified_with_zero_marks(self):
+        words = ["abcd"] * 400
+        typed_words = ["wxyz"] * 11 + words[11:]
+        typed = " ".join(typed_words) + " "
+
+        result = calculate_result(
+            reference=" ".join(words) + " ",
+            typed=typed,
+            duration_seconds=600,
+            rules=self.hcm_rules(30),
+        )
+
+        self.assertEqual(result["net_wpm"], 29)
+        self.assertEqual(result["score"], 0)
+        self.assertFalse(result["qualification"])
+        self.assertEqual(result["qualification_status"], "NOT_QUALIFIED")
+        self.assertTrue(result["disqualified"])
+        self.assertIn("30 WPM", result["disqualification_reason"])
+
+    def test_hcm_31_net_wpm_receives_12_marks(self):
+        words = ["abcd"] * 400
+        typed_words = ["wxyz"] * 9 + words[9:]
+        typed = " ".join(typed_words) + " "
+
+        result = calculate_result(
+            reference=" ".join(words) + " ",
+            typed=typed,
+            duration_seconds=600,
+            rules=self.hcm_rules(30),
+        )
+
+        self.assertEqual(result["net_wpm"], 31)
+        self.assertEqual(result["score"], 12)
+        self.assertTrue(result["qualification"])
+
+    def test_hcm_hindi_minimum_qualifying_speed_is_25_wpm(self):
+        words = ["abcd"] * 350
+        typed_words = ["wxyz"] * 15 + words[15:]
+        typed = " ".join(typed_words) + " "
+
+        result = calculate_result(
+            reference=" ".join(words) + " ",
+            typed=typed,
+            duration_seconds=600,
+            rules={
+                **self.hcm_rules(25),
+                "scoring_rules": {
+                    **self.hcm_rules(25)["scoring_rules"],
+                    "score_bands": [[25, 10], [26, 12], [31, 15], [36, 18], [41, 21], [46, 25]],
+                },
+            },
+        )
+
+        self.assertEqual(result["net_wpm"], 25)
+        self.assertEqual(result["score"], 10)
+        self.assertTrue(result["qualification"])
