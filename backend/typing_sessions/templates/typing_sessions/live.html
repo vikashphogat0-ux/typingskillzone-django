@@ -39,6 +39,19 @@
       {% csrf_token %}
       <input type="hidden" id="keystroke-count" name="keystroke_count" value="0">
       <input type="hidden" id="policy-events" name="policy_events" value="0">
+      {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
+      <label for="candidate-category">Candidate category for error allowance</label>
+      <select id="candidate-category" name="candidate_category">
+        <option value="UR">UR — 7% maximum errors</option>
+        <option value="OBC">OBC — 10% maximum errors</option>
+        <option value="EWS">EWS — 10% maximum errors</option>
+        <option value="SC">SC — 10% maximum errors</option>
+        <option value="ST">ST — 10% maximum errors</option>
+        <option value="PWD">PwBD — 10% maximum errors</option>
+        <option value="OTHER_RESERVED">Other reserved — 10% maximum errors</option>
+      </select>
+      <p class="muted">10-minute English test · 35 WPM · 1,750 keystrokes · no word or error highlighting · manual passage scrolling</p>
+      {% endif %}
       <label for="typed-text">Type Here</label>
       <textarea id="typed-text" class="typing-input" name="typed_text" rows="9" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>{{ draft_text }}</textarea>
       <div class="finish-row">
@@ -70,6 +83,7 @@
   let clockOffset = clock.server_now_ms - Date.now();
   let keyDepressionCount = 0;
   const keystrokeField = document.getElementById("keystroke-count");
+  const categorySelect = document.getElementById("candidate-category");
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
@@ -98,6 +112,17 @@
     if (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   }
   input.addEventListener("keydown", event => {
+    if (categorySelect && !input.readOnly) categorySelect.disabled = true;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a" && rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH") {
+      event.preventDefault();
+      return;
+    }
+    if ((event.key === "Backspace" || event.key === "Delete") &&
+        rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH" &&
+        input.selectionStart === 0 && input.selectionEnd === input.value.length && input.value.length > 0) {
+      event.preventDefault();
+      return;
+    }
     if (!["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(event.key)) {
       keyDepressionCount = Math.min(1000000, keyDepressionCount + 1);
       keystrokeField.value = String(keyDepressionCount);
@@ -110,6 +135,7 @@
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && rules.allow_paste === false) event.preventDefault();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && rules.allow_copy === false) event.preventDefault();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && rules.allow_cut === false) event.preventDefault();
+    if (rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH" && event.key === "ContextMenu") event.preventDefault();
     if (event.key === " " && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.space_behavior === "COMMIT_WORD")) {
       pendingCommit = input.selectionStart + 1;
     }
@@ -134,6 +160,10 @@
     if (event.inputType === "insertReplacementText" && backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" && selectionTouchesLockedText()) event.preventDefault();
   });
   input.addEventListener("paste", event => { if (rules.allow_paste === false) event.preventDefault(); });
+  if (rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH") {
+    input.addEventListener("contextmenu", event => event.preventDefault());
+    if (referenceElement) referenceElement.addEventListener("contextmenu", event => event.preventDefault());
+  }
   input.addEventListener("copy", event => { if (rules.allow_copy === false) event.preventDefault(); });
   input.addEventListener("cut", event => { if (rules.allow_cut === false) event.preventDefault(); });
   input.addEventListener("input", () => {
