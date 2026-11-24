@@ -57,7 +57,7 @@ def start_session(*, learner, publication):
             )
         paragraphs = [part for part in re.split(r"\n\s*\n", reference_text) if part.strip()]
         reference_text = "\n\n".join(
-            part if part.startswith("\t") else "\\t" + part.lstrip(" \t")
+            part if part.startswith("\t") else "\t" + part.lstrip(" \t")
             for part in paragraphs
         )
     return TypingSession.objects.create(
