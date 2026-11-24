@@ -23,6 +23,10 @@
 <section class="card" id="result-statistics">
   <h2>Performance statistics</h2>
   <div class="metrics">
+    {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
+    <article class="metric-card"><span>Gross KDPH</span><strong>{{ attempt.result_snapshot.gross_kdph }}</strong><small>Target 10,500 KDPH</small></article>
+    <article class="metric-card"><span>Weighted error %</span><strong>{{ attempt.result_snapshot.error_percent }}%</strong><small>Maximum {{ attempt.result_snapshot.category_error_cap }}% · {{ attempt.result_snapshot.candidate_category }}</small></article>
+    {% endif %}
     <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default_if_none:"–" }}</strong><small>Gross {{ attempt.result_snapshot.gross_wpm|default_if_none:"–" }}</small></article>
     <article class="metric-card"><span>Accuracy</span><strong>{{ attempt.result_snapshot.accuracy_percent|default_if_none:"–" }}{% if attempt.result_snapshot.accuracy_percent != None %}%{% endif %}</strong><small>{{ attempt.result_snapshot.correct_characters|default_if_none:"0" }} correct characters</small></article>
     <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
