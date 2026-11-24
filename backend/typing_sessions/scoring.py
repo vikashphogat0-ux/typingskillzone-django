@@ -362,6 +362,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             qualification = net_wpm >= minimum_wpm
             if not qualification:
                 score = 0
+            qualification_note = (
+                f"{'Qualified' if qualification else 'Disqualified'}: actual speed {net_wpm:.2f} WPM; "
+                f"minimum required {minimum_wpm:g} WPM."
+            )
             score_note = (
                 f"Delhi Police HCM 2025: {gross_strokes} strokes / 5 = {gross_words:.2f} words; "
                 f"tentative speed {gross_wpm:.2f} WPM; {error_count} mistakes deducted; "
