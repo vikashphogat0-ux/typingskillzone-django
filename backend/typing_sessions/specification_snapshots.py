@@ -18,6 +18,7 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
         "language": exam.language,
         "script": exam.script,
         "interface_type": exam.interface_type,
+        "display_mode": {"TCS_ION_STANDARD": "normal", "TCS_ION_WORD_LOCKED": "highlighted", "RRB_CAPF_STRICT": "normal", "NTA_COURT_SPLIT_PANE": "highlighted"}.get(exam.interface_type, "normal"),
         "allow_backspace": exam.allow_backspace,
         "backspace_policy": exam.backspace_policy,
         "allow_delete": exam.allow_delete,
