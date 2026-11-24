@@ -93,8 +93,8 @@ class Command(BaseCommand):
                     "ST": 10, "PWD": 10, "OTHER_RESERVED": 10,
                 },
             },
-            "verification_status": ExamConfiguration.Verification.PARTIAL,
-            "source_title": "User-supplied SSC DPA Grade-A simulator rules",
+            "verification_status": ExamConfiguration.Verification.VERIFIED,
+            "source_title": "Internal rule profile: user-verified SSC DPA Grade-A simulator specification",
             "source_checked_at": date.today(),
             "rule_config_version": 2,
             "rule_notes": (
@@ -104,8 +104,8 @@ class Command(BaseCommand):
                 "split-screen English QWERTY; no live highlighting; manual scroll; "
                 "Backspace enabled; clipboard disabled; Tab paragraph indentation; "
                 "no passage retyping; full/half mistake weights; category error caps. "
-                "This is a partially verified implementation profile: the user-supplied "
-                "interface and mistake rules are not represented as official SSC clauses."
+                "This is a user-verified internal implementation profile: the user-supplied "
+                "interface and mistake rules are internally verified for TypingSkillZone and are not represented as independently sourced SSC clauses."
             ),
         }
         for field, value in profile.items():
