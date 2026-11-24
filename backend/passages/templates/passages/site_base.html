@@ -12,10 +12,12 @@
     <div class="container">
       <a class="brand" href="{% url 'home' %}"><span class="brand-mark">TS</span><span>Typing<span>Skill</span>Zone</span></a>
       <nav class="nav" aria-label="Main">
-        <a href="{% url 'accounts:passage_library' %}">Passages</a>
-        <a href="{% url 'institutes:owner_login' %}">Owner login</a>
-        <a href="{% url 'institutes:staff_login' %}">Staff login</a>
-        <a class="cta" href="{% url 'accounts:student_register' %}">Create account</a>
+        <a href="{% url 'exams:catalogue' %}">Explore Exams</a>
+        <a href="{% url 'institutes:owner_login' %}">Owner Login</a>
+        <a href="{% url 'institutes:student_login' %}">Institute Member Login</a>
+        <a href="{% url 'institutes:staff_login' %}">Staff Login</a>
+        <a href="{% url 'accounts:password_reset' %}">Forgot Password</a>
+        <a class="cta" href="{% url 'accounts:registration_options' %}">Register</a>
       </nav>
     </div>
   </header>
@@ -28,8 +30,27 @@
 
   <footer class="site-footer">
     <div class="container">
-      <span>&copy; TypingSkillZone</span>
-      <span><a href="{% url 'institutes:student_login' %}">Institute member login</a> · <a href="{% url 'accounts:password_reset' %}">Forgot password</a></span>
+      <section class="footer-about">
+        <a class="brand footer-brand" href="{% url 'home' %}"><span class="brand-mark">TS</span><span>Typing<span>Skill</span>Zone</span></a>
+        <p>Exam-focused typing practice for students preparing for government recruitment tests. Practise English and Hindi, review exam-specific results, and track your progress over time.</p>
+        <small>&copy; {% now "Y" %} TypingSkillZone. All rights reserved.</small>
+      </section>
+      <nav aria-label="Explore TypingSkillZone">
+        <strong>Explore</strong>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'exams:catalogue' %}">Explore Exams</a>
+        <a href="{% url 'accounts:registration_options' %}">Register an Account</a>
+      </nav>
+      <nav aria-label="Account and institute">
+        <strong>Account &amp; Institute</strong>
+        <a href="{% url 'accounts:student_login' %}">Student Login</a>
+        <a href="{% url 'institutes:register' %}">Register an Institute</a>
+        <a href="{% url 'institutes:owner_login' %}">Institute Owner Login</a>
+      </nav>
+      <section class="footer-info">
+        <strong>Practice with confidence</strong>
+        <p>Timed sessions, exam-configured scoring, autosaved typing and result history help you measure progress. Qualification status is shown only when the applicable exam rules are configured.</p>
+      </section>
     </div>
   </footer>
 </body>
