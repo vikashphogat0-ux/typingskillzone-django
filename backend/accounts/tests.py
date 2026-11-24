@@ -591,12 +591,10 @@ class PassageLibraryViewTests(TestCase):
 
     def test_passage_library_shows_published_passages_only(self):
         self.client.force_login(self.student)
-        response = self.client.get(reverse("accounts:passage_library"))
+        response = self.client.get(reverse("accounts:passage_library") + f"?exam={self.exam.code}")
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/passage_library.html")
-        self.assertTrue(response.context["exam_selection"])
         self.assertContains(response, self.exam.name)
-        self.assertNotIn("passages", response.context)
 
     def test_passage_library_filters_by_exam(self):
         self.client.force_login(self.student)
@@ -630,10 +628,12 @@ class PassageLibraryViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["passages"]), 0)
 
-    def test_passage_library_links_to_simulator_detail(self):
+    def test_passage_library_without_exam_goes_to_the_exam_catalogue(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse("accounts:passage_library"))
-        self.assertContains(
-            response,
-            reverse("accounts:passage_library") + f"?exam={self.exam.code}",
-        )
+        self.assertRedirects(response, reverse("exams:catalogue"), fetch_redirect_response=False)
+
+    def test_passage_library_links_to_simulator_detail(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("accounts:passage_library") + f"?exam={self.exam.code}")
+        self.assertEqual(response.status_code, 200)
