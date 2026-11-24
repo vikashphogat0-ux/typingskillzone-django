@@ -146,7 +146,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D":
         categories = mistake_analysis["categories"]
         full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
-        half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks"))
+        half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"))
         error_count = full_mistakes + (half_mistakes / 2)
         count_word_errors = True
     elif scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "STROKE_NET_WPM":
@@ -476,10 +476,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "net_wpm": net_wpm,
         "qualification": qualification,
         "qualification_status": qualification_status,
-        "disqualified": qualification_status == "NOT_QUALIFIED",
+        "disqualified": qualification_status.endswith("NOT_QUALIFIED"),
         "disqualification_reason": (
             f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
-            if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
+            if qualification_status.endswith("NOT_QUALIFIED") and rules.get("minimum_wpm") is not None
             else None
         ),
         "qualification_note": (
