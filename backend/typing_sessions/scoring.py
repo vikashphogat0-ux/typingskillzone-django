@@ -479,7 +479,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
             error_count = weighted_mistakes
             count_word_errors = True
-            reference_word_count = len(re.findall(r"\\S+", reference))
+            reference_word_count = len(re.findall(r"\S+", reference))
             error_percent = round(weighted_mistakes * 100 / max(1, reference_word_count), 2)
             gross_strokes = max(0, int(stroke_count_for_speed or 0))
             scoring_duration = max(1, int(scoring_rules.get("scoring_duration_seconds", 600)))
