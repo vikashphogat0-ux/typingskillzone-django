@@ -84,6 +84,48 @@ def _count_correct_words(reference, typed):
     return sum(i2 - i1 for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag == "equal")
 
 
+
+def _classify_dpa_mistakes(reference, typed):
+    """DPA-specific weighted mistake profile layered over the shared classifier."""
+    analysis = classify_typing_mistakes(reference, typed)
+    categories = dict(analysis["categories"])
+    categories.setdefault("transposition", 0)
+    categories.setdefault("paragraph_indentation", 0)
+    reference_words = re.findall(r"\S+", reference or "")
+    typed_words = re.findall(r"\S+", typed or "")
+
+    matcher = SequenceMatcher(None, reference_words, typed_words, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        expected, actual = reference_words[i1:i2], typed_words[j1:j2]
+        if tag == "replace" and len(expected) > 1 and len(actual) == 1:
+            clean_expected = "".join(re.sub(r"[^\w]", "", word).casefold() for word in expected)
+            clean_actual = re.sub(r"[^\w]", "", actual[0]).casefold()
+            if clean_expected == clean_actual:
+                categories["substitution"] = max(0, categories.get("substitution", 0) - len(expected))
+                categories["word_spacing"] = categories.get("word_spacing", 0) + 1
+
+    for index in range(min(len(reference_words), len(typed_words)) - 1):
+        if reference_words[index] == typed_words[index + 1] and reference_words[index + 1] == typed_words[index]:
+            if categories.get("omission", 0) and categories.get("addition", 0):
+                categories["omission"] -= 1
+                categories["addition"] -= 1
+            elif categories.get("substitution", 0) >= 2:
+                categories["substitution"] -= 2
+            categories["transposition"] += 1
+
+    for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
+        if expected.startswith("\t") and actual.startswith(" ") and not actual.startswith("\t"):
+            if categories.get("word_spacing", 0):
+                categories["word_spacing"] -= 1
+            elif categories.get("paragraph_breaks", 0):
+                categories["paragraph_breaks"] -= 1
+            categories["paragraph_indentation"] += 1
+
+    analysis["categories"] = categories
+    analysis["total_detected_errors"] = sum(categories.values())
+    return analysis
+
+
 def _evaluate_qualification_rules(config, metrics):
     """Evaluate explicit threshold conditions; unsupported conditions remain pending."""
     if not isinstance(config, dict) or not config:
@@ -141,11 +183,15 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     # Always retain the same RKC-style diagnostic classification for every display mode.
     # The configured exam scoring formula below remains authoritative for the numeric result.
-    mistake_analysis = classify_typing_mistakes(reference, typed)
+    mistake_analysis = (
+        _classify_dpa_mistakes(reference, typed)
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+        else classify_typing_mistakes(reference, typed)
+    )
 
     if (
         scoring_mode == "CUSTOM"
-        and scoring_rules.get("formula") == "STROKE_NET_WPM"
+        and scoring_rules.get("formula") in {"STROKE_NET_WPM", "SSC_DPA_GRADE_A"}
     ):
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
@@ -208,6 +254,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     score = None
     qualification = None
     qualification_note = "Qualification is not configured."
+    full_mistakes = half_mistakes = None
+    gross_kdph = error_percent = candidate_category = error_cap = None
     permitted_error_count = excess_error_count = net_words = None
     marks_minimum = None
     if scoring_mode == "CORRECT_WORDS":
@@ -276,7 +324,42 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "CUSTOM":
         formula = scoring_rules.get("formula")
 
-        if formula == "STROKE_NET_WPM":
+        if formula == "SSC_DPA_GRADE_A":
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing", "word_spacing",
+                "paragraph_breaks", "paragraph_indentation", "transposition"
+            ))
+            error_count = full_mistakes + (half_mistakes * 0.5)
+            count_word_errors = True
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_words_from_strokes = gross_strokes / strokes_per_word
+            gross_kdph = round(gross_strokes * 3600 / duration, 2)
+            gross_wpm = round(gross_words_from_strokes / minutes, 2)
+            gross_words = gross_words_from_strokes
+            error_percent = round(error_count * 100 / max(1, gross_words_from_strokes), 2)
+            minimum_kdph = int(scoring_rules.get("minimum_kdph", 15000))
+            minimum_strokes = (minimum_kdph * duration + 3599) // 3600
+            required_keystrokes = minimum_strokes
+            required_keystrokes_met = gross_strokes >= minimum_strokes
+            stroke_floor_met = gross_strokes >= minimum_strokes
+            candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
+            caps = scoring_rules.get("category_error_caps") or {"UR": 5, "OBC": 7, "EWS": 7, "SC": 10, "ST": 10, "PWD": 10, "OTHER_RESERVED": 10}
+            try:
+                error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            except (TypeError, ValueError):
+                error_cap = 5.0
+            net_words = max(0, gross_words_from_strokes - error_count)
+            net_wpm = round(net_words / minutes, 2)
+            permitted_error_count = gross_words_from_strokes * error_cap / 100
+            excess_error_count = max(0, error_count - permitted_error_count)
+            qualification = bool(stroke_floor_met and error_percent <= error_cap)
+            qualification_note = (
+                f"Provisional DPA qualification: {gross_strokes} / {minimum_strokes} keystrokes; "
+                f"{error_percent:.2f}% weighted errors against the {error_cap:g}% {candidate_category} cap."
+            )
+        elif formula == "STROKE_NET_WPM":
             try:
                 mistake_penalty_wpm = max(
                     0,
@@ -355,14 +438,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if qualifying_speed is not None and net_wpm < qualifying_speed:
                 score = 0
 
-        if not bands and score is None:
+        if not bands and score is None and formula != "SSC_DPA_GRADE_A":
             qualification_note = (
                 "Custom scoring data is stored, but no executable score formula is configured."
             )
     elif scoring_mode == "FULL_HALF_MISTAKES":
         qualification_note = "Full/half mistake classification requires exam-specific categories in scoring_rules; no generic classification was assumed."
 
-    error_percent_for_qualification = round(error_count * 100 / max(1, gross_words), 2)
+    error_percent_for_qualification = (
+        error_percent if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+        else round(error_count * 100 / max(1, gross_words), 2)
+    )
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
@@ -375,6 +461,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification = evaluated
         if evaluated is not None:
             qualification_status = "QUALIFIED" if evaluated else "NOT_QUALIFIED"
+    elif (
+        rules.get("verification_status") == "PARTIAL"
+        and configured_qualification.get("allow_partial_verification")
+        and scoring_mode == "CUSTOM"
+        and scoring_rules.get("formula") == "SSC_DPA_GRADE_A"
+    ):
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     elif rules.get("verification_status") != "VERIFIED":
         qualification = None
         qualification_note = "Qualification is pending because the exam rules are not verified."
@@ -421,18 +514,32 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if mistake_analysis is not None
             else None
 ),
-        "error_count_method": "word" if count_word_errors else "character",
+        "error_count_method": "full_half_weighted" if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else ("word" if count_word_errors else "character"),
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
+        "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
+        "error_percent": error_percent_for_qualification,
+        "full_mistakes": full_mistakes,
+        "half_mistakes": half_mistakes,
+        "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
+        "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
         "qualification": qualification,
         "qualification_status": qualification_status,
-        "disqualified": qualification_status == "NOT_QUALIFIED",
+        "disqualified": qualification_status in {"NOT_QUALIFIED", "PROVISIONAL_NOT_QUALIFIED"},
         "disqualification_reason": (
-            f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
-            if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
-            else None
+            "Minimum 15,000 KDPH stroke floor not met."
+            if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" and not required_keystrokes_met
+            else (
+                f"Weighted error rate exceeds the selected category ceiling of {error_cap:g}%."
+                if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_DPA_GRADE_A" and error_percent > error_cap
+                else (
+                    f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
+                    if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
+                    else None
+                )
+            )
         ),
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."

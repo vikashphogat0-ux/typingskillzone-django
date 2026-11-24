@@ -44,19 +44,35 @@ def start_session(*, learner, publication):
         publication=publication,
         captured_at=now,
     )
+    reference_text = publication.rendered_content
+    if exam.code == "ssc-data-processing-assistant-grade-a":
+        import re
+
+        passage_range = (exam.scoring_rules or {}).get("passage_character_range") or {}
+        minimum_chars = int(passage_range.get("minimum", 3700))
+        maximum_chars = int(passage_range.get("maximum", 4000))
+        paragraphs = [part for part in re.split(r"\n\s*\n", reference_text) if part.strip()]
+        reference_text = "\n\n".join(
+            part if part.startswith("\t") else "\t" + part.lstrip(" \t")
+            for part in paragraphs
+        )
+        if not minimum_chars <= len(reference_text) <= maximum_chars:
+            raise ValidationError(
+                f"SSC DPA Grade-A passage must contain {minimum_chars}–{maximum_chars} characters including paragraph tabs."
+            )
     return TypingSession.objects.create(
         learner=learner,
         publication=publication,
         started_at=now,
         deadline_at=None,
         duration_seconds=duration,
-        reference_text=publication.rendered_content,
+        reference_text=reference_text,
         rules_snapshot=snapshot,
     )
 
 
 @transaction.atomic
-def activate_session(*, session_id, learner):
+def activate_session(*, session_id, learner, compensatory_time=False):
     """Start the server-owned exam clock on the learner's first input."""
     _require_active_student(learner)
     session = TypingSession.objects.select_for_update().get(pk=session_id, learner=learner)
@@ -66,15 +82,28 @@ def activate_session(*, session_id, learner):
         now = timezone.now()
         if session.deadline_at is None:
             session.started_at = now
+            scoring_rules = session.rules_snapshot.get("scoring_rules") or {}
+            compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
+            applied_compensatory = bool(
+                compensatory_time
+                and scoring_rules.get("compensatory_time_enabled")
+                and compensatory_seconds
+            )
+            if applied_compensatory:
+                session.duration_seconds = int(compensatory_seconds)
             if session.duration_seconds:
                 session.deadline_at = now + timedelta(seconds=session.duration_seconds)
-        session.rules_snapshot = {**session.rules_snapshot, "timer_started": True}
-        session.save(update_fields=("started_at", "deadline_at", "rules_snapshot"))
+        session.rules_snapshot = {
+            **session.rules_snapshot,
+            "timer_started": True,
+            "compensatory_time_applied": bool(compensatory_time and session.duration_seconds == int((session.rules_snapshot.get("scoring_rules") or {}).get("compensatory_duration_seconds") or 0)),
+        }
+        session.save(update_fields=("started_at", "deadline_at", "duration_seconds", "rules_snapshot"))
     return session
 
 
 @transaction.atomic
-def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None, client_policy_events=None):
+def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None, client_policy_events=None, candidate_category=None):
     _require_active_student(learner)
     session = TypingSession.objects.select_for_update().select_related("publication").get(
         pk=session_id, learner=learner
@@ -109,11 +138,17 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
 
     # An expired attempt is scored only from text received by this endpoint; the
     # browser's countdown or claimed completion time is never accepted.
+    scoring_snapshot = dict(session.rules_snapshot)
+    if candidate_category:
+        allowed_categories = {"UR", "OBC", "EWS", "SC", "ST", "PWD", "OTHER_RESERVED"}
+        normalized_category = str(candidate_category).strip().upper()
+        if normalized_category in allowed_categories:
+            scoring_snapshot["candidate_category"] = normalized_category
     result = calculate_result(
         reference=session.reference_text,
         typed=typed_text,
         duration_seconds=elapsed,
-        rules=session.rules_snapshot,
+        rules=scoring_snapshot,
         reported_keystrokes=reported_keystrokes,
     )
     # Clipboard and backspace blocks are counted in the browser only. Keep the count as

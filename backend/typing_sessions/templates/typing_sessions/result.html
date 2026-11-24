@@ -28,6 +28,8 @@
     <article class="metric-card"><span>Errors</span><strong>{{ attempt.result_snapshot.error_count|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_count_method|default:"" }}</small></article>
     <article class="metric-card"><span>Duration</span><strong>{{ attempt.result_snapshot.duration_seconds|default_if_none:"–" }}</strong><small>seconds</small></article>
     <article class="metric-card"><span>Characters typed</span><strong>{{ attempt.submitted_text|length }}</strong><small>{{ attempt.result_snapshot.correct_words|default_if_none:"0" }} correct words</small></article>
+    {% if attempt.result_snapshot.gross_kdph != None %}<article class="metric-card"><span>Gross KDPH</span><strong>{{ attempt.result_snapshot.gross_kdph }}</strong><small>Target 15,000 KDPH</small></article>{% endif %}
+    {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" and attempt.result_snapshot.error_percent != None %}<article class="metric-card"><span>Weighted error rate</span><strong>{{ attempt.result_snapshot.error_percent }}%</strong><small>Permitted {{ attempt.result_snapshot.category_error_cap }}% · {{ attempt.result_snapshot.candidate_category }}</small></article>{% endif %}
     {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}</strong><small>Exam scoring result</small></article>{% endif %}
     {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
   </div>
@@ -38,6 +40,7 @@
     <div><dt>Substitutions</dt><dd>{{ attempt.result_snapshot.substitution_errors|default_if_none:"0" }}</dd></div>
     <div><dt>Insertions</dt><dd>{{ attempt.result_snapshot.insertion_errors|default_if_none:"0" }}</dd></div>
     <div><dt>Deletions</dt><dd>{{ attempt.result_snapshot.deletion_errors|default_if_none:"0" }}</dd></div>
+    {% if attempt.result_snapshot.full_mistakes != None %}<div><dt>Full mistakes</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div><div><dt>Half mistakes</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>{% endif %}
     <div><dt>Keystrokes reported</dt><dd>{{ attempt.result_snapshot.reported_keystrokes|default_if_none:"0" }}</dd></div>
     {% if attempt.result_snapshot.required_keystrokes %}<div><dt>Required keystrokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}{% if attempt.result_snapshot.required_keystrokes_met %} · met{% else %} · not met{% endif %}</dd></div>{% endif %}
   </dl>
@@ -55,6 +58,7 @@
     <div><dt>Paragraph breaks</dt><dd>{{ attempt.result_snapshot.mistake_categories.paragraph_breaks|default:0 }}</dd></div>
   </dl>
   {% endif %}
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}<p class="muted" style="margin-top:12px">Qualifying-only simulator: typing marks are not added to final merit.</p>{% endif %}
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
 </section>
 <script>
