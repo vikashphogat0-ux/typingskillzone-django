@@ -149,6 +149,7 @@ def submit_typing_session(request, session_id):
         client_policy_events = int(request.POST.get("policy_events", "") or 0)
     except (TypeError, ValueError):
         client_policy_events = None
+    candidate_category = request.POST.get("candidate_category", "UR")
     try:
         attempt = submit_session(
             session_id=session_id,
@@ -156,6 +157,7 @@ def submit_typing_session(request, session_id):
             typed_text=typed_text,
             reported_keystrokes=reported_keystrokes,
             client_policy_events=client_policy_events,
+            candidate_category=candidate_category,
         )
     except TypingSession.DoesNotExist:
         return JsonResponse({"error": "Session not found."}, status=404)
