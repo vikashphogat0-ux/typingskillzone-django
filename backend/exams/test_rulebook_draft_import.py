@@ -114,7 +114,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertNotIn("tab_behavior", defaults)
         self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.UNCONFIGURED)
         self.assertEqual(defaults["passage_source_mode"], ExamConfiguration.PassageSourceMode.UNSPECIFIED)
-    def test_rrb_formula_is_recorded_as_non_executable_candidate(self):
+    def test_shared_five_percent_penalty_is_not_mislabeled_as_rrb(self):
         profile = {
             "number": 32,
             "profile_id": "rrb-ntpc-example",
@@ -129,10 +129,30 @@ class RulebookDraftImportTests(SimpleTestCase):
             ],
         }
         defaults = build_draft_defaults(profile)
-        self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "RRB_CBTST_5_PERCENT")
+        self.assertEqual(defaults["scoring_rules"]["candidate_formula"], "SHARED_5_PERCENT_10_WORD_PENALTY")
         self.assertEqual(defaults["scoring_rules"]["mistake_allowance_percent"], 5)
         self.assertEqual(defaults["scoring_rules"]["excess_mistake_deduction_words"], 10)
         self.assertFalse(defaults["scoring_rules"]["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+
+    def test_bsf_formula_uses_shared_identifier_not_rrb_identifier(self):
+        profile = {
+            "number": 39,
+            "profile_id": "bsf-hcm-english",
+            "name": "BSF HCM English Test",
+            "source_text": [
+                "Duration & Target: 10 minutes • 35 WPM.",
+                "WPM & Error Formula:",
+                '"Net WPM"=("Total Words Typed" -(max(0, "Total Mistakes" -0.05×"Total Words Typed" )×10))/10',
+                "Qualifying Criteria: Must reach 35 Net WPM.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SHARED_5_PERCENT_10_WORD_PENALTY")
+        self.assertEqual(candidate["mistake_allowance_percent"], 5)
+        self.assertEqual(candidate["excess_mistake_deduction_words"], 10)
+        self.assertFalse(candidate["executable"])
         self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
 
     def test_delhi_police_hcm_2025_english_formula_is_executable(self):
