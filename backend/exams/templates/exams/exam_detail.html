@@ -21,7 +21,7 @@
         <div><dt>Duration</dt><dd>{% if duration_minutes %}{{ duration_minutes }} minutes{% else %}Not set{% endif %}</dd></div>
         <div><dt>Language</dt><dd>{{ exam.language|title }}</dd></div>
         <div><dt>Keyboard layout</dt><dd>{{ exam.keyboard_layout|default:"Not specified" }}</dd></div>
-        <div><dt>Interface</dt><dd>{{ exam.get_interface_type_display|default:exam.interface_type }}</dd></div>
+        <div><dt>Interface</dt><dd>{{ exam.interface_type|default:'Not specified' }}</dd></div>
         <div><dt>Backspace</dt><dd>{{ exam.get_backspace_policy_display }}</dd></div>
         <div><dt>Scoring</dt><dd>{% if exam.scoring_rules.qualifying_only %}Qualifying only{% else %}{{ exam.get_scoring_mode_display }}{% endif %}</dd></div>
         {% if exam.minimum_wpm %}<div><dt>Minimum speed</dt><dd>{{ exam.minimum_wpm }} WPM</dd></div>{% endif %}
