@@ -57,6 +57,7 @@ class Command(BaseCommand):
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
                 "minimum_strokes": 1750,
+                "scoring_duration_seconds": 600,
                 "strokes_per_word": 5,
                 "passage_word_range": {"minimum": 350, "maximum": 400},
                 "category_error_caps": {"PWD": 10, "OTHER_RESERVED": 10},
