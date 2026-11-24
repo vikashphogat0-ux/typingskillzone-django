@@ -49,7 +49,7 @@ def start_session(*, learner, publication):
         word_range = (exam.scoring_rules or {}).get("passage_word_range") or {}
         minimum_words = int(word_range.get("minimum", 350))
         maximum_words = int(word_range.get("maximum", 400))
-        passage_words = len(re.findall(r"\\S+", publication.rendered_content or ""))
+        passage_words = len(re.findall(r"\S+", publication.rendered_content or ""))
         if not minimum_words <= passage_words <= maximum_words:
             raise ValidationError(
                 f"SSC CHSL 2025 English passage must contain {minimum_words}–{maximum_words} words."
