@@ -404,7 +404,19 @@
     countdown.textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");
     if(remaining<=0){submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);form.submit();}
   }
-  form.addEventListener("submit",()=>{submitting=true;input.readOnly=true;document.getElementById("policy-events").value=String(policyEvents);document.getElementById("finish-button").disabled=true;});
+  const chslFixedDuration = rules.scoring_rules && rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH";
+  const finishButton = document.getElementById("finish-button");
+  if (chslFixedDuration) finishButton.disabled = true;
+  form.addEventListener("submit", event => {
+    if (chslFixedDuration && deadline !== null && Date.now() + clockOffset < deadline) {
+      event.preventDefault();
+      return;
+    }
+    submitting=true;
+    input.readOnly=true;
+    document.getElementById("policy-events").value=String(policyEvents);
+    finishButton.disabled=true;
+  });
   // Autosave: store the current text every 15 seconds if it changed. Drafts are never scored.
   const draftUrl = "{% url 'typing_sessions:draft' attempt.pk %}";
   const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
