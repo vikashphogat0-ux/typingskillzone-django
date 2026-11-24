@@ -91,6 +91,36 @@ def _rrb_scoring_candidate(lines):
         }
     return None
 
+
+def _delhi_police_hcm_scoring_candidate(name):
+    normalized = (name or "").lower()
+    if "delhi police hc english test" in normalized:
+        minimum_wpm = 30
+        marks_bands = [
+            {"minimum_wpm": 51, "marks": 25}, {"minimum_wpm": 46, "marks": 21},
+            {"minimum_wpm": 41, "marks": 18}, {"minimum_wpm": 36, "marks": 15},
+            {"minimum_wpm": 31, "marks": 12}, {"minimum_wpm": 30, "marks": 10},
+        ]
+    elif "delhi police hc hindi test" in normalized:
+        minimum_wpm = 25
+        marks_bands = [
+            {"minimum_wpm": 45, "marks": 25}, {"minimum_wpm": 41, "marks": 21},
+            {"minimum_wpm": 36, "marks": 18}, {"minimum_wpm": 31, "marks": 15},
+            {"minimum_wpm": 26, "marks": 12}, {"minimum_wpm": 25, "marks": 10},
+        ]
+    else:
+        return None
+    return {
+        "candidate_formula": "DELHI_POLICE_HCM_2025",
+        "minimum_wpm": minimum_wpm,
+        "maximum_marks": 25,
+        "marks_bands": marks_bands,
+        "mistake_penalty_words": 1,
+        "executable": False,
+        "verification_note": "Candidate mapped to SSC DPHCM 2025 paras 24-24.2; admin source verification is still required before activation.",
+    }
+
+
 def build_draft_defaults(profile):
     """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
@@ -134,6 +164,8 @@ def build_draft_defaults(profile):
     ]
 
     scoring_candidate = _rrb_scoring_candidate(lines)
+    if scoring_candidate is None:
+        scoring_candidate = _delhi_police_hcm_scoring_candidate(name)
     scoring_payload = {"source_formula_text": scoring_source, "executable": False}
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
