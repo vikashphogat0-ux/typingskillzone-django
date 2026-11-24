@@ -79,3 +79,38 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertIsNone(defaults["minimum_wpm"])
         self.assertEqual(defaults["keyboard_layout"], "QWERTY")
         self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.UNCONFIGURED)
+
+    def test_explicit_enter_space_tab_rules_are_extracted(self):
+        profile = {
+            "number": 3,
+            "profile_id": "explicit-controls",
+            "name": "Court Typing English",
+            "source_text": [
+                "Duration & Target: 10 minutes.",
+                "Interface, Passage & Keyboard Rules: Enter inserts a new line; normal Spacebar; Tab inserts 5 spaces. Paragraph-based passage on-screen.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertEqual(defaults["enter_behavior"], ExamConfiguration.EnterBehavior.NEW_LINE)
+        self.assertEqual(defaults["space_behavior"], ExamConfiguration.SpaceBehavior.NORMAL)
+        self.assertEqual(defaults["tab_behavior"], ExamConfiguration.TabBehavior.INSERT_SPACES)
+        self.assertEqual(defaults["passage_tab_size"], 5)
+        self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.PARAGRAPHS)
+        self.assertEqual(defaults["passage_source_mode"], ExamConfiguration.PassageSourceMode.SCREEN)
+
+    def test_ambiguous_controls_and_layout_remain_unconfigured(self):
+        profile = {
+            "number": 4,
+            "profile_id": "ambiguous-controls",
+            "name": "State Typing Hindi",
+            "source_text": [
+                "Duration & Target: 10 minutes.",
+                "Interface, Passage & Keyboard Rules: Enter/Space/Tab behaviour may vary by centre; passage presentation as per notification.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        self.assertNotIn("enter_behavior", defaults)
+        self.assertNotIn("space_behavior", defaults)
+        self.assertNotIn("tab_behavior", defaults)
+        self.assertEqual(defaults["passage_layout"], ExamConfiguration.PassageLayout.UNCONFIGURED)
+        self.assertEqual(defaults["passage_source_mode"], ExamConfiguration.PassageSourceMode.UNSPECIFIED)
