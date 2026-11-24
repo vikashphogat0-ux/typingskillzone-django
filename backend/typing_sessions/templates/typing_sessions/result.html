@@ -23,7 +23,20 @@
 <section class="card" id="result-statistics">
   <h2>Performance statistics</h2>
   <div class="metrics">
-    {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
+    {% if attempt.rules_snapshot.scoring_rules.formula == "DELHI_POLICE_HCM_2025" %}
+  <h3 style="margin-top:22px">Delhi Police HCM 2025 official typing calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>Total strokes</dt><dd>{{ attempt.result_snapshot.gross_strokes }}</dd></div>
+    <div><dt>Words (strokes ÷ 5)</dt><dd>{{ attempt.result_snapshot.gross_words }}</dd></div>
+    <div><dt>Tentative speed</dt><dd>{{ attempt.result_snapshot.tentative_wpm }} WPM</dd></div>
+    <div><dt>Mistakes deducted</dt><dd>{{ attempt.result_snapshot.error_count }} × 1 word</dd></div>
+    <div><dt>Actual speed</dt><dd>{{ attempt.result_snapshot.net_wpm }} WPM</dd></div>
+    <div><dt>Marks</dt><dd>{{ attempt.result_snapshot.score }} / 25</dd></div>
+    <div><dt>Result</dt><dd>{{ attempt.result_snapshot.qualification_status }}</dd></div>
+  </dl>
+  <p class="muted">SSC Notice 2025, paragraphs 24–24.2: one word deducted for each notified mistake. The qualifying speed and marks bands depend on the selected typing language.</p>
+  {% endif %}
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
     <article class="metric-card"><span>Gross KDPH</span><strong>{{ attempt.result_snapshot.gross_kdph|default_if_none:"–" }}</strong><small>Target 15,000 KDPH</small></article>
     <article class="metric-card"><span>Gross WPM</span><strong>{{ attempt.result_snapshot.gross_wpm|default_if_none:"–" }}</strong><small>Target 50 WPM</small></article>
     <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default_if_none:"–" }}</strong><small>After weighted mistake deduction</small></article>
