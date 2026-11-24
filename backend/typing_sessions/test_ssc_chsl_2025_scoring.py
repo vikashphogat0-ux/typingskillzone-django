@@ -59,3 +59,26 @@ class SSCCHSL2025ScoringTests(SimpleTestCase):
         self.assertTrue(result["qualification"])
         self.assertEqual(result["qualification_status"], "QUALIFIED")
         self.assertIsNone(result["score"])
+
+    def test_adjacent_word_transposition_is_a_half_mistake(self):
+        reference = "I hope " + ("word " * 350)
+        typed = "hope I " + ("word " * 350)
+        result = calculate_result(
+            reference=reference,
+            typed=typed,
+            duration_seconds=600,
+            rules={
+                "scoring_mode": "CUSTOM",
+                "verification_status": "VERIFIED",
+                "candidate_category": "UR",
+                "scoring_rules": {
+                    "formula": "SSC_CHSL_2025_ENGLISH",
+                    "minimum_wpm": 35,
+                    "minimum_kdph": 10500,
+                    "category_error_caps": {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10},
+                },
+            },
+        )
+        self.assertEqual(result["mistake_categories"]["transposition"], 1)
+        self.assertEqual(result["half_mistakes"], 1)
+        self.assertEqual(result["weighted_mistakes"], 0.5)
