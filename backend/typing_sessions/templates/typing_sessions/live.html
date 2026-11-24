@@ -364,6 +364,8 @@
   input.addEventListener("input",() => {
     if (phase === "exam") {
       if (categorySelect) categorySelect.disabled = true;
+      const compensatoryCheckbox = document.getElementById("compensatory-time");
+      if (compensatoryCheckbox) compensatoryCheckbox.disabled = true;
       if (!startedAt) startedAt = Date.now();
       ensureTimerStarted();
     }
