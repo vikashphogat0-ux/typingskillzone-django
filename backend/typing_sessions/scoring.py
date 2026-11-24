@@ -209,6 +209,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     except (TypeError, ValueError):
         strokes_per_word = 5
     score = None
+    score_note = None
+    full_mistakes = half_mistakes = None
     qualification = None
     qualification_note = "Qualification is not configured."
     permitted_error_count = excess_error_count = net_words = None
@@ -298,10 +300,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 score = min(25.0, max(0.0, max(eligible_marks)))
             if error_percent > float(rules.get("error_allowance_percent") or 5):
                 score = 0
-            qualification_note = (
-                "Marks are pending: configure the official 0-25 speed-to-marks bands."
+            score_note = (
+                "Marks pending: the master rulebook specifies 0-25 speed-graded marks but does not provide the official speed-to-marks bands."
                 if not bands else "Speed-graded marks calculated from configured bands."
             )
+            if error_percent > float(rules.get("error_allowance_percent") or 5):
+                score_note = "Zero marks: weighted mistake percentage exceeds the configured 5% allowance."
         elif formula == "STROKE_NET_WPM":
             try:
                 mistake_penalty_wpm = max(
@@ -450,6 +454,11 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "gross_words": gross_words,
         "scoring_mode": scoring_mode,
         "score": score,
+        "score_note": score_note,
+        "full_mistakes": full_mistakes,
+        "half_mistakes": half_mistakes,
+        "weighted_mistakes": error_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D" else None,
+        "error_percent": error_percent_for_qualification,
         "permitted_error_count": permitted_error_count,
         "excess_error_count": excess_error_count,
         "net_words": net_words,
