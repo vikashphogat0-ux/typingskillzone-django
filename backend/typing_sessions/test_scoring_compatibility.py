@@ -341,7 +341,7 @@ class DelhiPoliceHCMRuleTests(SimpleTestCase):
 
     def test_hcm_hindi_minimum_qualifying_speed_is_25_wpm(self):
         words = ["abcd"] * 350
-        typed_words = ["wxyz"] * 15 + words[15:]
+        typed_words = ["wxyz"] * 10 + words[10:]
         typed = " ".join(typed_words) + " "
 
         result = calculate_result(
