@@ -206,3 +206,33 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["category_error_caps"]["PWD"], 10)
         self.assertTrue(candidate["compensatory_time_enabled"])
         self.assertFalse(candidate["executable"])
+
+    def test_ssc_chsl_2025_hindi_kruti_dev_remains_unverified_for_font_and_layout(self):
+        profile = {
+            "number": 3,
+            "profile_id": "ssc-chsl-2025-hindi-kurtidev",
+            "name": "3. SSC CHSL 2025 Hindi (KurtiDev)",
+            "source_text": ["Duration & Target: 10 minutes • 30 WPM (9,000 KDPH / ~1,500 key depressions)."],
+        }
+        defaults = build_draft_defaults(profile)
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SSC_CHSL_2025_HINDI_KRUTIDEV")
+        self.assertEqual(candidate["minimum_wpm"], 30)
+        self.assertEqual(candidate["minimum_strokes"], 1500)
+        self.assertIn("does not specify Kruti Dev", candidate["verification_note"])
+        self.assertFalse(candidate["executable"])
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+
+    def test_ssc_chsl_2025_hindi_mangal_remains_separate_and_unverified(self):
+        profile = {
+            "number": 4,
+            "profile_id": "ssc-chsl-2025-hindi-mangal",
+            "name": "4. SSC CHSL 2025 Hindi (Mangal Font)",
+            "source_text": ["Duration & Target: 10 minutes • 30 WPM (9,000 KDPH / ~1,500 key depressions)."],
+        }
+        defaults = build_draft_defaults(profile)
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SSC_CHSL_2025_HINDI_MANGAL")
+        self.assertEqual(candidate["minimum_kdph"], 9000)
+        self.assertIn("does not specify Mangal", candidate["verification_note"])
+        self.assertFalse(candidate["executable"])
