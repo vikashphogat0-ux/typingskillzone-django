@@ -285,8 +285,17 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             except (TypeError, ValueError):
                 mistake_penalty_wpm = 1
 
+            scoring_duration = scoring_rules.get("scoring_duration_seconds", duration)
+            try:
+                scoring_duration = max(1, int(scoring_duration))
+            except (TypeError, ValueError):
+                scoring_duration = duration
+            scoring_minutes = scoring_duration / 60
+            # HCM's notified formula uses a fixed 10-minute denominator.
+            # For this internally verified profile, submitted text length is
+            # the server-derived stroke count; browser telemetry is not trusted.
             tentative_wpm = round(
-                stroke_count_for_speed / strokes_per_word / minutes,
+                stroke_count_for_speed / strokes_per_word / scoring_minutes,
                 2,
             )
 
@@ -336,6 +345,15 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
             if eligible and score is None:
                 score = max(eligible)
+
+            # HCM qualifying speed is a hard gate: below it means disqualified
+            # and zero marks, not merely an ungraded score.
+            try:
+                qualifying_speed = float(rules.get("minimum_wpm"))
+            except (TypeError, ValueError):
+                qualifying_speed = None
+            if qualifying_speed is not None and net_wpm < qualifying_speed:
+                score = 0
 
         if not bands and score is None:
             qualification_note = (
@@ -410,6 +428,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "net_wpm": net_wpm,
         "qualification": qualification,
         "qualification_status": qualification_status,
+        "disqualified": qualification_status == "NOT_QUALIFIED",
+        "disqualification_reason": (
+            f"Net speed below the minimum qualifying speed of {rules.get('minimum_wpm')} WPM."
+            if qualification_status == "NOT_QUALIFIED" and rules.get("minimum_wpm") is not None
+            else None
+        ),
         "qualification_note": (
             "Qualification is not calculated because exam rules are not verified."
             if rules.get("verification_status") != "VERIFIED" and qualification is None
