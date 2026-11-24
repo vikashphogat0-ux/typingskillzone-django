@@ -23,6 +23,12 @@
 <section class="card" id="result-statistics">
   <h2>Performance statistics</h2>
   <div class="metrics">
+    {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
+    <article class="metric-card"><span>Gross KDPH</span><strong>{{ attempt.result_snapshot.gross_kdph|default_if_none:"–" }}</strong><small>Target 15,000 KDPH</small></article>
+    <article class="metric-card"><span>Gross WPM</span><strong>{{ attempt.result_snapshot.gross_wpm|default_if_none:"–" }}</strong><small>Target 50 WPM</small></article>
+    <article class="metric-card"><span>Net WPM</span><strong>{{ attempt.result_snapshot.net_wpm|default_if_none:"–" }}</strong><small>After weighted mistake deduction</small></article>
+    <article class="metric-card"><span>Weighted errors</span><strong>{{ attempt.result_snapshot.weighted_mistakes|default_if_none:"0" }}</strong><small>{{ attempt.result_snapshot.error_percent }}% · maximum {{ attempt.result_snapshot.category_error_cap }}%</small></article>
+    {% endif %}
     {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
     <article class="metric-card"><span>Gross KDPH</span><strong>{{ attempt.result_snapshot.gross_kdph }}</strong><small>Target 10,500 KDPH</small></article>
     <article class="metric-card"><span>Weighted error %</span><strong>{{ attempt.result_snapshot.error_percent }}%</strong><small>Maximum {{ attempt.result_snapshot.category_error_cap }}% · {{ attempt.result_snapshot.candidate_category }}</small></article>
@@ -35,6 +41,23 @@
     {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Score</span><strong>{{ attempt.result_snapshot.score }}{% if attempt.rules_snapshot.scoring_rules.maximum_marks %} / {{ attempt.rules_snapshot.scoring_rules.maximum_marks }}{% endif %}</strong><small>Exam scoring result</small></article>{% elif attempt.result_snapshot.score_note %}<article class="metric-card"><span>Marks</span><strong>Pending</strong><small>Official speed-to-marks bands required</small></article>{% endif %}
     {% if attempt.result_snapshot.qualification_status %}<article class="metric-card"><span>Qualification</span><strong>{{ attempt.result_snapshot.qualification_status|title }}</strong><small>Based on configured exam rules</small></article>{% endif %}
   </div>
+  {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
+  <h3 style="margin-top:22px">SSC DPA Grade-A qualifying calculation</h3>
+  <dl class="pattern-grid">
+    <div><dt>Gross KDPH</dt><dd>{{ attempt.result_snapshot.gross_kdph }} / 15,000</dd></div>
+    <div><dt>Gross WPM</dt><dd>{{ attempt.result_snapshot.gross_wpm }}</dd></div>
+    <div><dt>Net WPM</dt><dd>{{ attempt.result_snapshot.net_wpm }}</dd></div>
+    <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
+    <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
+    <div><dt>Weighted mistakes</dt><dd>{{ attempt.result_snapshot.weighted_mistakes }}</dd></div>
+    <div><dt>Reference passage error rate</dt><dd>{{ attempt.result_snapshot.error_percent }}% / {{ attempt.result_snapshot.category_error_cap }}% maximum</dd></div>
+    <div><dt>Required keystrokes</dt><dd>{{ attempt.result_snapshot.required_keystrokes }}</dd></div>
+    <div><dt>Candidate category</dt><dd>{{ attempt.result_snapshot.candidate_category }}</dd></div>
+    <div><dt>Compensatory extension</dt><dd>{% if attempt.rules_snapshot.compensatory_time_applied %}Applied — 20 minutes{% else %}Not applied — 15 minutes{% endif %}</dd></div>
+    <div><dt>Final result</dt><dd>{{ attempt.result_snapshot.qualification_status|default:"PENDING" }}</dd></div>
+  </dl>
+  <p class="muted">Qualifying-only simulator. Typing marks are not added to final merit.</p>
+  {% endif %}
   {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_VH_ENGLISH" %}
   <h3 style="margin-top:22px">VH English qualifying calculation</h3>
   <dl class="pattern-grid">
