@@ -63,7 +63,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["keyboard_layout"], "Remington Gail")
         self.assertFalse(defaults["allow_copy"])
         self.assertFalse(defaults["allow_paste"])
-        self.assertFalse(defaults["is_active"])
+        self.assertTrue(defaults["is_active"])
 
     def test_notification_dependent_or_multiple_wpm_values_are_not_collapsed(self):
         profile = {
@@ -133,7 +133,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["scoring_rules"]["mistake_allowance_percent"], 5)
         self.assertEqual(defaults["scoring_rules"]["excess_mistake_deduction_words"], 10)
         self.assertFalse(defaults["scoring_rules"]["executable"])
-        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.CUSTOM)
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
 
     def test_delhi_police_hcm_2025_english_marks_are_extracted_as_draft(self):
         profile = {
@@ -186,7 +186,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["category_error_caps"]["UR"], 7)
         self.assertEqual(candidate["category_error_caps"]["VH"], 10)
         self.assertTrue(candidate["executable"])
-        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.CUSTOM)
 
     def test_ssc_chsl_2025_vh_candidate_keeps_compensatory_time_separate(self):
         profile = {
@@ -237,7 +237,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertIn("does not specify Mangal", candidate["verification_note"])
         self.assertFalse(candidate["executable"])
 
-    def test_ssc_cgl_2025_standard_and_vh_are_separate_inactive_candidates(self):
+    def test_ssc_cgl_2025_standard_and_vh_are_active_variant_profiles(self):
         standard = build_draft_defaults({
             "number": 5,
             "profile_id": "ssc-cgl-2025-dest",
@@ -254,8 +254,8 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(standard["scoring_rules"]["duration_seconds"], 900)
         self.assertEqual(vh["scoring_rules"]["candidate_formula"], "SSC_CGL_2025_VH_DEST")
         self.assertEqual(vh["scoring_rules"]["compensatory_duration_seconds"], 1200)
-        self.assertFalse(standard["scoring_rules"]["executable"])
-        self.assertFalse(vh["scoring_rules"]["executable"])
+        self.assertTrue(standard["scoring_rules"]["executable"])
+        self.assertTrue(vh["scoring_rules"]["executable"])
         self.assertTrue(standard["is_active"])
         self.assertTrue(vh["is_active"])
 
