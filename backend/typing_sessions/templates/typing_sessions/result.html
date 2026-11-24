@@ -63,6 +63,7 @@
     <div><dt>Internal spacing</dt><dd>{{ attempt.result_snapshot.mistake_categories.internal_spacing|default:0 }}</dd></div>
     <div><dt>Word spacing</dt><dd>{{ attempt.result_snapshot.mistake_categories.word_spacing|default:0 }}</dd></div>
     <div><dt>Paragraph breaks</dt><dd>{{ attempt.result_snapshot.mistake_categories.paragraph_breaks|default:0 }}</dd></div>
+    <div><dt>Adjacent-word transposition</dt><dd>{{ attempt.result_snapshot.mistake_categories.transposition|default:0 }}</dd></div>
   </dl>
   {% endif %}
   {% if attempt.result_snapshot.qualification_note %}<p class="muted" style="margin-top:16px">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
