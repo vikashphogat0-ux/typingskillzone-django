@@ -295,7 +295,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             error_count = full_mistakes + half_mistakes / 2
             count_word_errors = True
             reference_word_count = len(re.findall(r"\S+", reference))
-            gross_strokes = len(typed)
+            # Provisional profiles use browser telemetry for actual key depressions;
+            # verified profiles use the server-derived fallback, never client input.
+            gross_strokes = stroke_count_for_speed
             gross_words_from_strokes = gross_strokes / strokes_per_word
             error_percent = round(error_count * 100 / max(1, reference_word_count), 2)
             permitted_error_count = max(0, int(reference_word_count * float(rules.get("error_allowance_percent") or 0) / 100))
@@ -463,7 +465,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
 
     error_denominator = (
         len(re.findall(r"\S+", reference))
-        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D"
+        if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"MODEL_A", "MODEL_D", "DELHI_POLICE_MODEL_D"}
         else gross_words
     )
     error_percent_for_qualification = round(error_count * 100 / max(1, error_denominator), 2)
