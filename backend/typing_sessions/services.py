@@ -48,9 +48,9 @@ def start_session(*, learner, publication):
     if exam.code == "ssc-data-processing-assistant-grade-a":
         import re
 
-        paragraphs = [part for part in re.split(r"\\n\\s*\\n", reference_text) if part.strip()]
-        reference_text = "\\n\\n".join(
-            part if part.startswith("\\t") else "\\t" + part.lstrip(" \\t")
+        paragraphs = [part for part in re.split(r"\n\s*\n", reference_text) if part.strip()]
+        reference_text = "\n\n".join(
+            part if part.startswith("\t") else "\\t" + part.lstrip(" \t")
             for part in paragraphs
         )
     return TypingSession.objects.create(
