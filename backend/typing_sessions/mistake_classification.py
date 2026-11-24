@@ -68,6 +68,7 @@ def classify_typing_mistakes(reference, typed):
         "internal_spacing": 0,
         "word_spacing": 0,
         "paragraph_breaks": 0,
+        "transposition": 0,
     }
 
     # Compare only words the learner reached; the remaining reference
@@ -99,6 +100,15 @@ def classify_typing_mistakes(reference, typed):
             categories["addition"] += len(actual)
 
         elif tag == "replace":
+            # Two adjacent words typed in reverse order are one half-mistake.
+            if (
+                len(expected) == 2
+                and len(actual) == 2
+                and ref_clean[i1:i2] == list(reversed(typed_clean[j1:j2]))
+            ):
+                categories["transposition"] += 1
+                continue
+
             # Detect a word split by an accidental internal space.
             joined_actual = "".join(actual)
             joined_expected = "".join(expected)
