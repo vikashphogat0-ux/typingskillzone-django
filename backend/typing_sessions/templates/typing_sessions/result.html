@@ -84,7 +84,7 @@
   </dl>
   {% endif %}
   {% if attempt.result_snapshot.full_mistakes != None %}
-  <h3 style="margin-top:22px">Delhi Police weighted mistake calculation</h3>
+  <h3 style="margin-top:22px">{% if attempt.rules_snapshot.scoring_rules.formula == "DELHI_POLICE_HCM_2025" %}Delhi Police HCM one-word-per-mistake calculation{% else %}Delhi Police weighted mistake calculation{% endif %}</h3>
   <dl class="pattern-grid">
     <div><dt>Full mistakes (×1)</dt><dd>{{ attempt.result_snapshot.full_mistakes }}</dd></div>
     <div><dt>Half mistakes (×0.5)</dt><dd>{{ attempt.result_snapshot.half_mistakes }}</dd></div>
