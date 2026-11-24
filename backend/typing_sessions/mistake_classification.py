@@ -80,6 +80,20 @@ def classify_typing_mistakes(reference, typed):
     ref_clean = [_clean_word(word) for word in ref_words]
     typed_clean = [_clean_word(word) for word in typed_words]
 
+    # Detect adjacent swaps before SequenceMatcher splits a transposition into
+    # separate insertion/deletion opcodes. Normalize the comparison sequence while
+    # retaining the original typed tokens for diagnostics.
+    transposed_indices = set()
+    for index in range(min(len(ref_clean), len(typed_clean)) - 1):
+        if (
+            ref_clean[index] != ref_clean[index + 1]
+            and typed_clean[index] == ref_clean[index + 1]
+            and typed_clean[index + 1] == ref_clean[index]
+        ):
+            transposed_indices.update((index, index + 1))
+            typed_clean[index], typed_clean[index + 1] = ref_clean[index], ref_clean[index + 1]
+
+    categories["transposition"] += len(transposed_indices) // 2
     matcher = SequenceMatcher(
         None, ref_clean, typed_clean, autojunk=False
     )
@@ -91,7 +105,11 @@ def classify_typing_mistakes(reference, typed):
         actual = typed_words[j1:j2]
 
         if tag == "equal":
-            aligned_pairs.extend(zip(expected, actual))
+            aligned_pairs.extend(
+                (expected_word, actual_word)
+                for offset, (expected_word, actual_word) in enumerate(zip(expected, actual), start=i1)
+                if offset not in transposed_indices
+            )
 
         elif tag == "delete":
             categories["omission"] += len(expected)
