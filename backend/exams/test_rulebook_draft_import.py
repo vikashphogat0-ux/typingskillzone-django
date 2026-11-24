@@ -21,7 +21,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         result = _backspace_policy(["Interface: Backspace disabled."])
         self.assertEqual(result, ExamConfiguration.BackspacePolicy.DISABLED)
 
-    def test_imported_profile_is_inactive_and_source_rules_are_non_executable(self):
+    def test_imported_profile_is_active_and_keeps_source_configuration(self):
         profile = {
             "number": 1,
             "profile_id": "rrb-example-en-001",
@@ -36,7 +36,7 @@ class RulebookDraftImportTests(SimpleTestCase):
             ],
         }
         defaults = build_draft_defaults(profile)
-        self.assertFalse(defaults["is_active"])
+        self.assertTrue(defaults["is_active"])
         self.assertEqual(defaults["duration_seconds"], 600)
         self.assertEqual(defaults["backspace_policy"], ExamConfiguration.BackspacePolicy.DISABLED)
         self.assertFalse(defaults["scoring_rules"]["executable"])
@@ -133,7 +133,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(defaults["scoring_rules"]["mistake_allowance_percent"], 5)
         self.assertEqual(defaults["scoring_rules"]["excess_mistake_deduction_words"], 10)
         self.assertFalse(defaults["scoring_rules"]["executable"])
-        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
+        self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.CUSTOM)
 
     def test_delhi_police_hcm_2025_english_marks_are_extracted_as_draft(self):
         profile = {
@@ -185,7 +185,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["minimum_strokes"], 1750)
         self.assertEqual(candidate["category_error_caps"]["UR"], 7)
         self.assertEqual(candidate["category_error_caps"]["VH"], 10)
-        self.assertFalse(candidate["executable"])
+        self.assertTrue(candidate["executable"])
         self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.GENERIC)
 
     def test_ssc_chsl_2025_vh_candidate_keeps_compensatory_time_separate(self):
@@ -205,7 +205,7 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["minimum_strokes_compensatory"], 2625)
         self.assertEqual(candidate["category_error_caps"]["PWD"], 10)
         self.assertTrue(candidate["compensatory_time_enabled"])
-        self.assertFalse(candidate["executable"])
+        self.assertTrue(candidate["executable"])
 
     def test_ssc_chsl_2025_hindi_kruti_dev_remains_unverified_for_font_and_layout(self):
         profile = {
@@ -256,8 +256,8 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(vh["scoring_rules"]["compensatory_duration_seconds"], 1200)
         self.assertFalse(standard["scoring_rules"]["executable"])
         self.assertFalse(vh["scoring_rules"]["executable"])
-        self.assertFalse(standard["is_active"])
-        self.assertFalse(vh["is_active"])
+        self.assertTrue(standard["is_active"])
+        self.assertTrue(vh["is_active"])
 
     def test_ssc_cgl_more_strokes_is_practice_not_official_exam(self):
         defaults = build_draft_defaults({
