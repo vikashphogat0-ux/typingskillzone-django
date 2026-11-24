@@ -352,6 +352,42 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             if isinstance(qualification_rules, dict):
                 qualification = None
                 qualification_note = score_note
+        elif formula == "SSC_CHSL_2025_VH_ENGLISH":
+            categories = mistake_analysis["categories"]
+            full_mistakes = sum(categories.get(key, 0) for key in (
+                "omission", "substitution", "addition"
+            ))
+            half_mistakes = sum(categories.get(key, 0) for key in (
+                "capitalization", "punctuation", "internal_spacing",
+                "word_spacing", "paragraph_breaks",
+            ))
+            weighted_mistakes = full_mistakes + (0.5 * half_mistakes)
+            error_count = weighted_mistakes
+            count_word_errors = True
+            reference_word_count = len(re.findall(r"\\S+", reference))
+            error_percent = round(weighted_mistakes * 100 / max(1, reference_word_count), 2)
+            gross_strokes = max(0, int(stroke_count_for_speed or 0))
+            gross_wpm = round(gross_strokes / 5 / minutes, 2)
+            gross_kdph = round(gross_strokes * 60 / minutes, 2)
+            net_wpm = gross_wpm
+            candidate_category = "PWD"
+            error_cap = float(scoring_rules.get("category_error_caps", {}).get("PWD", 10))
+            minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
+            minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
+            minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
+            required_keystrokes = minimum_strokes
+            speed_met = gross_wpm >= minimum_wpm
+            stroke_floor_met = gross_strokes >= minimum_strokes
+            required_keystrokes_met = stroke_floor_met
+            error_cap_met = error_percent <= error_cap
+            qualification = bool(speed_met and stroke_floor_met and error_cap_met)
+            qualification_note = (
+                f"{'QUALIFIED' if qualification else 'NOT QUALIFIED'} — VH English: "
+                f"{gross_wpm:.2f} WPM (minimum {minimum_wpm:g}), "
+                f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
+                f"{gross_strokes}/{minimum_strokes} keystrokes."
+            )
+            score = None
         elif formula == "DELHI_POLICE_MODEL_D":
             # Rulebook Model D: speed-graded merit marks (0-25) with a 5% weighted
             # mistake cap. The supplied rulebook does not publish mark conversion
