@@ -24,7 +24,7 @@ class SSCDataProcessingAssistantGradeAProfileTests(TestCase):
         self.assertEqual(self.exam.required_keystrokes, 3750)
         self.assertEqual(self.exam.minimum_wpm, 50)
         self.assertEqual(self.exam.scoring_rules["formula"], "SSC_DPA_GRADE_A")
-        self.assertEqual(self.exam.verification_status, "PARTIAL")
+        self.assertEqual(self.exam.verification_status, ExamConfiguration.Verification.VERIFIED)
         self.assertFalse(self.exam.allow_paste)
         self.assertTrue(self.exam.allow_backspace)
         self.assertFalse(self.exam.allow_passage_repeat)
@@ -37,8 +37,8 @@ class SSCDataProcessingAssistantGradeAProfileTests(TestCase):
             email="dpa-learner@example.test",
             password="SafePassword123!",
         )
-        first = "alpha " * 310
-        second = "beta " * 310
+        first = "alpha " * 350
+        second = "beta " * 350
         content = first.strip() + "\n\n" + second.strip()
         self.assertGreaterEqual(len(content), 3700)
         self.assertLessEqual(len(content), 4000)
