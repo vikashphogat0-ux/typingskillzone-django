@@ -567,6 +567,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "score": score, "correct_words": correct_words, "word_errors": word_errors,\n        "keystrokes": stroke_count_for_speed,
     }
     qualification_status = "PENDING"
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "SSC_CHSL_2025_ENGLISH":
+        qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
     configured_qualification = rules.get("qualification_rules") or {}
     qualification_uses_partial = bool(configured_qualification.get("allow_partial_verification")) if isinstance(configured_qualification, dict) else False
     can_evaluate_qualification = (
