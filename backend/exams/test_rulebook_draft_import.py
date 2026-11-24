@@ -236,3 +236,38 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["minimum_kdph"], 9000)
         self.assertIn("does not specify Mangal", candidate["verification_note"])
         self.assertFalse(candidate["executable"])
+
+    def test_ssc_cgl_2025_standard_and_vh_are_separate_inactive_candidates(self):
+        standard = build_draft_defaults({
+            "number": 5,
+            "profile_id": "ssc-cgl-2025-dest",
+            "name": "5. SSC CGL 2025 Typing Test (TCS)",
+            "source_text": ["Duration & Target: 15 minutes • about 2,000 key depressions."],
+        })
+        vh = build_draft_defaults({
+            "number": 6,
+            "profile_id": "ssc-cgl-2025-vh",
+            "name": "6. SSC CGL 2025 VH Category",
+            "source_text": ["Duration & Target: 20 minutes (15 minutes + 5 minutes compensatory time) • ~2,000 key depressions."],
+        })
+        self.assertEqual(standard["scoring_rules"]["candidate_formula"], "SSC_CGL_2025_DEST")
+        self.assertEqual(standard["scoring_rules"]["duration_seconds"], 900)
+        self.assertEqual(vh["scoring_rules"]["candidate_formula"], "SSC_CGL_2025_VH_DEST")
+        self.assertEqual(vh["scoring_rules"]["compensatory_duration_seconds"], 1200)
+        self.assertFalse(standard["scoring_rules"]["executable"])
+        self.assertFalse(vh["scoring_rules"]["executable"])
+        self.assertFalse(standard["is_active"])
+        self.assertFalse(vh["is_active"])
+
+    def test_ssc_cgl_more_strokes_is_practice_not_official_exam(self):
+        defaults = build_draft_defaults({
+            "number": 7,
+            "profile_id": "ssc-cgl-more-strokes",
+            "name": "7. SSC CGL 2025 More Strokes Test",
+            "source_text": ["Duration & Target: 15 minutes • ~2,200–2,500+ key depressions."],
+        })
+        candidate = defaults["scoring_rules"]
+        self.assertEqual(candidate["candidate_formula"], "SSC_CGL_MORE_STROKES_PRACTICE")
+        self.assertEqual(candidate["practice_target_key_depressions"], 2200)
+        self.assertFalse(candidate["official_exam"])
+        self.assertFalse(candidate["executable"])
