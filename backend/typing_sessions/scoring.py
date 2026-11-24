@@ -91,8 +91,8 @@ def _classify_dpa_mistakes(reference, typed):
     categories = dict(analysis["categories"])
     categories["transposition"] = 0
     categories["paragraph_indentation"] = 0
-    reference_words = re.findall(r"\\S+", reference or "")
-    typed_words = re.findall(r"\\S+", typed or "")
+    reference_words = re.findall(r"\S+", reference or "")
+    typed_words = re.findall(r"\S+", typed or "")
     matcher = SequenceMatcher(None, reference_words, typed_words, autojunk=False)
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         expected, actual = reference_words[i1:i2], typed_words[j1:j2]
@@ -100,7 +100,7 @@ def _classify_dpa_mistakes(reference, typed):
             categories["substitution"] = max(0, categories.get("substitution", 0) - 2)
             categories["transposition"] += 1
     for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
-        if expected.startswith("\\t") and actual.startswith(" ") and not actual.startswith("\\t"):
+        if expected.startswith("\t") and actual.startswith(" ") and not actual.startswith("\t"):
             categories["paragraph_indentation"] += 1
     analysis["categories"] = categories
     analysis["total_detected_errors"] = sum(categories.values())
