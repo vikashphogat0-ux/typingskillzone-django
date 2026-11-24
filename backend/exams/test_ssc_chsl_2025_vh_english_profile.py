@@ -24,14 +24,15 @@ class SSCCHSL2025VHEnglishProfileTests(TestCase):
         self.assertIsNotNone(exam.source_checked_at)
         self.assertEqual(exam.duration_seconds, 900)
         self.assertEqual(exam.minimum_wpm, 35)
-        self.assertEqual(exam.required_keystrokes, 1750)
+        self.assertEqual(exam.required_keystrokes, 2625)
         self.assertEqual(exam.error_allowance_percent, 10)
         self.assertEqual(exam.backspace_policy, ExamConfiguration.BackspacePolicy.FULL)
-        self.assertEqual(exam.scoring_rules["profile_variant"], "VH_CATEGORY_ENGLISH")\n        self.assertEqual(exam.scoring_rules["formula"], "SSC_CHSL_2025_VH_ENGLISH")
+        self.assertEqual(exam.scoring_rules["profile_variant"], "VH_CATEGORY_ENGLISH")
+        self.assertEqual(exam.scoring_rules["formula"], "SSC_CHSL_2025_VH_ENGLISH")
         self.assertEqual(exam.scoring_rules["passage_word_range"], {"minimum": 350, "maximum": 400})
         self.assertEqual(exam.scoring_rules["category_error_caps"]["PWD"], 10)
         self.assertTrue(exam.scoring_rules["qualifying_only"])
-        self.assertEqual(exam.qualification_rules["maximum_error_percent"], 10)\n        self.assertEqual(exam.scoring_rules["scoring_duration_seconds"], 600)\n        self.assertEqual(exam.scoring_rules["minimum_strokes"], 1750)
+        self.assertEqual(exam.qualification_rules["maximum_error_percent"], 10)\n        self.assertEqual(exam.scoring_rules["scoring_duration_seconds"], 900)\n        self.assertEqual(exam.scoring_rules["minimum_strokes"], 2625)
         self.assertIn("INTERNAL SOURCE — USER VERIFIED", exam.rule_notes)
 
         # This command must not rewrite the standard CHSL English profile.
