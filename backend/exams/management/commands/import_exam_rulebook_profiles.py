@@ -20,7 +20,7 @@ def _source_lines(profile, prefix):
 
 def _first_duration_seconds(lines):
     for line in lines:
-        match = re.search(r"(\\d+)\\s*minutes?", line, re.IGNORECASE)
+        match = re.search(r"(\d+)\s*minutes?", line, re.IGNORECASE)
         if match:
             return int(match.group(1)) * 60
     return None
@@ -33,9 +33,9 @@ def _explicit_number(pattern, text, cast=int):
 
 def _backspace_policy(lines):
     text = " ".join(lines).lower()
-    if re.search(r"backspace\\s+(?:is\\s+)?disabled", text):
+    if re.search(r"backspace\s+(?:is\s+)?disabled", text):
         return ExamConfiguration.BackspacePolicy.DISABLED
-    if re.search(r"backspace\\s+is\\s+allowed", text):
+    if re.search(r"backspace\s+is\s+allowed", text):
         return ExamConfiguration.BackspacePolicy.FULL
     if "backspace behavior depends" in text or "backspace behaviour depends" in text:
         return ExamConfiguration.BackspacePolicy.NOT_SPECIFIED
@@ -46,9 +46,9 @@ def _explicit_interaction_defaults(text):
     """Return only interaction settings directly stated in source wording."""
     values = {}
     lower = text.lower()
-    if re.search(r"copy\\s*/\\s* paste.*disabled|copy/paste disabled|copy and paste.*disabled", lower):
+    if re.search(r"copy\s*/\s* paste.*disabled|copy/paste disabled|copy and paste.*disabled", lower):
         values.update(allow_copy=False, allow_paste=False)
-    elif re.search(r"copy\\s*/\\s* paste.*allowed|copy/paste allowed|copy and paste.*allowed", lower):
+    elif re.search(r"copy\s*/\s* paste.*allowed|copy/paste allowed|copy and paste.*allowed", lower):
         values.update(allow_copy=True, allow_paste=True)
     if re.search(r"delete key.*disabled|deletion.*disabled", lower):
         values["allow_delete"] = False
@@ -97,9 +97,9 @@ def build_draft_defaults(profile):
     keyboard_layout = _explicit_keyboard_layout(name, interaction_text)
 
     # Extract a speed only when the source gives one single explicit WPM value.
-    wpm_values = set(re.findall(r"(\\d+(?:\\.\\d+)?)\\s*WPM", " ".join(_source_lines(profile, "Duration & Target:")), re.IGNORECASE))
+    wpm_values = set(re.findall(r"(\d+(?:\.\d+)?)\s*WPM", " ".join(_source_lines(profile, "Duration & Target:")), re.IGNORECASE))
     minimum_wpm = float(next(iter(wpm_values))) if len(wpm_values) == 1 else None
-    required_keystrokes = _explicit_number(r"(\\d[\\d,]*)\\s*key\\s*depressions", " ".join(_source_lines(profile, "Duration & Target:")))
+    required_keystrokes = _explicit_number(r"(\d[\d,]*)\s*key\s*depressions", " ".join(_source_lines(profile, "Duration & Target:")), cast=lambda value: int(value.replace(",", "")))
     if required_keystrokes is not None:
         required_keystrokes = int(str(required_keystrokes).replace(",", ""))
 
