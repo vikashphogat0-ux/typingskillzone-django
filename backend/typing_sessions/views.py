@@ -59,6 +59,7 @@ def start_typing_session(request, exam_code, passage_id):
         current_mode = attempt.rules_snapshot.get("display_mode")
         fixed_modes = {
             "TCS_ION_STANDARD": "normal",
+            "TCS_ION_VH_ACCESSIBLE_CONFIGURABLE": "normal",
             "TCS_ION_WORD_LOCKED": "highlighted",
             "RRB_CAPF_STRICT": "normal",
             "NTA_COURT_SPLIT_PANE": "highlighted",
