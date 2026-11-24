@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "duration_seconds": 900,
             "passage_format": ExamConfiguration.PassageFormat.TCS,
             "passage_layout": ExamConfiguration.PassageLayout.TCS,
-            "passage_source_mode": ExamConfiguration.PassageSourceMode.SCREEN,
+            "passage_source_mode": ExamConfiguration.PassageSourceMode.SCREEN,\n            "passage_font_size_pt": 18,
             "keyboard_layout": "English QWERTY",
             "minimum_wpm": 35,
             "required_keystrokes": 1750,
@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 "error_denominator": "total_reference_passage_words",
             },
             "scoring_rules": {
-                "formula": "SSC_CHSL_2025_ENGLISH",
+                "formula": "SSC_CHSL_2025_VH_ENGLISH",
                 "profile_variant": "VH_CATEGORY_ENGLISH",
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
@@ -67,8 +67,8 @@ class Command(BaseCommand):
                     "(full_mistakes + 0.5 * half_mistakes) "
                     "/ total_reference_passage_words * 100"
                 ),
-                "gross_wpm_formula": "server_or_provisional_keystrokes / 5 / elapsed_minutes",
-                "gross_kdph_formula": "server_or_provisional_keystrokes * 60 / elapsed_minutes",
+                "gross_wpm_formula": "server_derived_keystrokes / 5 / 600_seconds",
+                "gross_kdph_formula": "server_derived_keystrokes * 60 / 600_seconds",
                 "compensatory_time_enabled": True,
                 "compensatory_duration_seconds": 900,
                 "base_duration_seconds": 600,
