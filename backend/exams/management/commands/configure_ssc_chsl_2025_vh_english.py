@@ -92,21 +92,24 @@ class Command(BaseCommand):
                     {"metric": "error_percent", "operator": "lte", "value": 10},
                 ],
             },
-            "verification_status": ExamConfiguration.Verification.PARTIAL,
-            "source_title": "SSC CHSL 2025 notification plus user-specified VH simulator settings",
+            "verification_status": ExamConfiguration.Verification.VERIFIED,
+            "source_title": "Internal rule profile: user-verified SSC CHSL 2025 VH Category English specification",
             "source_checked_at": date.today(),
-            "rule_config_version": 1,
+            "rule_config_version": 2,
             "rule_notes": (
-                "VH Category English simulator profile. User-specified passage range "
-                "350–400 words, Backspace enabled, full/half mistake formula, and 10% "
-                "error ceiling. The SSC CHSL 2025 notice supports the 10-minute LDC/JSA "
-                "test, an additional 5 minutes for eligible scribe-related candidates, "
-                "and a passage dictator for VH candidates who opted for a scribe. "
-                "The notice does not establish universal screen-reader or enlarged-text "
-                "software; these remain configurable accessibility features. Candidate "
-                "eligibility for compensatory time and accessibility facilities must be "
-                "verified outside this self-selected simulator setting. Rules remain "
-                "PARTIALLY verified; result must be labelled provisional."
+                "INTERNAL SOURCE — USER VERIFIED. Treat every rule in this profile as "
+                "fully verified for TypingSkillZone's internal simulator specification. "
+                "This internal verification is based on the user's explicit confirmation, "
+                "not a claim that every interface detail is independently prescribed by "
+                "SSC. Profile: 15-minute total duration (10-minute base plus 5-minute "
+                "compensatory extension), 35 WPM / 10,500 KDPH / 2,625 keystrokes, "
+                "350–400-word English passage, unrestricted Backspace, full mistakes "
+                "weighted 1.0, half mistakes weighted 0.5, denominator equal to total "
+                "reference passage words, 10% error ceiling, and qualifying-only result. "
+                "VH accessibility settings include configurable screen-reader and enlarged "
+                "passage presentation, manual and reader navigation. The 5-minute extension "
+                "and accessible features are governed by the candidate's assigned internal "
+                "VH profile. This is an internally verified TypingSkillZone rule profile."
             ),
         }
         for field, value in profile.items():
