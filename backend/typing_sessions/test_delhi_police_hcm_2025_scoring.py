@@ -4,7 +4,7 @@ from typing_sessions.scoring import calculate_result
 
 
 class DelhiPoliceHCM2025ScoringTests(SimpleTestCase):
-    def _result(self, *, words, minimum_wpm=30, language="ENGLISH", mistakes=0):
+    def _result(self, *, words, minimum_wpm=30, language="ENGLISH", mistakes=0, verification_status="VERIFIED"):
         # A controlled passage makes each detected mismatch deterministic.
         # SSC calculation uses total strokes / 5, not whitespace token count.
         reference = "a" * (words * 5)
@@ -15,7 +15,7 @@ class DelhiPoliceHCM2025ScoringTests(SimpleTestCase):
             duration_seconds=600,
             rules={
                 "scoring_mode": "CUSTOM",
-                "verification_status": "VERIFIED",
+                "verification_status": verification_status,
                 "language": language,
                 "scoring_rules": {
                     "formula": "DELHI_POLICE_HCM_2025",
@@ -55,3 +55,7 @@ class DelhiPoliceHCM2025ScoringTests(SimpleTestCase):
         self.assertEqual(result["net_wpm"], 25)
         self.assertEqual(result["score"], 10)
         self.assertEqual(result["qualification_status"], "QUALIFIED")
+    def test_unverified_profile_returns_provisional_outcome(self):
+        result = self._result(words=300, verification_status="UNVERIFIED")
+        self.assertEqual(result["qualification_status"], "PROVISIONAL_QUALIFIED")
+        self.assertIn("provisional", result["qualification_note"].lower())
