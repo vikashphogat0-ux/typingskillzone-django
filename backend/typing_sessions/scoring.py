@@ -294,7 +294,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             ))
             error_count = full_mistakes + half_mistakes / 2
             count_word_errors = True
-            reference_word_count = len(re.findall(r"\\S+", reference))
+            reference_word_count = len(re.findall(r"\S+", reference))
             gross_strokes = len(typed)
             gross_words_from_strokes = gross_strokes / strokes_per_word
             error_percent = round(error_count * 100 / max(1, reference_word_count), 2)
