@@ -485,7 +485,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             scoring_duration = max(1, int(scoring_rules.get("scoring_duration_seconds", 600)))
             scoring_minutes = scoring_duration / 60
             gross_wpm = round(gross_strokes / 5 / scoring_minutes, 2)
-            gross_kdph = round(gross_strokes * 60 / scoring_duration, 2)
+            gross_kdph = round(gross_strokes * 3600 / scoring_duration, 2)
             net_wpm = gross_wpm
             candidate_category = "PWD"
             error_cap = float(scoring_rules.get("category_error_caps", {}).get("PWD", 10))
@@ -667,7 +667,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification = None
         qualification_note = "Qualification is provisional/pending because the configured profile is not officially verified."
     elif qualification is not None:
-        qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
+        provisional_prefix = "PROVISIONAL_" if rules.get("verification_status") == "PARTIAL" else ""
+        qualification_status = provisional_prefix + ("QUALIFIED" if qualification else "NOT_QUALIFIED")
 
     # Minimum marks qualify a verified CORRECT_WORD_MARKS attempt when no explicit
     # qualification rules are configured. Unverified attempts never receive a claim.
