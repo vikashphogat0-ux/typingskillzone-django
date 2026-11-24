@@ -312,8 +312,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
             minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
             minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
+            required_keystrokes = minimum_strokes
             speed_met = gross_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
+            required_keystrokes_met = stroke_floor_met
             error_cap_met = error_percent <= error_cap
             qualification = bool(speed_met and stroke_floor_met and error_cap_met)
             qualification_note = (
