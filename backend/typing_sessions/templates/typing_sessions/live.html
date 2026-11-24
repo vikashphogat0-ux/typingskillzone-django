@@ -139,6 +139,14 @@
     return position-(match ? match[0].length : 0);
   }
   function blockDeletion(event, backward) {
+    if (
+      backward &&
+      rules.scoring_rules &&
+      rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH" &&
+      input.selectionStart === 0 &&
+      input.selectionEnd === input.value.length &&
+      input.value.length > 0
+    ) { event.preventDefault(); return; }
     if (backward && backspacePolicy === "DISABLED") { event.preventDefault(); return; }
     if (!backward && rules.allow_delete === false) { event.preventDefault(); return; }
     if (backspacePolicy === "WORD_ONLY" || backspacePolicy === "PROVISIONAL_WORD_ONLY") {
@@ -155,6 +163,12 @@
       keystrokeField.value = String(keyDepressionCount);
     }
     if (!allowArrows && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key)) event.preventDefault();
+    if (
+      rules.scoring_rules &&
+      rules.scoring_rules.formula === "SSC_CHSL_2025_ENGLISH" &&
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "a"
+    ) event.preventDefault();
     if (!allowEnter && event.key === "Enter") event.preventDefault();
     if (event.key === " " && rules.space_behavior === "DISABLED") event.preventDefault();
     if (event.key === "Backspace") blockDeletion(event,true);
