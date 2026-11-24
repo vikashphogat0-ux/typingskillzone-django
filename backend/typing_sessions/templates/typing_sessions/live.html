@@ -24,7 +24,7 @@
     {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
     {% if attempt.rules_snapshot.text_encoding %}<span><strong>Encoding</strong> {{ attempt.rules_snapshot.text_encoding }}</span>{% endif %}
     {% if attempt.rules_snapshot.minimum_wpm %}<span><strong>Target</strong> {{ attempt.rules_snapshot.minimum_wpm }} WPM</span>{% endif %}
-    {% if attempt.rules_snapshot.required_keystrokes %}<span><strong>Required strokes</strong> {{ attempt.rules_snapshot.required_keystrokes }}</span>{% endif %}
+    {% if attempt.rules_snapshot.required_keystrokes %}<span><strong>Required strokes</strong> <span id="required-strokes-display">{{ attempt.rules_snapshot.required_keystrokes }}</span></span>{% endif %}
     <span><strong>Backspace</strong> {{ attempt.rules_snapshot.backspace_policy|default:"NOT_SPECIFIED" }}</span>
   </div>
   <div class="live-stats">
@@ -86,6 +86,13 @@
   const keystrokeField = document.getElementById("keystroke-count");
   const categorySelect = document.getElementById("candidate-category");
   const compensatoryCheckbox = document.getElementById("compensatory-time");
+  const requiredStrokesDisplay = document.getElementById("required-strokes-display");
+  function updateChslStrokeTarget() {
+    if (!requiredStrokesDisplay || !compensatoryCheckbox) return;
+    const durationSeconds = compensatoryCheckbox.checked ? 900 : 600;
+    requiredStrokesDisplay.textContent = String(Math.ceil(10500 * durationSeconds / 3600));
+  }
+  if (compensatoryCheckbox) compensatoryCheckbox.addEventListener("change", updateChslStrokeTarget);
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
