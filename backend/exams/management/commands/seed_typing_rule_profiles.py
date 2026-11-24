@@ -1,5 +1,6 @@
 """Apply reviewed research defaults once; never overwrite admin-edited profiles."""
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from exams.models import ExamConfiguration
 
@@ -177,6 +178,8 @@ class Command(BaseCommand):
                 continue
             for field, value in settings.items():
                 setattr(exam, field, value)
+            if settings.get("verification_status") == "VERIFIED":
+                exam.source_checked_at = timezone.localdate()
             exam.rule_config_version = 3
             exam.save()
             applied += 1
