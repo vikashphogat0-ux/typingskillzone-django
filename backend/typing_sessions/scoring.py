@@ -143,10 +143,13 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     # The configured exam scoring formula below remains authoritative for the numeric result.
     mistake_analysis = classify_typing_mistakes(reference, typed)
 
-    if (
-        scoring_mode == "CUSTOM"
-        and scoring_rules.get("formula") == "STROKE_NET_WPM"
-    ):
+    if scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "DELHI_POLICE_MODEL_D":
+        categories = mistake_analysis["categories"]
+        full_mistakes = sum(categories.get(key, 0) for key in ("omission", "substitution", "addition"))
+        half_mistakes = sum(categories.get(key, 0) for key in ("capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks"))
+        error_count = full_mistakes + (half_mistakes / 2)
+        count_word_errors = True
+    elif scoring_mode == "CUSTOM" and scoring_rules.get("formula") == "STROKE_NET_WPM":
         error_count = mistake_analysis["total_detected_errors"]
         count_word_errors = True
     else:
@@ -276,7 +279,30 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     elif scoring_mode == "CUSTOM":
         formula = scoring_rules.get("formula")
 
-        if formula == "STROKE_NET_WPM":
+        if formula == "DELHI_POLICE_MODEL_D":
+            # Rulebook Model D: speed-graded merit marks (0-25) with a 5% weighted
+            # mistake cap. The supplied rulebook does not publish mark conversion
+            # bands, so score remains unassigned until an administrator configures them.
+            error_percent = round(error_count * 100 / max(1, gross_words), 2)
+            net_wpm = gross_wpm
+            bands = scoring_rules.get("score_bands") or []
+            eligible_marks = []
+            for band in bands:
+                try:
+                    threshold, marks = float(band[0]), float(band[1])
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if net_wpm >= threshold:
+                    eligible_marks.append(marks)
+            if eligible_marks:
+                score = min(25.0, max(0.0, max(eligible_marks)))
+            if error_percent > float(rules.get("error_allowance_percent") or 5):
+                score = 0
+            qualification_note = (
+                "Marks are pending: configure the official 0-25 speed-to-marks bands."
+                if not bands else "Speed-graded marks calculated from configured bands."
+            )
+        elif formula == "STROKE_NET_WPM":
             try:
                 mistake_penalty_wpm = max(
                     0,
@@ -370,14 +396,22 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
     }
     qualification_status = "PENDING"
     configured_qualification = rules.get("qualification_rules") or {}
-    if rules.get("verification_status") == "VERIFIED" and configured_qualification:
+    qualification_uses_partial = bool(configured_qualification.get("allow_partial_verification")) if isinstance(configured_qualification, dict) else False
+    can_evaluate_qualification = (
+        rules.get("verification_status") == "VERIFIED"
+        or (qualification_uses_partial and rules.get("verification_status") == "PARTIAL")
+    )
+    if can_evaluate_qualification and configured_qualification:
         evaluated, qualification_note = _evaluate_qualification_rules(configured_qualification, qualification_metrics)
         qualification = evaluated
         if evaluated is not None:
-            qualification_status = "QUALIFIED" if evaluated else "NOT_QUALIFIED"
+            qualification_status = (
+                ("PROVISIONAL_" if rules.get("verification_status") == "PARTIAL" else "")
+                + ("QUALIFIED" if evaluated else "NOT_QUALIFIED")
+            )
     elif rules.get("verification_status") != "VERIFIED":
         qualification = None
-        qualification_note = "Qualification is pending because the exam rules are not verified."
+        qualification_note = "Qualification is provisional/pending because the configured profile is not officially verified."
     elif qualification is not None:
         qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
 
