@@ -27,7 +27,7 @@
     {% if attempt.rules_snapshot.keyboard_layout %}<span><strong>Keyboard</strong> {{ attempt.rules_snapshot.keyboard_layout }}</span>{% endif %}
     {% if attempt.rules_snapshot.text_encoding %}<span><strong>Encoding</strong> {{ attempt.rules_snapshot.text_encoding }}</span>{% endif %}
     {% if attempt.rules_snapshot.minimum_wpm %}<span><strong>Target</strong> {{ attempt.rules_snapshot.minimum_wpm }} WPM</span>{% endif %}
-    {% if attempt.rules_snapshot.required_keystrokes %}<span><strong>Required strokes</strong> {{ attempt.rules_snapshot.required_keystrokes }}</span>{% endif %}
+    {% if attempt.rules_snapshot.required_keystrokes %}<span><strong>Required strokes</strong> <span id="required-strokes-display">{{ attempt.rules_snapshot.required_keystrokes }}</span></span>{% endif %}
     <span><strong>Backspace</strong> {{ attempt.rules_snapshot.backspace_policy|default:"NOT_SPECIFIED" }}</span>
   </div>
   <div class="live-stats">
@@ -51,7 +51,7 @@
         <option value="OTHER_RESERVED">Other reserved — 10%</option>
       </select>
       <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for 5 minutes compensatory time (20-minute evaluated test)</label>
-      <p class="muted">DPA Grade-A · 15-minute evaluated test · optional 20 minutes for eligible candidates · 15,000 KDPH / 3,750 strokes · 3,700–4,000 characters · manual scrolling · no live highlighting · Backspace enabled · Tab paragraph indentation</p>
+      <p class="muted">DPA Grade-A · 15-minute evaluated test (3,750 strokes) · eligible 20-minute test (5,000 strokes) · 15,000 KDPH · 3,700–4,000 characters · manual scrolling · no live highlighting · Backspace enabled · Tab paragraph indentation</p>
       {% endif %}
       {% if attempt.rules_snapshot.scoring_rules.formula == "SSC_CHSL_2025_ENGLISH" %}
       <label class="check-row"><input type="checkbox" id="compensatory-time" value="1"> I am eligible for the 5-minute PwBD/scribe compensatory extension (15 minutes total)</label>
@@ -113,6 +113,15 @@
   const categorySelect = document.getElementById("candidate-category");
   const compensatoryCheckbox = document.getElementById("compensatory-time");
   const requiredStrokesDisplay = document.getElementById("required-strokes-display");
+  function updateRequiredStrokeDisplay() {
+    if (!requiredStrokesDisplay || !rules.scoring_rules || rules.scoring_rules.formula !== "SSC_DPA_GRADE_A") return;
+    const targetKdph = Number(rules.scoring_rules.minimum_kdph || 15000);
+    const durationSeconds = compensatoryCheckbox && compensatoryCheckbox.checked
+      ? Number(rules.scoring_rules.compensatory_duration_seconds || 1200)
+      : Number(clock.duration_ms || 900000) / 1000;
+    requiredStrokesDisplay.textContent = String(Math.ceil(targetKdph * durationSeconds / 3600));
+  }
+  if (compensatoryCheckbox) compensatoryCheckbox.addEventListener("change", updateRequiredStrokeDisplay);
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
