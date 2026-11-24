@@ -46,6 +46,22 @@ class SSCDataProcessingAssistantGradeATests(SimpleTestCase):
         self.assertEqual(result["qualification_status"], "PROVISIONAL_QUALIFIED")
         self.assertIsNone(result["score"])
 
+
+    def test_compensatory_duration_scales_the_15000_kdph_stroke_floor(self):
+        words = [f"word{i}" for i in range(1000)]
+        passage = " ".join(words)
+        result = calculate_result(
+            reference=passage,
+            typed=passage,
+            duration_seconds=1200,
+            reported_keystrokes=5000,
+            rules=dpa_rules(),
+        )
+        self.assertEqual(result["gross_kdph"], 15000)
+        self.assertEqual(result["required_keystrokes"], 5000)
+        self.assertTrue(result["required_keystrokes_met"])
+        self.assertEqual(result["gross_wpm"], 50)
+
     def test_category_specific_error_ceiling_is_applied(self):
         reference_words = [f"word{i}" for i in range(750)]
         typed_words = [f"wrong{i}" for i in range(40)] + reference_words[40:]
