@@ -5,15 +5,15 @@ from .scoring import calculate_result
 
 class SSCCHSL2025VHEnglishScoringTests(SimpleTestCase):
     def setUp(self):
-        # 400 words, exactly 1,750 submitted characters including spaces.
-        short_words = ["abc"] * 249 + ["abcd"] * 151
+        # 400 words, exactly 2,625 submitted characters including spaces.
+        short_words = ["abcde"] * 174 + ["abcdef"] * 226
         self.reference = " ".join(short_words)
-        self.assertEqual(len(self.reference), 1750)
+        self.assertEqual(len(self.reference), 2625)
         self.rules = {
             "scoring_mode": "CUSTOM",
             "verification_status": "VERIFIED",
             "minimum_wpm": 35,
-            "required_keystrokes": 1750,
+            "required_keystrokes": 2625,
             "strokes_per_word": 5,
             "error_allowance_percent": 10,
             "error_rules": {},
@@ -22,8 +22,8 @@ class SSCCHSL2025VHEnglishScoringTests(SimpleTestCase):
                 "profile_variant": "VH_CATEGORY_ENGLISH",
                 "minimum_wpm": 35,
                 "minimum_kdph": 10500,
-                "minimum_strokes": 1750,
-                "scoring_duration_seconds": 600,
+                "minimum_strokes": 2625,
+                "scoring_duration_seconds": 900,
                 "category_error_caps": {"PWD": 10},
             },
             "qualification_rules": {
