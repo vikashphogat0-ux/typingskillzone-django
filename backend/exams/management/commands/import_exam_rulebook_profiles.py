@@ -400,7 +400,7 @@ def build_draft_defaults(profile):
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
         supported_formulas = {
-            "DELHI_POLICE_HCM_2025", "SSC_CHSL_2025_ENGLISH",
+            "DELHI_POLICE_HCM_2025", "SHARED_5_PERCENT_10_WORD_PENALTY", "SSC_CHSL_2025_ENGLISH",
             "SSC_CHSL_2025_VH_ENGLISH", "SSC_CGL_2025_DEST",
             "SSC_CGL_2025_VH_DEST",
         }
