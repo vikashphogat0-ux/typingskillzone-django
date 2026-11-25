@@ -213,6 +213,10 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["category_error_caps"]["UR"], 7)
         self.assertEqual(candidate["category_error_caps"]["VH"], 10)
         self.assertTrue(candidate["executable"])
+        self.assertEqual(candidate["rulebook_scoring"]["engine_version"], 1)
+        self.assertEqual(candidate["rulebook_scoring"]["formula"], "ERROR_PERCENT_WEIGHTED")
+        self.assertEqual(candidate["rulebook_scoring"]["parameters"]["denominator"], "reference_words")
+        self.assertEqual(defaults["qualification_rules"]["engine_version"], 1)
         self.assertEqual(defaults["scoring_mode"], ExamConfiguration.ScoringMode.CUSTOM)
 
     def test_ssc_chsl_2025_vh_candidate_keeps_compensatory_time_separate(self):
@@ -283,6 +287,8 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(vh["scoring_rules"]["compensatory_duration_seconds"], 1200)
         self.assertTrue(standard["scoring_rules"]["executable"])
         self.assertTrue(vh["scoring_rules"]["executable"])
+        self.assertEqual(standard["scoring_rules"]["rulebook_scoring"]["parameters"]["denominator"], "typed_words")
+        self.assertEqual(vh["scoring_rules"]["rulebook_scoring"]["formula"], "ERROR_PERCENT_WEIGHTED")
         self.assertTrue(standard["is_active"])
         self.assertTrue(vh["is_active"])
 
