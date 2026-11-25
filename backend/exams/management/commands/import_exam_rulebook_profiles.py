@@ -247,6 +247,70 @@ def _ssc_cgl_2025_scoring_candidate(name):
     return None
 
 
+def _versioned_rulebook_scoring(candidate):
+    """Translate only explicit, supported source candidates to the v1 formula contract."""
+    if not candidate:
+        return None
+    formula = candidate.get("candidate_formula")
+    params = {}
+    if formula == "SHARED_5_PERCENT_10_WORD_PENALTY":
+        formula_id = "NET_WPM_FORGIVENESS_EXCESS_PENALTY"
+        params = {"forgiveness_rate": 0.05, "excess_mistake_penalty_words": 10}
+    elif formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
+        formula_id = "ERROR_PERCENT_WEIGHTED"
+        params = {
+            "denominator": "reference_words",
+            "full_mistake_weight": 1,
+            "half_mistake_weight": 0.5,
+            "minimum_net_wpm": candidate.get("minimum_wpm"),
+            "minimum_strokes": candidate.get("minimum_strokes"),
+            "error_caps": candidate.get("category_error_caps") or {},
+        }
+    elif formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
+        formula_id = "ERROR_PERCENT_WEIGHTED"
+        params = {
+            "denominator": "typed_words",
+            "full_mistake_weight": 1,
+            "half_mistake_weight": 0.5,
+            "normal_error_caps": candidate.get("normal_error_caps") or {},
+            "higher_error_caps": candidate.get("higher_error_caps") or {},
+        }
+    else:
+        return None
+    return {
+        "engine_version": 1,
+        "formula": formula_id,
+        "parameters": params,
+        "source_candidate_formula": formula,
+        "source_basis": "internal_master_rulebook",
+    }
+
+
+def _versioned_qualification(candidate, versioned_formula):
+    """Create criteria only where the source candidate supplies every threshold."""
+    if not candidate or not versioned_formula:
+        return None
+    formula = candidate.get("candidate_formula")
+    criteria = []
+    if formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
+        if candidate.get("minimum_wpm") is not None:
+            criteria.append({"id": "minimum_net_wpm", "label": "Minimum Net WPM", "metric": "net_wpm", "operator": "gte", "value": candidate["minimum_wpm"]})
+        if candidate.get("minimum_strokes") is not None:
+            criteria.append({"id": "minimum_strokes", "label": "Minimum server-measured strokes", "metric": "keystrokes", "operator": "gte", "value": candidate["minimum_strokes"]})
+        caps = candidate.get("category_error_caps") or {}
+        if caps:
+            criteria.append({"id": "category_error_cap", "label": "Category error ceiling", "metric": "error_percent", "operator": "lte", "value": None, "category_values": caps})
+    elif formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
+        # Both standards must pass their configured category cap. The selected
+        # standard is an admin/post eligibility selector, never a candidate override.
+        caps = candidate.get("normal_error_caps") or {}
+        if caps:
+            criteria.append({"id": "normal_error_cap", "label": "Normal DEST error ceiling", "metric": "error_percent", "operator": "lte", "value": None, "category_values": caps})
+    if not criteria:
+        return None
+    return {"engine_version": 1, "mode": "ALL", "criteria": criteria}
+
+
 def build_draft_defaults(profile):
     """Extract safe explicit hints while preserving the complete source prose."""
     name = profile.get("name") or profile.get("source_heading") or ""
@@ -328,6 +392,11 @@ def build_draft_defaults(profile):
         candidate_formula = scoring_candidate.get("candidate_formula")
         if candidate_formula in supported_formulas:
             scoring_payload["formula"] = candidate_formula
+            scoring_payload["executable"] = True
+        versioned_formula = _versioned_rulebook_scoring(scoring_candidate)
+        if versioned_formula:
+            scoring_payload["rulebook_scoring"] = versioned_formula
+            scoring_payload["formula_engine_version"] = 1
             scoring_payload["executable"] = True
         scoring_payload["profile_configuration"]["category_limits"] = (
             scoring_candidate.get("category_error_caps")
@@ -460,7 +529,10 @@ def build_draft_defaults(profile):
         "scoring_mode": ExamConfiguration.ScoringMode.CUSTOM if scoring_payload.get("executable") else ExamConfiguration.ScoringMode.GENERIC,
         "error_rules": {"source_text": lines, "executable": False},
         "scoring_rules": scoring_payload,
-        "qualification_rules": {"source_criteria_text": qualification_source, "executable": bool(scoring_payload.get("executable")), "evaluation_mode": scoring_payload["profile_configuration"]["evaluation_mode"]},
+        "qualification_rules": (
+            _versioned_qualification(scoring_candidate, scoring_payload.get("rulebook_scoring"))
+            or {"source_criteria_text": qualification_source, "executable": False, "evaluation_mode": scoring_payload["profile_configuration"]["evaluation_mode"]}
+        ),
         "verification_status": ExamConfiguration.Verification.UNVERIFIED,
         "source_title": "Internal rule profile: Master Exam Rulebook (source-compiled, practice only)",
         "source_checked_at": __import__("datetime").date(2026, 11, 25),
