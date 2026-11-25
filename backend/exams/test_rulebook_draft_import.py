@@ -1,9 +1,16 @@
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+from django.core.management.base import CommandError
 from django.test import SimpleTestCase
 
 from exams.management.commands.import_exam_rulebook_profiles import (
     _backspace_policy,
     _first_duration_seconds,
     build_draft_defaults,
+    Command,
 )
 from exams.models import ExamConfiguration
 
@@ -291,3 +298,34 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertEqual(candidate["practice_target_key_depressions"], 2200)
         self.assertFalse(candidate["official_exam"])
         self.assertFalse(candidate["executable"])
+
+class RulebookImportPreflightTests(SimpleTestCase):
+    def test_invalid_profile_stops_import_before_any_database_write(self):
+        profile = {
+            "number": 1,
+            "profile_id": "invalid-tab-profile",
+            "name": "Court Typing English",
+            "source_text": [
+                "Duration & Target: 10 minutes.",
+                "Interface, Passage & Keyboard Rules: Tab inserts 99 spaces.",
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "profiles.json"
+            source.write_text(
+                json.dumps({"schema_version": 1, "profiles": [profile]}),
+                encoding="utf-8",
+            )
+            with (
+                patch("exams.rulebook_canonical.canonicalize", return_value=[profile]),
+                patch.object(ExamConfiguration.objects, "get_or_create") as get_or_create,
+            ):
+                with self.assertRaisesMessage(CommandError, "no database rows were written"):
+                    Command().handle(
+                        json_path=str(source),
+                        expected_count=1,
+                        canonical_count=1,
+                        refresh_existing_drafts=False,
+                    )
+                get_or_create.assert_not_called()
+
