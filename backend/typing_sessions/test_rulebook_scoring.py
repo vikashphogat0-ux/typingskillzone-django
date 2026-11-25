@@ -47,6 +47,42 @@ class RulebookFormulaTests(SimpleTestCase):
         )
         self.assertEqual(result["metrics"]["error_percent"], 4.0)
 
+    def test_error_percent_supports_chsl_reference_word_denominator(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "ERROR_PERCENT_WEIGHTED",
+             "parameters": {"denominator": "reference_words",
+                            "full_mistake_weight": 1, "half_mistake_weight": 0.5}},
+            {"weighted_mistakes": 20, "reference_words": 350, "typed_words": 300},
+            duration_seconds=600,
+        )
+        self.assertEqual(result["evaluation_status"], "EVALUATED")
+        self.assertEqual(result["metrics"]["error_percent"], 5.71)
+        self.assertEqual(result["metrics"]["error_denominator"], 350.0)
+        self.assertEqual(result["metrics"]["error_denominator_type"], "reference_words")
+
+    def test_error_percent_supports_cgl_typed_word_denominator(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "ERROR_PERCENT_WEIGHTED",
+             "parameters": {"denominator": "typed_words",
+                            "full_mistake_weight": 1, "half_mistake_weight": 0.5}},
+            {"weighted_mistakes": 30, "reference_words": 450, "typed_words": 400},
+            duration_seconds=900,
+        )
+        self.assertEqual(result["evaluation_status"], "EVALUATED")
+        self.assertEqual(result["metrics"]["error_percent"], 7.5)
+        self.assertEqual(result["metrics"]["error_denominator"], 400.0)
+        self.assertEqual(result["metrics"]["error_denominator_type"], "typed_words")
+
+    def test_error_percent_rejects_missing_selected_denominator_metric(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "ERROR_PERCENT_WEIGHTED",
+             "parameters": {"denominator": "typed_words"}},
+            {"weighted_mistakes": 2, "reference_words": 100},
+            duration_seconds=600,
+        )
+        self.assertEqual(result["evaluation_status"], "NOT_EVALUATED")
+        self.assertEqual(result["metrics"], {})
+
     def test_marks_formula_and_speed_bands(self):
         marks = evaluate_rulebook_scoring(
             {"engine_version": 1, "formula": "MARKS_PER_CORRECT_WORD",
