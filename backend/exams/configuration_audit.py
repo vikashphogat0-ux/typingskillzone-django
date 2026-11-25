@@ -103,6 +103,12 @@ def audit_exam_configuration(exam):
                     qualification_errors.append(f"Qualification criterion {index} has an unsupported operator.")
                 elif criterion.get("value") is None and not isinstance(criterion.get("category_values"), dict):
                     qualification_errors.append(f"Qualification criterion {index} has no explicit threshold.")
+                elif isinstance(criterion.get("category_values"), dict) and not (
+                    (scoring.get("profile_configuration") or {}).get("category_selector")
+                ):
+                    qualification_errors.append(
+                        f"Qualification criterion {index} needs a server-validated candidate-category selector."
+                    )
     errors.extend(qualification_errors)
 
     launch_checks = {
