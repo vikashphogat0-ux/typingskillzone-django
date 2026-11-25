@@ -25,15 +25,17 @@ class CanonicalRulebookTests(unittest.TestCase):
         self.canonical = canonicalize(self.raw)
         self.index = alias_index(self.canonical)
 
-    def test_duplicates_merge_into_one_record_and_keep_aliases(self):
+    def test_duplicate_names_remain_independent_source_profiles(self):
         mp = self.index[self.raw[1]["profile_id"]]
-        self.assertIs(mp, self.index[self.raw[2]["profile_id"]])
-        self.assertEqual(mp["merged_source_count"], 2)
-        self.assertIn(self.raw[2]["profile_id"], mp["aliases"])
+        mp_duplicate = self.index[self.raw[2]["profile_id"]]
+        self.assertIsNot(mp, mp_duplicate)
+        self.assertEqual(mp["merged_source_count"], 1)
+        self.assertEqual(mp["aliases"], [])
 
-    def test_no_duplicate_names_after_merging(self):
+    def test_duplicate_names_are_allowed_when_source_profile_ids_differ(self):
         names = [clean_name(r["name"]).lower() for r in self.canonical]
-        self.assertEqual(len(names), len(set(names)))
+        self.assertLess(len(set(names)), len(names))
+        self.assertEqual(len({r["profile_id"] for r in self.canonical}), len(self.canonical))
 
     def test_titles_have_no_leading_punctuation_or_doubled_numbers(self):
         for record in self.canonical:
@@ -56,7 +58,7 @@ class CanonicalRulebookTests(unittest.TestCase):
         bombay = self.index[self.raw[5]["profile_id"]]
         self.assertEqual(bombay["target_strokes"], 2000)
         self.assertEqual(bombay["passage_buffer_strokes"], 2800)
-        self.assertIs(bombay, self.index[self.raw[6]["profile_id"]])
+        self.assertIsNot(bombay, self.index[self.raw[6]["profile_id"]])
 
     def test_hedged_wording_is_a_caveat_and_not_enforced(self):
         mp = self.index[self.raw[1]["profile_id"]]
@@ -70,7 +72,7 @@ class CanonicalRulebookTests(unittest.TestCase):
 
     def test_expected_counts_are_documented(self):
         self.assertEqual(RAW_EXPECTED, 161)
-        self.assertEqual(CANONICAL_EXPECTED, 156)
+        self.assertEqual(CANONICAL_EXPECTED, 161)
 
     def test_importer_no_longer_marks_profiles_verified(self):
         from pathlib import Path
