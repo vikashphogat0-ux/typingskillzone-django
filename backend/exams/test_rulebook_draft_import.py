@@ -305,6 +305,25 @@ class RulebookDraftImportTests(SimpleTestCase):
         self.assertFalse(candidate["official_exam"])
         self.assertFalse(candidate["executable"])
 
+    def test_upsssc_english_profile_wires_five_exempt_sixfold_formula(self):
+        profile = {
+            "number": 80,
+            "profile_id": "upsssc-junior-assistant-english",
+            "name": "UPSSSC Junior Assistant English",
+            "source_text": [
+                "Duration & Target: 5 minutes • 30 WPM minimum.",
+                "Formula: First five wrong words are exempt; each additional wrong word attracts a sixfold word penalty.",
+                "Qualifying Criteria: Minimum 30 WPM Net.",
+            ],
+        }
+        defaults = build_draft_defaults(profile)
+        scoring = defaults["scoring_rules"]
+        self.assertEqual(scoring["rulebook_scoring"]["engine_version"], 1)
+        self.assertEqual(scoring["rulebook_scoring"]["formula"], "UPSSSC_FIVE_EXEMPT_SIXFOLD")
+        self.assertEqual(scoring["rulebook_scoring"]["parameters"]["penalty_multiplier"], 6)
+        self.assertEqual(defaults["qualification_rules"]["criteria"][0]["metric"], "net_wpm")
+
+
 class RulebookImportPreflightTests(SimpleTestCase):
     def test_invalid_profile_stops_import_before_any_database_write(self):
         profile = {
