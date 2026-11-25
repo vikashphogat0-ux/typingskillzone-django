@@ -10,7 +10,7 @@ from .drafts import DRAFT_MAX_CHARS, clear_draft, save_draft_text
 from .models import TypingSession
 from .scoring import SCORING_VERSION, calculate_result
 from .specification_snapshots import build_exam_specification_snapshot
-from .candidate_selectors import apply_candidate_selections, validate_candidate_selections
+from .candidate_selectors import apply_candidate_selections, validate_candidate_selections, validate_candidate_snapshot
 
 
 def _require_active_student(learner):
@@ -34,13 +34,14 @@ def start_session(*, learner, publication, candidate_selections=None):
     if not publication.is_released():
         raise ValidationError("This passage is not released yet.")
 
-    # Every start is a new test. Unfinished tests for this passage end without scoring.
-    abandon_active_attempts(learner=learner, publication=publication)
-
     exam = publication.exam
     duration = exam.duration_seconds
     now = timezone.now()
+    # Validate all candidate choices before ending an existing attempt. A malformed
+    # selector submission must never destroy a valid in-progress attempt.
     validated_selections = validate_candidate_selections(exam, candidate_selections or {})
+    # Every valid start is a new test. Unfinished tests for this passage end without scoring.
+    abandon_active_attempts(learner=learner, publication=publication)
     snapshot = build_exam_specification_snapshot(
         exam=exam,
         publication=publication,
@@ -172,9 +173,9 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
     # An expired attempt is scored only from text received by this endpoint; the
     # browser's countdown or claimed completion time is never accepted.
     scoring_snapshot = dict(session.rules_snapshot)
-    # Category/standard eligibility is server-owned profile data. Never accept a
-    # candidate-supplied category at submission time: it could select a more
-    # favourable error ceiling after the attempt.
+    # Candidate selections are read only from the persisted start-time snapshot.
+    # Submission POST fields cannot replace category, standard, post or eligibility.
+    validate_candidate_snapshot(scoring_snapshot)
     result = calculate_result(
         reference=session.reference_text,
         typed=typed_text,
@@ -182,6 +183,7 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
         rules=scoring_snapshot,
         reported_keystrokes=reported_keystrokes,
     )
+    result["candidate_selections"] = dict(scoring_snapshot.get("candidate_selectors") or {})
     # Clipboard and backspace blocks are counted in the browser only. Keep the count as
     # clearly labelled, unverified telemetry; it never changes the score.
     if client_policy_events is not None:

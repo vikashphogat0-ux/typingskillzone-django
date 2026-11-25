@@ -55,6 +55,26 @@ class CandidateSelectorTests(SimpleTestCase):
         self.assertEqual(snapshot["scoring_rules"]["standard_type"], "HIGHER")
         self.assertEqual(exam.scoring_rules, original)
 
+    def test_post_selection_required_only_for_higher_standard(self):
+        exam = self.exam({"formula": "SSC_CGL_2025_DEST", "normal_error_caps": {"UR": 20},
+            "higher_error_caps": {"UR": 5}, "profile_configuration": {
+                "variants": [
+                    {"id": "normal", "label": "Normal", "standard_type": "NORMAL"},
+                    {"id": "higher", "label": "Higher", "standard_type": "HIGHER", "requires_post_eligibility": True},
+                ],
+                "post_presets": [{"id": "tax_assistant", "label": "Tax Assistant", "requires_eligibility": True}],
+            }})
+        normal = validate_candidate_selections(exam, {"candidate_category": "UR", "candidate_variant": "normal"})
+        self.assertEqual(normal["standard_type"], "NORMAL")
+        with self.assertRaises(ValidationError):
+            validate_candidate_selections(exam, {"candidate_category": "UR", "candidate_variant": "higher", "eligibility_confirmed": "1"})
+        higher = validate_candidate_selections(exam, {
+            "candidate_category": "UR", "candidate_variant": "higher",
+            "candidate_post": "tax_assistant", "eligibility_confirmed": "1",
+        })
+        self.assertEqual(higher["post_id"], "tax_assistant")
+        self.assertTrue(higher["eligibility_attested"])
+
     def test_selector_configuration_exposes_only_profile_declared_options(self):
         exam = self.exam({"formula": "SSC_CGL_2025_DEST", "profile_configuration": {
             "variants": [{"id": "normal", "label": "Normal"}]

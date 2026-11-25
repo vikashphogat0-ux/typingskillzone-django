@@ -86,21 +86,28 @@ def validate_candidate_selections(exam, submitted):
 
     post_presets = config["post_presets"]
     raw_post = (submitted.get("candidate_post") or submitted.get("post_id") or "").strip()
-    if post_presets:
+    post_required = bool(selected_variant and (
+        selected_variant.get("requires_post_eligibility")
+        or str(selected_variant.get("standard_type") or "").upper() == "HIGHER"
+    ))
+    if raw_post or (post_presets and post_required):
         post_map = {item["id"]: item for item in post_presets}
         if not raw_post:
-            raise ValidationError("Select the applicable post for this examination.")
+            raise ValidationError("Select the eligible post for the higher examination standard.")
         selected_post = post_map.get(raw_post)
         if selected_post is None:
             raise ValidationError("The selected post is not configured for this examination.")
         selections["post_id"] = selected_post["id"]
         selections["post_snapshot"] = selected_post
-        if selected_post.get("requires_eligibility"):
+        if selected_post.get("requires_eligibility") and not selections.get("eligibility_attested"):
             attested = str(submitted.get("eligibility_confirmed") or "").lower() in {"1", "true", "yes", "on"}
             if not attested:
                 raise ValidationError("Confirm that you meet the selected post's eligibility requirement.")
             selections["eligibility_status"] = "CANDIDATE_ATTESTED"
             selections["eligibility_attested"] = True
+    elif post_presets and not post_required:
+        # A post is optional for standards whose rulebook does not depend on post eligibility.
+        pass
 
     return selections
 
@@ -109,6 +116,7 @@ def apply_candidate_selections(snapshot, selections):
     """Apply validated selections to the attempt's private, immutable rules snapshot."""
     snapshot = dict(snapshot)
     selections = dict(selections or {})
+    snapshot["candidate_selector_configuration"] = selector_configuration_from_snapshot(snapshot)
     snapshot["candidate_selectors"] = selections
     if selections.get("candidate_category"):
         snapshot["candidate_category"] = selections["candidate_category"]
@@ -119,3 +127,54 @@ def apply_candidate_selections(snapshot, selections):
         snapshot["selected_variant_duration_seconds"] = selections["duration_seconds"]
     snapshot["scoring_rules"] = scoring
     return snapshot
+
+
+def selector_configuration_from_snapshot(snapshot):
+    """Capture the exact options used to validate this attempt, independent of later edits."""
+    scoring = snapshot.get("scoring_rules") or {}
+    profile = scoring.get("profile_configuration") or {}
+    caps = {}
+    for key in ("category_error_caps", "normal_error_caps", "higher_error_caps"):
+        values = scoring.get(key) or {}
+        if isinstance(values, dict):
+            caps.update(values)
+    limits = profile.get("category_limits") or {}
+    if isinstance(limits, dict):
+        caps.update({key: value for key, value in limits.items() if isinstance(value, (int, float))})
+    return {
+        "categories": [key for key in caps if key not in {"OTHER", "OTHER_RESERVED"}],
+        "variants": [dict(item) for item in (profile.get("variants") or []) if isinstance(item, dict) and item.get("id")],
+        "post_presets": [dict(item) for item in (profile.get("post_presets") or []) if isinstance(item, dict) and item.get("id")],
+        "category_required": bool(caps) and scoring.get("formula") in {
+            "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST",
+            "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI",
+            "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL",
+        },
+    }
+
+
+def validate_candidate_snapshot(snapshot):
+    """Reject missing or internally inconsistent selector state before official scoring."""
+    config = snapshot.get("candidate_selector_configuration")
+    if not isinstance(config, dict):
+        return  # Legacy attempts predate persisted selector schemas.
+    selected = snapshot.get("candidate_selectors")
+    if not isinstance(selected, dict):
+        raise ValidationError("Candidate selections are missing from this examination attempt.")
+    if config.get("category_required"):
+        category = selected.get("candidate_category")
+        if not category or category not in set(config.get("categories") or []):
+            raise ValidationError("Candidate category selection is missing or inconsistent; this attempt cannot be scored.")
+    variants = config.get("variants") or []
+    if variants:
+        variant = next((item for item in variants if item.get("id") == selected.get("variant_id")), None)
+        if variant is None:
+            raise ValidationError("The saved examination standard is missing or inconsistent; this attempt cannot be scored.")
+        if variant.get("requires_post_eligibility") or str(variant.get("standard_type") or "").upper() == "HIGHER":
+            posts = config.get("post_presets") or []
+            if posts and not any(item.get("id") == selected.get("post_id") for item in posts):
+                raise ValidationError("The saved eligible post is missing or inconsistent; this attempt cannot be scored.")
+        if variant.get("requires_post_eligibility") or variant.get("requires_eligibility"):
+            if selected.get("eligibility_attested") is not True or selected.get("eligibility_status") != "CANDIDATE_ATTESTED":
+                raise ValidationError("The required candidate eligibility attestation is missing; this attempt cannot be scored.")
+    return selected

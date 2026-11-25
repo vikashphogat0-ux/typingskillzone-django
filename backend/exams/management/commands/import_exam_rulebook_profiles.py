@@ -343,11 +343,19 @@ def _versioned_qualification(candidate, versioned_formula):
         if caps:
             criteria.append({"id": "category_error_cap", "label": "Category error ceiling", "metric": "error_percent", "operator": "lte", "value": None, "category_values": caps})
     elif formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
-        # Both standards must pass their configured category cap. The selected
-        # standard is an admin/post eligibility selector, never a candidate override.
-        caps = candidate.get("normal_error_caps") or {}
-        if caps:
-            criteria.append({"id": "normal_error_cap", "label": "Normal DEST error ceiling", "metric": "error_percent", "operator": "lte", "value": None, "category_values": caps})
+        # Higher-standard candidates must satisfy BOTH the normal standard and
+        # the stricter higher-standard ceiling. Thresholds are selected from the
+        # captured category and the server-validated standard selector.
+        normal_caps = candidate.get("normal_error_caps") or {}
+        higher_caps = candidate.get("higher_error_caps") or {}
+        if normal_caps:
+            criteria.append({"id": "normal_error_cap", "label": "Normal DEST error ceiling", "metric": "error_percent", "operator": "lte", "value": None, "category_values": normal_caps})
+        if higher_caps:
+            criteria.append({
+                "id": "higher_error_cap", "label": "Higher-standard DEST error ceiling",
+                "metric": "error_percent", "operator": "lte", "value": None,
+                "category_values": higher_caps, "when_selectors": {"standard_type": "HIGHER"},
+            })
     if not criteria:
         return None
     return {"engine_version": 1, "mode": "ALL", "criteria": criteria}
@@ -477,6 +485,12 @@ def build_draft_defaults(profile):
             {"id": "normal", "label": "Normal standard", "standard_type": "NORMAL", "duration_seconds": 900},
             {"id": "higher", "label": "Higher standard post", "standard_type": "HIGHER", "duration_seconds": 900, "requires_post_eligibility": True},
         ]
+        higher_posts = scoring_candidate.get("higher_standard_posts") or []
+        if higher_posts:
+            profile_config["post_presets"] = [
+                {"id": slugify(post).replace("-", "_"), "label": post, "requires_eligibility": True}
+                for post in higher_posts
+            ]
         if "vh category" in normalized_name:
             profile_config["variants"].append(
                 {"id": "vh_compensatory", "label": "VH / eligible scribe", "duration_seconds": 1200, "requires_eligibility": True}

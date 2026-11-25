@@ -68,9 +68,33 @@ def evaluate_rulebook_qualification(config, metrics, *, candidate_category=None,
                 "qualification_note": "A rulebook criterion is malformed.",
                 "qualification_checks": checks,
             }
+        when_selectors = criterion.get("when_selectors") or {}
+        if not isinstance(when_selectors, dict):
+            return {
+                "evaluation_status": "NOT_EVALUATED", "qualification": None,
+                "qualification_status": "NOT EVALUATED",
+                "qualification_note": "A selector condition is malformed.",
+                "qualification_checks": checks,
+            }
+        if any(selectors.get(key) != value for key, value in when_selectors.items()):
+            checks.append({
+                "label": criterion.get("label") or criterion.get("id") or f"Criterion {index + 1}",
+                "required": when_selectors, "achieved": selectors,
+                "status": "NOT APPLICABLE",
+                "reason": "This criterion does not apply to the selected candidate standard.",
+            })
+            continue
         metric = criterion.get("metric")
         operator = criterion.get("operator")
         expected = criterion.get("value")
+        selector_values = criterion.get("selector_values")
+        if isinstance(selector_values, dict):
+            selector_key = criterion.get("selector")
+            selected_value = selectors.get(selector_key) if selector_key else None
+            if selected_value not in selector_values:
+                expected = None
+            else:
+                expected = selector_values[selected_value]
         category_values = criterion.get("category_values")
         if isinstance(category_values, dict):
             if not candidate_category or candidate_category not in category_values:
@@ -102,7 +126,14 @@ def evaluate_rulebook_qualification(config, metrics, *, candidate_category=None,
             "qualification_note": "At least one required rulebook criterion could not be evaluated; no pass/fail decision was made.",
             "qualification_checks": checks,
         }
-    outcomes = [check["status"] == "MET" for check in checks]
+    outcomes = [check["status"] == "MET" for check in checks if check["status"] != "NOT APPLICABLE"]
+    if not outcomes:
+        return {
+            "evaluation_status": "NOT_EVALUATED", "qualification": None,
+            "qualification_status": "NOT EVALUATED",
+            "qualification_note": "No qualification criteria apply to the saved candidate selections.",
+            "qualification_checks": checks,
+        }
     qualified = all(outcomes) if mode == "ALL" else any(outcomes)
     return {
         "evaluation_status": "EVALUATED",

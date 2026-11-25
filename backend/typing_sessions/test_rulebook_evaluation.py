@@ -51,6 +51,30 @@ class RulebookEvaluationTests(SimpleTestCase):
         selected = evaluate_rulebook_qualification(config, {"error_percent": 8}, candidate_category="SC")
         self.assertEqual(selected["qualification_status"], "QUALIFIED")
 
+    def test_selector_condition_skips_higher_threshold_for_normal_and_applies_it_for_higher(self):
+        config = {"engine_version": 1, "mode": "ALL", "criteria": [
+            {"id": "normal", "metric": "error_percent", "operator": "lte", "category_values": {"UR": 20}},
+            {"id": "higher", "metric": "error_percent", "operator": "lte",
+             "category_values": {"UR": 5}, "when_selectors": {"standard_type": "HIGHER"}},
+        ]}
+        normal = evaluate_rulebook_qualification(config, {"error_percent": 10}, candidate_category="UR",
+            selectors={"standard_type": "NORMAL"})
+        self.assertEqual(normal["qualification_status"], "QUALIFIED")
+        self.assertEqual(normal["qualification_checks"][1]["status"], "NOT APPLICABLE")
+        higher = evaluate_rulebook_qualification(config, {"error_percent": 10}, candidate_category="UR",
+            selectors={"standard_type": "HIGHER"})
+        self.assertEqual(higher["qualification_status"], "NOT QUALIFIED")
+
+    def test_selector_threshold_mapping_requires_a_saved_choice(self):
+        config = {"engine_version": 1, "mode": "ALL", "criteria": [
+            {"metric": "net_wpm", "operator": "gte", "selector": "variant_id",
+             "selector_values": {"normal": 30, "higher": 40}}
+        ]}
+        missing = evaluate_rulebook_qualification(config, {"net_wpm": 35}, selectors={})
+        self.assertEqual(missing["qualification_status"], "NOT EVALUATED")
+        selected = evaluate_rulebook_qualification(config, {"net_wpm": 35}, selectors={"variant_id": "normal"})
+        self.assertEqual(selected["qualification_status"], "QUALIFIED")
+
     def test_unsupported_or_missing_metric_never_becomes_a_fail_or_pass(self):
         result = evaluate_rulebook_qualification(
             {"engine_version": 1, "criteria": [

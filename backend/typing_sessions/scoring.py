@@ -488,11 +488,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             reference_word_count = len(re.findall(r"\S+", reference))
             denominator_words = max(1, len(re.findall(r"\S+", typed)))
             error_percent = round(error_count * 100 / denominator_words, 2)
-            candidate_category = str(
-                rules.get("candidate_category")
-                or scoring_rules.get("candidate_category_default")
-                or "UR"
-            ).upper()
+            selected_category = rules.get("candidate_category") or (rules.get("candidate_selectors") or {}).get("candidate_category")
+            candidate_category = str(selected_category or scoring_rules.get("candidate_category_default") or "").upper()
             standard = str(scoring_rules.get("standard_type") or "NORMAL").upper()
             caps_key = "higher_error_caps" if standard == "HIGHER" else "normal_error_caps"
             caps = scoring_rules.get(caps_key) or (
@@ -500,11 +497,12 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
                 if standard == "HIGHER"
                 else {"UR": 20, "OBC": 25, "EWS": 25, "SC": 30, "ST": 30, "ESM": 30, "OH": 30, "HH": 30, "VH": 30, "PWD": 30}
             )
-            error_cap = float(caps.get(candidate_category, caps.get("OTHER", 30)))
+            cap_value = caps.get(candidate_category, caps.get("OTHER")) if candidate_category else None
+            error_cap = float(cap_value) if cap_value is not None else None
             net_words = max(0, gross_words - error_count)
             net_wpm = round(net_words / minutes, 2)
-            qualification = error_percent <= error_cap
-            permitted_error_count = denominator_words * error_cap / 100
+            qualification = (error_percent <= error_cap) if error_cap is not None else None
+            permitted_error_count = denominator_words * error_cap / 100 if error_cap is not None else None
             excess_error_count = max(0, error_count - permitted_error_count)
             required_keystrokes = None
             required_keystrokes_met = None
@@ -531,7 +529,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             minimum_strokes = (minimum_kdph * duration + 3599) // 3600
             required_keystrokes = minimum_strokes
             required_keystrokes_met = gross_strokes >= minimum_strokes
-            candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
+            selected_category = rules.get("candidate_category") or (rules.get("candidate_selectors") or {}).get("candidate_category")
+            candidate_category = str(selected_category or scoring_rules.get("candidate_category_default") or "").upper()
             caps = scoring_rules.get("category_error_caps") or {"UR": 5, "OBC": 7, "EWS": 7, "SC": 10, "ST": 10, "PWD": 10, "OTHER_RESERVED": 10}
             error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
             net_words = max(0, gross_words_from_strokes - error_count)
@@ -561,16 +560,14 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             gross_wpm = round(gross_strokes / 5 / minutes, 2)
             gross_kdph = round(gross_strokes * 60 / minutes, 2)
             net_wpm = round(max(0, gross_wpm * minutes - weighted_mistakes) / minutes, 2)
-            candidate_category = str(
-                rules.get("candidate_category")
-                or scoring_rules.get("candidate_category_default")
-                or "UR"
-            ).upper()
+            selected_category = rules.get("candidate_category") or (rules.get("candidate_selectors") or {}).get("candidate_category")
+            candidate_category = str(selected_category or scoring_rules.get("candidate_category_default") or "").upper()
             caps = scoring_rules.get("category_error_caps") or {
                 "UR": 7, "OBC": 10, "EWS": 10, "SC": 10,
                 "ST": 10, "PWD": 10, "OTHER_RESERVED": 10,
             }
-            error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            cap_value = caps.get(candidate_category, caps.get("OTHER_RESERVED")) if candidate_category else None
+            error_cap = float(cap_value) if cap_value is not None else None
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 35))
             minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
             minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
@@ -578,8 +575,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             speed_met = gross_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
             required_keystrokes_met = stroke_floor_met
-            error_cap_met = error_percent <= error_cap
-            qualification = bool(speed_met and stroke_floor_met and error_cap_met)
+            error_cap_met = (error_percent <= error_cap) if error_cap is not None else None
+            qualification = bool(speed_met and stroke_floor_met and error_cap_met) if error_cap_met is not None else None
             qualification_note = (
                 f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English "
                 f"criteria: {net_wpm:.2f} Net WPM (minimum {minimum_wpm:g}), "
@@ -618,8 +615,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             speed_met = net_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
             required_keystrokes_met = stroke_floor_met
-            error_cap_met = error_percent <= error_cap
-            qualification = bool(speed_met and stroke_floor_met and error_cap_met)
+            error_cap_met = (error_percent <= error_cap) if error_cap is not None else None
+            qualification = bool(speed_met and stroke_floor_met and error_cap_met) if error_cap_met is not None else None
             qualification_note = (
                 f"{'QUALIFIED' if qualification else 'NOT QUALIFIED'} — VH English: "
                 f"{net_wpm:.2f} Net WPM (minimum {minimum_wpm:g}), "
@@ -647,7 +644,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             net_wpm = round(max(0, gross_wpm * scoring_minutes - weighted_mistakes) / scoring_minutes, 2)
             candidate_category = str(rules.get("candidate_category") or scoring_rules.get("candidate_category_default") or "UR").upper()
             caps = scoring_rules.get("category_error_caps") or {"UR": 7, "OBC": 10, "EWS": 10, "SC": 10, "ST": 10, "ESM": 10, "OH": 10, "HH": 10, "VH": 10, "PWD": 10}
-            error_cap = float(caps.get(candidate_category, caps.get("OTHER_RESERVED", 10)))
+            cap_value = caps.get(candidate_category, caps.get("OTHER_RESERVED")) if candidate_category else None
+            error_cap = float(cap_value) if cap_value is not None else None
             minimum_wpm = float(scoring_rules.get("minimum_wpm", 30))
             minimum_kdph = float(scoring_rules.get("minimum_kdph", 9000))
             minimum_strokes = int((minimum_kdph * scoring_duration + 3599) // 3600)
@@ -903,8 +901,11 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         rulebook_evaluation = evaluate_rulebook_qualification(
             configured_qualification,
             qualification_metrics,
-            candidate_category=rules.get("candidate_category"),
-            selectors=rules.get("candidate_selectors"),
+            candidate_category=rules.get("candidate_category") or (rules.get("candidate_selectors") or {}).get("candidate_category"),
+            selectors={
+                **(rules.get("candidate_selectors") or {}),
+                "standard_type": (rules.get("candidate_selectors") or {}).get("standard_type") or scoring_rules.get("standard_type"),
+            },
         )
         # Internally approved rulebook profiles are evaluated only by the
         # versioned structured criteria. Legacy thresholds/formula branches
