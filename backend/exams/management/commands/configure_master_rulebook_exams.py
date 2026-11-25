@@ -214,7 +214,7 @@ class Command(BaseCommand):
                     "error_denominator": "reference_words",
                 })
             if formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
-                higher_standard = "Higher Standard" in name
+                higher_standard = "Higher Standard" in name or name.startswith("SSC CAG DEO")
                 exam.scoring_rules.update({
                     "standard_type": "HIGHER" if higher_standard else "NORMAL",
                     "normal_error_caps": {
