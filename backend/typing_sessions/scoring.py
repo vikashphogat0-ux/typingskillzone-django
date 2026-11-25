@@ -838,6 +838,8 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
         "score": score, "correct_words": correct_words, "word_errors": word_errors,
+        "correct_wpm": correct_wpm, "gross_kdph": gross_kdph,
+        "weighted_mistakes": error_count,
         "keystrokes": stroke_count_for_speed,
         "gross_words": gross_words,
     }
