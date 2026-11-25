@@ -804,6 +804,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             "correct_words": correct_words,
             "gross_words": gross_words,
             "typed_words": gross_words,
+            "wrong_words": word_errors,
             "weighted_mistakes": error_count,
             "full_mistakes": full_mistakes,
             "half_mistakes": half_mistakes,
