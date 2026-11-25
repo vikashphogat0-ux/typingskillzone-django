@@ -82,3 +82,25 @@ class CandidateSelectorTests(SimpleTestCase):
         config = selector_configuration(exam)
         self.assertEqual([item["id"] for item in config["variants"]], ["normal"])
         self.assertEqual(config["categories"], [])
+
+
+    def test_structured_qualification_category_values_create_required_selector(self):
+        exam = self.exam({
+            "rulebook_verification": "internal",
+            "profile_configuration": {},
+        })
+        exam.qualification_rules = {
+            "engine_version": 1,
+            "mode": "ALL",
+            "criteria": [{
+                "metric": "error_percent",
+                "operator": "lte",
+                "category_values": {"UR": 7, "SC": 10},
+            }],
+        }
+        config = selector_configuration(exam)
+        self.assertEqual([item["id"] for item in config["categories"]], ["SC", "UR"])
+        selected = validate_candidate_selections(exam, {"candidate_category": "SC"})
+        self.assertEqual(selected["candidate_category"], "SC")
+        with self.assertRaises(ValidationError):
+            validate_candidate_selections(exam, {})

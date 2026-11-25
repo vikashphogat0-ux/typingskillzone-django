@@ -177,6 +177,25 @@
     <div><dt>Error percentage</dt><dd>{{ attempt.result_snapshot.error_percent }}%</dd></div>
   </dl>
   {% endif %}
+  {% if attempt.result_snapshot.formula_id %}
+  <h3 style="margin-top:22px">Configured scoring formula audit</h3>
+  <dl class="pattern-grid">
+    <div><dt>Formula</dt><dd>{{ attempt.result_snapshot.formula_id }}</dd></div>
+    <div><dt>Evaluation</dt><dd>{{ attempt.result_snapshot.formula_evaluation_status|default:"NOT EVALUATED" }}</dd></div>
+    {% for metric, value in attempt.result_snapshot.formula_metrics.items %}
+      <div><dt>{{ metric|cut:"_"|title }}</dt><dd>{{ value|default_if_none:"Not available" }}</dd></div>
+    {% endfor %}
+  </dl>
+  {% if attempt.result_snapshot.formula_checks %}
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Formula input</th><th>Status</th><th>Reason</th></tr></thead>
+      <tbody>{% for check in attempt.result_snapshot.formula_checks %}
+        <tr><td>{{ check.label }}</td><td>{{ check.status }}</td><td>{{ check.reason|default:"–" }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  {% endif %}
+  {% if attempt.result_snapshot.formula_note %}<p class="muted">{{ attempt.result_snapshot.formula_note }}</p>{% endif %}
+  {% endif %}
   {% if attempt.result_snapshot.score_note %}<p class="muted" style="margin-top:12px">{{ attempt.result_snapshot.score_note }}</p>{% endif %}
   <h3 style="margin-top:22px">Error breakdown</h3>
   <dl class="pattern-grid">

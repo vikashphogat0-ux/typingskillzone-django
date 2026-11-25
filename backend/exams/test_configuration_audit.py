@@ -182,3 +182,14 @@ class SevenStagePipelineAuditTests(SimpleTestCase):
         )
         result = audit_exam_configuration(exam)
         self.assertEqual(result["stage_checks"]["interface_and_passage"]["status"], "BLOCKED")
+
+
+    def test_result_stage_checks_real_result_template_and_contract_fields(self):
+        exam = ExamConfiguration(code="result-contract", name="Result contract", language="ENGLISH", script="LATIN")
+        result = audit_exam_configuration(exam)
+        checks = result["stage_checks"]["result_and_audit"]["checks"]
+        self.assertTrue(checks["result_template_exists"])
+        self.assertTrue(checks["formula_status_contract"])
+        self.assertTrue(checks["qualification_status_contract"])
+        self.assertTrue(checks["qualification_breakdown_contract"])
+        self.assertTrue(checks["formula_metrics_contract"])

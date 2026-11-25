@@ -822,7 +822,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             net_wpm = formula_metrics.get("net_wpm", net_wpm)
             gross_kdph = formula_metrics.get("gross_kdph", gross_kdph)
             error_percent = formula_metrics.get("error_percent", error_percent)
-            score = formula_metrics.get("score", score)
+            # Internal rulebook formulas are authoritative. Never retain a legacy
+            # marks result when the selected formula does not produce marks.
+            score = formula_metrics.get("score")
             net_words = formula_metrics.get("net_words", net_words)
             error_percent_for_qualification = formula_metrics.get("error_percent", error_percent_for_qualification)
         else:
@@ -957,6 +959,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "formula_id": rulebook_scoring["formula_id"] if rulebook_scoring else None,
         "formula_note": rulebook_scoring["formula_note"] if rulebook_scoring else None,
         "formula_checks": rulebook_scoring["formula_checks"] if rulebook_scoring else [],
+        "formula_metrics": rulebook_scoring["metrics"] if rulebook_scoring else {},
         "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "reference_word_count": len(re.findall(r"\S+", reference)) if (scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}) or scoring_rules.get("rulebook_verification") == "internal" else None,

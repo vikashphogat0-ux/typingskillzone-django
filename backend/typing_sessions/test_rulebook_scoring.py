@@ -224,3 +224,31 @@ class RulebookFormulaIntegrationTests(SimpleTestCase):
         self.assertEqual(result["formula_evaluation_status"], "NOT_EVALUATED")
         self.assertIsNone(result["score"])
         self.assertIsNone(result["net_wpm"])
+
+
+    def test_internal_formula_does_not_leak_legacy_marks_and_exposes_formula_metrics(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta gamma delta",
+            typed="alpha beta gamma delta",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "scoring_mode": "CORRECT_WORD_MARKS",
+                "scoring_rules": {
+                    "rulebook_verification": "internal",
+                    "marks_per_correct_word": 5,
+                    "maximum_marks": 100,
+                    "rulebook_scoring": {
+                        "engine_version": 1,
+                        "formula": "ERROR_PERCENT_WEIGHTED",
+                        "parameters": {"denominator": "reference_words"},
+                    },
+                },
+                "qualification_rules": {},
+            },
+        )
+        self.assertEqual(result["formula_evaluation_status"], "EVALUATED")
+        self.assertIn("error_percent", result["formula_metrics"])
+        self.assertIsNone(result["score"])

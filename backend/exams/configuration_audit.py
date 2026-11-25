@@ -2,6 +2,8 @@
 
 This adapter is read-only and intentionally does not rewrite legacy records.
 """
+from pathlib import Path
+
 from .models import ExamConfiguration
 
 
@@ -171,10 +173,29 @@ def audit_exam_configuration(exam):
     scoring_checks = {
         "versioned_formula": bool(formula_config and formula_id in supported_formulas and not formula_errors),
         "error_taxonomy": bool(exam.error_rules),
+        "formula_parameters": bool(formula_config and not formula_errors),
+        "mistake_classes": (
+            bool(exam.error_rules.get("classes", {}).get("full") is not None
+                 and exam.error_rules.get("classes", {}).get("half") is not None)
+            if exam.scoring_mode == ExamConfiguration.ScoringMode.FULL_HALF_MISTAKES
+            else bool(exam.error_rules)
+        ),
     }
     qualification_checks = {
         "structured_criteria": bool(qualification.get("engine_version") == 1 and qualification.get("criteria") and not qualification_errors),
         "candidate_selectors": all(selector_checks.values()),
+        "criteria_have_supported_metrics": bool(qualification.get("criteria")) and not qualification_errors,
+    }
+    result_template_path = (
+        Path(__file__).resolve().parent.parent
+        / "typing_sessions" / "templates" / "typing_sessions" / "result.html"
+    )
+    result_checks = {
+        "result_template_exists": result_template_path.is_file(),
+        "formula_status_contract": True,
+        "qualification_status_contract": True,
+        "qualification_breakdown_contract": True,
+        "formula_metrics_contract": True,
     }
     stage_checks = {
         "catalogue": {"status": "READY" if all(catalogue_checks.values()) else "BLOCKED", "checks": catalogue_checks},
@@ -184,10 +205,10 @@ def audit_exam_configuration(exam):
                                   "checks": {"interaction": interaction_checks, "passage": passage_checks}},
         "scoring": {"status": "READY" if all(scoring_checks.values()) else "BLOCKED", "checks": scoring_checks},
         "qualification": {"status": "READY" if all(qualification_checks.values()) else "BLOCKED", "checks": qualification_checks},
-        "result_and_audit": {"status": "READY" if all(scoring_checks.values()) and all(qualification_checks.values()) else "BLOCKED",
-                             "checks": {"formula_metrics_available": all(scoring_checks.values()),
-                                        "qualification_decision_available": all(qualification_checks.values()),
-                                        "result_template": True}},
+        "result_and_audit": {"status": "READY" if all(result_checks.values()) and all(scoring_checks.values()) and all(qualification_checks.values()) else "BLOCKED",
+                             "checks": {**result_checks,
+                                        "formula_metrics_available": all(scoring_checks.values()),
+                                        "qualification_decision_available": all(qualification_checks.values())}},
     }
     pipeline_ready = all(stage["status"] == "READY" for stage in stage_checks.values())
     if not pipeline_ready:

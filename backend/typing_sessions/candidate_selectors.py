@@ -6,6 +6,34 @@ No independent option catalogue or inferred eligibility rules are introduced.
 from django.core.exceptions import ValidationError
 
 
+def _configured_category_values(exam):
+    scoring = exam.scoring_rules or {}
+    qualification = exam.qualification_rules or {}
+    values = set()
+    criteria = qualification.get("criteria", []) if isinstance(qualification, dict) else []
+    for criterion in criteria:
+        if isinstance(criterion, dict) and isinstance(criterion.get("category_values"), dict):
+            values.update(
+                key for key, value in criterion["category_values"].items()
+                if isinstance(key, str) and key and isinstance(value, (int, float)) and not isinstance(value, bool)
+            )
+    for key in ("category_error_caps", "normal_error_caps", "higher_error_caps"):
+        configured = scoring.get(key) or {}
+        if isinstance(configured, dict):
+            values.update(
+                category for category, limit in configured.items()
+                if isinstance(category, str) and category and isinstance(limit, (int, float)) and not isinstance(limit, bool)
+            )
+    profile = scoring.get("profile_configuration") or {}
+    configured_limits = profile.get("category_limits") or {}
+    if isinstance(configured_limits, dict):
+        values.update(
+            category for category, limit in configured_limits.items()
+            if isinstance(category, str) and category and isinstance(limit, (int, float)) and not isinstance(limit, bool)
+        )
+    return values
+
+
 def selector_configuration(exam):
     scoring = exam.scoring_rules or {}
     profile = scoring.get("profile_configuration") or {}
@@ -18,7 +46,7 @@ def selector_configuration(exam):
     configured_limits = profile.get("category_limits") or {}
     if isinstance(configured_limits, dict):
         caps.update({key: value for key, value in configured_limits.items() if isinstance(value, (int, float))})
-    categories = [key for key in caps if key not in {"OTHER", "OTHER_RESERVED"}]
+    categories = sorted(_configured_category_values(exam) - {"OTHER", "OTHER_RESERVED"})
     return {
         "categories": [{"id": key, "label": key} for key in categories],
         "variants": [item for item in variants if isinstance(item, dict) and item.get("id")],
@@ -33,11 +61,18 @@ def validate_candidate_selections(exam, submitted):
     formula = scoring.get("formula")
     selections = {}
     category_options = {item["id"] for item in config["categories"]}
-    category_required = bool(category_options) and formula in {
-        "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST",
-        "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI",
-        "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL",
-    }
+    qualification = exam.qualification_rules or {}
+    has_category_threshold = any(
+        isinstance(item, dict) and isinstance(item.get("category_values"), dict)
+        for item in qualification.get("criteria", [])
+    ) if isinstance(qualification, dict) else False
+    category_required = bool(category_options) and (
+        has_category_threshold or formula in {
+            "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST",
+            "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI",
+            "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL",
+        }
+    )
     raw_category = (submitted.get("candidate_category") or "").strip().upper()
     if category_required:
         if not raw_category:
@@ -141,15 +176,30 @@ def selector_configuration_from_snapshot(snapshot):
     limits = profile.get("category_limits") or {}
     if isinstance(limits, dict):
         caps.update({key: value for key, value in limits.items() if isinstance(value, (int, float))})
+    category_values = set(
+        key for criterion in (snapshot.get("qualification_rules") or {}).get("criteria", [])
+        if isinstance(criterion, dict) and isinstance(criterion.get("category_values"), dict)
+        for key, value in criterion["category_values"].items()
+        if isinstance(key, str) and key and isinstance(value, (int, float)) and not isinstance(value, bool)
+    )
+    category_values.update(
+        key for key, value in caps.items()
+        if isinstance(key, str) and key and isinstance(value, (int, float)) and not isinstance(value, bool)
+    )
     return {
-        "categories": [key for key in caps if key not in {"OTHER", "OTHER_RESERVED"}],
+        "categories": sorted(category_values - {"OTHER", "OTHER_RESERVED"}),
         "variants": [dict(item) for item in (profile.get("variants") or []) if isinstance(item, dict) and item.get("id")],
         "post_presets": [dict(item) for item in (profile.get("post_presets") or []) if isinstance(item, dict) and item.get("id")],
-        "category_required": bool(caps) and scoring.get("formula") in {
-            "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST",
-            "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI",
-            "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL",
-        },
+        "category_required": bool(category_values) and (
+            any(
+                isinstance(item, dict) and isinstance(item.get("category_values"), dict)
+                for item in (snapshot.get("qualification_rules") or {}).get("criteria", [])
+            ) or scoring.get("formula") in {
+                "SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST",
+                "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI",
+                "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL",
+            }
+        ),
     }
 
 
