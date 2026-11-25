@@ -41,7 +41,7 @@ class Command(BaseCommand):
                         1 for item in records
                         if item.get("stage_checks", {}).get(stage, {}).get("status") == "READY"
                     )
-                    for stage in ("launch", "capture", "scoring", "qualification", "result")
+                    for stage in ("catalogue", "candidate_selection", "launch_and_timer", "interface_and_passage", "scoring", "qualification", "result_and_audit")
                 },
                 "profiles": records,
             }, ensure_ascii=False, indent=2))

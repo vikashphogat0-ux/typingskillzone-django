@@ -111,32 +111,87 @@ def audit_exam_configuration(exam):
                     )
     errors.extend(qualification_errors)
 
+    profile = scoring.get("profile_configuration") or {}
+    variants = profile.get("variants") or []
+    posts = profile.get("post_presets") or []
+    selector_errors = []
+    for key, values in (("variants", variants), ("post_presets", posts)):
+        if not isinstance(values, list):
+            selector_errors.append(f"Configured {key} must be a list.")
+            continue
+        ids = [item.get("id") for item in values if isinstance(item, dict)]
+        if len(ids) != len(values) or any(not value for value in ids):
+            selector_errors.append(f"Every configured {key} entry must be an object with a non-empty id.")
+        if len(ids) != len(set(ids)):
+            selector_errors.append(f"Configured {key} contains duplicate ids.")
+    if profile.get("conditional_activation") and not variants and not posts:
+        selector_errors.append("Conditional profile activation requires explicit candidate selectors.")
+    errors.extend(selector_errors)
+
+    catalogue_checks = {
+        "code": bool(exam.code),
+        "name": bool(exam.name),
+        "language": bool(exam.language),
+        "script": bool(exam.script),
+        "cycle_identity": bool(scoring.get("recruitment_cycle") or scoring.get("source_profile_id") or scoring.get("profile_configuration", {}).get("source_profile_id")),
+    }
+    selector_checks = {
+        "variant_schema": not any("variants" in item for item in selector_errors),
+        "post_schema": not any("post_presets" in item for item in selector_errors),
+        "category_threshold_selector": not any(
+            isinstance(item, dict) and isinstance(item.get("category_values"), dict)
+            for item in qualification.get("criteria", [])
+        ) or bool(profile.get("category_selector")),
+        "conditional_activation": not (profile.get("conditional_activation") and not variants and not posts),
+    }
     launch_checks = {
         "duration": bool(exam.duration_seconds),
-        "passage_source": exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED,
-        "passage_layout": exam.passage_layout != ExamConfiguration.PassageLayout.UNCONFIGURED,
-        "keyboard": bool(exam.keyboard_layout) or exam.language.upper() == "ENGLISH",
+        "active_profile": bool(exam.is_active),
+        "published_passage_source": exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED,
+    }
+    interaction_checks = {
         "backspace_policy": exam.backspace_policy != ExamConfiguration.BackspacePolicy.NOT_SPECIFIED,
-        "key_behaviors": all(value != ExamConfiguration.EnterBehavior.UNSPECIFIED for value in [exam.enter_behavior])
-            and exam.space_behavior != ExamConfiguration.SpaceBehavior.UNSPECIFIED
-            and exam.tab_behavior != ExamConfiguration.TabBehavior.UNSPECIFIED,
+        "legacy_backspace_consistency": exam.allow_backspace == (exam.backspace_policy != ExamConfiguration.BackspacePolicy.DISABLED),
+        "delete_policy": exam.allow_delete is not None,
+        "navigation_policy": exam.allow_arrow_navigation is not None,
+        "clipboard_policy": exam.allow_copy is not None and exam.allow_paste is not None and exam.allow_cut is not None,
+        "enter_behavior": exam.enter_behavior != ExamConfiguration.EnterBehavior.UNSPECIFIED,
+        "space_behavior": exam.space_behavior != ExamConfiguration.SpaceBehavior.UNSPECIFIED,
+        "tab_behavior": exam.tab_behavior != ExamConfiguration.TabBehavior.UNSPECIFIED,
+    }
+    passage_checks = {
+        "layout": exam.passage_layout != ExamConfiguration.PassageLayout.UNCONFIGURED,
+        "format": exam.passage_format != ExamConfiguration.PassageFormat.CUSTOM,
+        "source_mode": exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED,
+        "font": bool(exam.passage_font_family),
+        "font_size": bool(exam.passage_font_size_pt),
+        "keyboard": bool(exam.keyboard_layout) or exam.language.upper() == "ENGLISH",
+        "presentation_reference": exam.presentation_reference_status == ExamConfiguration.PresentationReferenceStatus.VERIFIED,
     }
     scoring_checks = {
         "versioned_formula": bool(formula_config and formula_id in supported_formulas and not formula_errors),
-        "qualification_criteria": bool(qualification.get("engine_version") == 1 and qualification.get("criteria") and not qualification_errors),
+        "error_taxonomy": bool(exam.error_rules),
+    }
+    qualification_checks = {
+        "structured_criteria": bool(qualification.get("engine_version") == 1 and qualification.get("criteria") and not qualification_errors),
+        "candidate_selectors": all(selector_checks.values()),
     }
     stage_checks = {
-        "launch": {"status": "READY" if all(launch_checks.values()) else "BLOCKED", "checks": launch_checks},
-        "capture": {"status": "READY" if exam.duration_seconds and exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED else "BLOCKED",
-                    "checks": {"duration_snapshot": bool(exam.duration_seconds), "reference_passage_source": exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED}},
-        "scoring": {"status": "READY" if scoring_checks["versioned_formula"] else "BLOCKED", "checks": scoring_checks},
-        "qualification": {"status": "READY" if scoring_checks["qualification_criteria"] else "BLOCKED", "checks": {"structured_criteria": scoring_checks["qualification_criteria"]}},
-        "result": {"status": "READY" if scoring_checks["versioned_formula"] and scoring_checks["qualification_criteria"] else "BLOCKED",
-                   "checks": {"formula_metrics_available": scoring_checks["versioned_formula"], "qualification_decision_available": scoring_checks["qualification_criteria"]}},
+        "catalogue": {"status": "READY" if all(catalogue_checks.values()) else "BLOCKED", "checks": catalogue_checks},
+        "candidate_selection": {"status": "READY" if all(selector_checks.values()) else "BLOCKED", "checks": selector_checks},
+        "launch_and_timer": {"status": "READY" if all(launch_checks.values()) else "BLOCKED", "checks": launch_checks},
+        "interface_and_passage": {"status": "READY" if all(interaction_checks.values()) and all(passage_checks.values()) else "BLOCKED",
+                                  "checks": {"interaction": interaction_checks, "passage": passage_checks}},
+        "scoring": {"status": "READY" if all(scoring_checks.values()) else "BLOCKED", "checks": scoring_checks},
+        "qualification": {"status": "READY" if all(qualification_checks.values()) else "BLOCKED", "checks": qualification_checks},
+        "result_and_audit": {"status": "READY" if all(scoring_checks.values()) and all(qualification_checks.values()) else "BLOCKED",
+                             "checks": {"formula_metrics_available": all(scoring_checks.values()),
+                                        "qualification_decision_available": all(qualification_checks.values()),
+                                        "result_template": True}},
     }
     pipeline_ready = all(stage["status"] == "READY" for stage in stage_checks.values())
     if not pipeline_ready:
-        errors.append("End-to-end exam pipeline is incomplete; one or more launch-to-result stages are blocked.")
+        errors.append("End-to-end exam pipeline is incomplete; one or more of the seven release stages are blocked.")
     return {
         "status": "READY" if not errors else "DRAFT_INCOMPLETE",
         "ready": not errors,
@@ -149,5 +204,7 @@ def audit_exam_configuration(exam):
             "rule_config_version": exam.rule_config_version,
             "formula_id": formula_id,
             "formula_engine_version": formula_config.get("engine_version"),
+            "source_profile_id": profile.get("source_profile_id") or scoring.get("source_profile_id"),
+            "verification_status": exam.verification_status,
         },
     }

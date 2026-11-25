@@ -100,3 +100,85 @@ class RulebookPipelineAuditTests(SimpleTestCase):
         result = audit_exam_configuration(exam)
         self.assertFalse(result["ready"])
         self.assertTrue(any("server-validated candidate-category selector" in message for message in result["errors"]))
+
+
+class SevenStagePipelineAuditTests(SimpleTestCase):
+    def test_audit_exposes_exactly_seven_release_stages(self):
+        exam = ExamConfiguration(
+            code="seven-stage-profile",
+            name="Seven stage profile",
+            language="ENGLISH",
+            script="LATIN",
+            duration_seconds=600,
+            passage_format=ExamConfiguration.PassageFormat.TCS,
+            passage_layout=ExamConfiguration.PassageLayout.TCS,
+            passage_source_mode=ExamConfiguration.PassageSourceMode.SCREEN,
+            backspace_policy=ExamConfiguration.BackspacePolicy.FULL,
+            allow_backspace=True,
+            allow_delete=True,
+            allow_arrow_navigation=True,
+            allow_copy=False,
+            allow_paste=False,
+            allow_cut=False,
+            enter_behavior=ExamConfiguration.EnterBehavior.NEW_LINE,
+            space_behavior=ExamConfiguration.SpaceBehavior.NORMAL,
+            tab_behavior=ExamConfiguration.TabBehavior.INSERT_SPACES,
+            keyboard_layout="QWERTY",
+            presentation_reference_status=ExamConfiguration.PresentationReferenceStatus.VERIFIED,
+            scoring_mode=ExamConfiguration.ScoringMode.CUSTOM,
+            scoring_rules={
+                "recruitment_cycle": "2025",
+                "profile_configuration": {"source_profile_id": "ssc-chsl-en-2025", "category_selector": "candidate_category"},
+                "rulebook_scoring": {
+                    "engine_version": 1, "formula": "ERROR_PERCENT_WEIGHTED",
+                    "parameters": {"denominator": "reference_words"},
+                },
+            },
+            error_rules={"classes": {"full": ["omission"], "half": ["punctuation"]}},
+            qualification_rules={
+                "engine_version": 1, "mode": "ALL",
+                "criteria": [{"id": "speed", "metric": "net_wpm", "operator": "gte", "value": 35}],
+            },
+        )
+        result = audit_exam_configuration(exam)
+        self.assertEqual(
+            set(result["stage_checks"]),
+            {"catalogue", "candidate_selection", "launch_and_timer", "interface_and_passage",
+             "scoring", "qualification", "result_and_audit"},
+        )
+        self.assertEqual(result["stage_checks"]["catalogue"]["status"], "READY")
+        self.assertEqual(result["stage_checks"]["scoring"]["status"], "READY")
+        self.assertEqual(result["stage_checks"]["qualification"]["status"], "READY")
+
+    def test_missing_cycle_identity_blocks_catalogue_stage(self):
+        exam = ExamConfiguration(code="no-cycle", name="No cycle", language="ENGLISH", script="LATIN")
+        result = audit_exam_configuration(exam)
+        self.assertEqual(result["stage_checks"]["catalogue"]["status"], "BLOCKED")
+        self.assertFalse(result["ready"])
+
+    def test_selector_schema_and_duplicate_ids_block_candidate_selection(self):
+        exam = ExamConfiguration(
+            code="bad-selector", name="Bad selector", language="ENGLISH", script="LATIN",
+            scoring_rules={"profile_configuration": {
+                "variants": [{"id": "normal"}, {"id": "normal"}],
+            }},
+        )
+        result = audit_exam_configuration(exam)
+        self.assertEqual(result["stage_checks"]["candidate_selection"]["status"], "BLOCKED")
+        self.assertTrue(any("duplicate ids" in message for message in result["errors"]))
+
+    def test_unverified_presentation_reference_blocks_interface_stage(self):
+        exam = ExamConfiguration(
+            code="presentation-pending", name="Presentation pending",
+            language="ENGLISH", script="LATIN", duration_seconds=600,
+            passage_format=ExamConfiguration.PassageFormat.TCS,
+            passage_layout=ExamConfiguration.PassageLayout.TCS,
+            passage_source_mode=ExamConfiguration.PassageSourceMode.SCREEN,
+            backspace_policy=ExamConfiguration.BackspacePolicy.FULL, allow_backspace=True,
+            enter_behavior=ExamConfiguration.EnterBehavior.NEW_LINE,
+            space_behavior=ExamConfiguration.SpaceBehavior.NORMAL,
+            tab_behavior=ExamConfiguration.TabBehavior.INSERT_SPACES,
+            keyboard_layout="QWERTY",
+        )
+        result = audit_exam_configuration(exam)
+        self.assertEqual(result["stage_checks"]["interface_and_passage"]["status"], "BLOCKED")
