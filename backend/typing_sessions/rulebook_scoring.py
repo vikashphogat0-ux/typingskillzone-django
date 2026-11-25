@@ -70,6 +70,18 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     weighted = _decimal(metrics.get("weighted_mistakes"))
     full = _decimal(metrics.get("full_mistakes"))
     half = _decimal(metrics.get("half_mistakes"))
+    categories = metrics.get("mistake_categories") or {}
+    classification = params.get("mistake_classification") or {}
+    if isinstance(classification, dict) and isinstance(categories, dict):
+        full_keys = classification.get("full") or []
+        half_keys = classification.get("half") or []
+        if isinstance(full_keys, list) and isinstance(half_keys, list):
+            full = sum((_decimal(categories.get(key)) or Decimal(0) for key in full_keys), Decimal(0))
+            half = sum((_decimal(categories.get(key)) or Decimal(0) for key in half_keys), Decimal(0))
+    full_weight = _decimal(params.get("full_mistake_weight", 1))
+    half_weight = _decimal(params.get("half_mistake_weight", 0.5))
+    if full is not None and half is not None and full_weight is not None and half_weight is not None:
+        weighted = full * full_weight + half * half_weight
     reference_words = _decimal(metrics.get("reference_words"))
     outputs = {}
     checks = []
