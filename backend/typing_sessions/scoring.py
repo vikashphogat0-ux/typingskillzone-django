@@ -788,7 +788,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification_status = "PROVISIONAL_QUALIFIED" if qualification else "PROVISIONAL_NOT_QUALIFIED"
         qualification_note = (
             f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English criteria: "
-            f"{gross_wpm:.2f} WPM (minimum {minimum_wpm:g}), "
+            f"{net_wpm:.2f} Net WPM (minimum {minimum_wpm:g}), "
             f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
             f"{gross_strokes}/{minimum_strokes} keystrokes."
         )
@@ -803,6 +803,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             "server_strokes": len(typed),
             "correct_words": correct_words,
             "gross_words": gross_words,
+            "typed_words": gross_words,
             "weighted_mistakes": error_count,
             "full_mistakes": full_mistakes,
             "half_mistakes": half_mistakes,
