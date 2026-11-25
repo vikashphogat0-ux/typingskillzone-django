@@ -136,23 +136,42 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
             outputs["net_words"] = max(Decimal(0), gross_words - excess * penalty)
             outputs["net_wpm"] = _round(outputs["net_words"] / minutes)
     elif formula == "AIIMS_STROKE_DEDUCTION":
-        if not all((require("server_strokes", strokes), require("weighted_mistakes", weighted))): pass
+        if not require("server_strokes", strokes):
+            pass
         else:
             minimum_strokes = _decimal(params.get("minimum_strokes"))
             penalty_per_mistake = _decimal(params.get("penalty_strokes_per_mistake", 50))
-            if minimum_strokes is None or minimum_strokes <= 0 or penalty_per_mistake is None or penalty_per_mistake < 0:
-                return {**unresolved, "formula_id": formula, "formula_note": "AIIMS requires a positive language-specific minimum_strokes and a non-negative penalty_strokes_per_mistake."}
+            full_stroke_penalty = _decimal(params.get("full_mistake_strokes"))
+            half_stroke_penalty = _decimal(params.get("half_mistake_strokes"))
+            if (
+                (minimum_strokes is not None and minimum_strokes <= 0)
+                or penalty_per_mistake is None or penalty_per_mistake < 0
+                or (full_stroke_penalty is not None and full_stroke_penalty < 0)
+                or (half_stroke_penalty is not None and half_stroke_penalty < 0)
+            ):
+                return {**unresolved, "formula_id": formula, "formula_note": "AIIMS stroke thresholds and deduction values must be non-negative, with a positive minimum_strokes when supplied."}
+            uses_full_half = full_stroke_penalty is not None or half_stroke_penalty is not None
+            if uses_full_half and (full_stroke_penalty is None or half_stroke_penalty is None or full is None or half is None):
+                return {**unresolved, "formula_id": formula, "formula_note": "AIIMS full/half deduction requires both stroke rates and measured full_mistakes and half_mistakes."}
+            penalty_strokes = (
+                full * full_stroke_penalty + half * half_stroke_penalty
+                if uses_full_half else weighted * penalty_per_mistake
+            )
             gross_wpm = strokes / Decimal(5) / minutes
             outputs["gross_wpm"] = _round(gross_wpm)
-            outputs["minimum_strokes"] = _round(minimum_strokes)
-            outputs["attempt_status"] = "SUFFICIENT_ATTEMPT" if strokes >= minimum_strokes else "INSUFFICIENT_ATTEMPT"
-            outputs["weighted_mistakes"] = _round(weighted)
-            outputs["penalty_strokes"] = _round(weighted * penalty_per_mistake)
-            if strokes < minimum_strokes:
+            outputs["penalty_strokes"] = _round(penalty_strokes)
+            outputs["weighted_mistakes"] = _round(weighted) if weighted is not None else _round(full + half)
+            if minimum_strokes is not None:
+                sufficient = strokes >= minimum_strokes
+                outputs["minimum_strokes"] = _round(minimum_strokes)
+                outputs["attempt_status"] = "SUFFICIENT_ATTEMPT" if sufficient else "INSUFFICIENT_ATTEMPT"
+            else:
+                sufficient = True
+            if not sufficient:
                 outputs["net_wpm"] = None
                 outputs["accuracy_percent"] = None
             else:
-                net_wpm = max(Decimal(0), strokes - weighted * penalty_per_mistake) / Decimal(5) / minutes
+                net_wpm = max(Decimal(0), strokes - penalty_strokes) / Decimal(5) / minutes
                 outputs["net_wpm"] = _round(net_wpm)
                 outputs["accuracy_percent"] = _round(net_wpm * Decimal(100) / gross_wpm) if gross_wpm else 0.0
     elif formula == "KDPH":
@@ -274,7 +293,7 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
         "formula_id": formula, "formula_note": "Calculated using the configured versioned rulebook formula.",
         "formula_checks": checks,
         "metrics": {
-            key: value if isinstance(value, str) else _round(value)
+            key: value if value is None or isinstance(value, str) else _round(value)
             for key, value in outputs.items()
         },
     }
