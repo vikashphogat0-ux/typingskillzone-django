@@ -122,7 +122,7 @@ def activate_session(*, session_id, learner, compensatory_time=False):
 
 
 @transaction.atomic
-def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None, client_policy_events=None, candidate_category=None):
+def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None, client_policy_events=None):
     _require_active_student(learner)
     session = TypingSession.objects.select_for_update().select_related("publication").get(
         pk=session_id, learner=learner
@@ -163,11 +163,9 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
     # An expired attempt is scored only from text received by this endpoint; the
     # browser's countdown or claimed completion time is never accepted.
     scoring_snapshot = dict(session.rules_snapshot)
-    if candidate_category:
-        allowed_categories = {"UR", "OBC", "EWS", "SC", "ST", "PWD", "OTHER_RESERVED"}
-        normalized_category = str(candidate_category).strip().upper()
-        if normalized_category in allowed_categories:
-            scoring_snapshot["candidate_category"] = normalized_category
+    # Category/standard eligibility is server-owned profile data. Never accept a
+    # candidate-supplied category at submission time: it could select a more
+    # favourable error ceiling after the attempt.
     result = calculate_result(
         reference=session.reference_text,
         typed=typed_text,
