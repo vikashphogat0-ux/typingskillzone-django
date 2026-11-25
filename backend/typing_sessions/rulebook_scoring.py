@@ -136,13 +136,25 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
             outputs["net_words"] = max(Decimal(0), gross_words - excess * penalty)
             outputs["net_wpm"] = _round(outputs["net_words"] / minutes)
     elif formula == "AIIMS_STROKE_DEDUCTION":
-        if not all((require("server_strokes", strokes), require("full_mistakes", full), require("half_mistakes", half))): pass
+        if not all((require("server_strokes", strokes), require("weighted_mistakes", weighted))): pass
         else:
-            full_deduction = _decimal(params.get("full_mistake_strokes"))
-            half_deduction = _decimal(params.get("half_mistake_strokes"))
-            if full_deduction is None or half_deduction is None or full_deduction < 0 or half_deduction < 0:
-                return {**unresolved, "formula_id": formula, "formula_note": "Full- and half-mistake stroke deductions must be explicitly configured."}
-            outputs["net_wpm"] = _round(max(Decimal(0), strokes - full * full_deduction - half * half_deduction) / Decimal(5) / minutes)
+            minimum_strokes = _decimal(params.get("minimum_strokes"))
+            penalty_per_mistake = _decimal(params.get("penalty_strokes_per_mistake", 50))
+            if minimum_strokes is None or minimum_strokes <= 0 or penalty_per_mistake is None or penalty_per_mistake < 0:
+                return {**unresolved, "formula_id": formula, "formula_note": "AIIMS requires a positive language-specific minimum_strokes and a non-negative penalty_strokes_per_mistake."}
+            gross_wpm = strokes / Decimal(5) / minutes
+            outputs["gross_wpm"] = _round(gross_wpm)
+            outputs["minimum_strokes"] = _round(minimum_strokes)
+            outputs["attempt_status"] = "SUFFICIENT_ATTEMPT" if strokes >= minimum_strokes else "INSUFFICIENT_ATTEMPT"
+            outputs["weighted_mistakes"] = _round(weighted)
+            outputs["penalty_strokes"] = _round(weighted * penalty_per_mistake)
+            if strokes < minimum_strokes:
+                outputs["net_wpm"] = None
+                outputs["accuracy_percent"] = None
+            else:
+                net_wpm = max(Decimal(0), strokes - weighted * penalty_per_mistake) / Decimal(5) / minutes
+                outputs["net_wpm"] = _round(net_wpm)
+                outputs["accuracy_percent"] = _round(net_wpm * Decimal(100) / gross_wpm) if gross_wpm else 0.0
     elif formula == "KDPH":
         if not require("server_strokes", strokes): pass
         else: outputs["gross_kdph"] = _round(strokes * Decimal(3600) / duration)
