@@ -5,6 +5,7 @@ on:
     branches:
       - integration/release-review-2026-11
       - fix/diagnostic-remediation
+      - feat/exam-specific-161-profiles
   pull_request:
     branches:
       - main
