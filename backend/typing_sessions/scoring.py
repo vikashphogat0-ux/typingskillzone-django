@@ -5,7 +5,7 @@ from .word_grading import grade_words
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
-SCORING_VERSION = "tsz-char-word-v3"
+SCORING_VERSION = "tsz-rulebook-v4"
 
 
 
