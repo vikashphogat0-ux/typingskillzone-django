@@ -7,6 +7,7 @@ import json
 import re
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
 
@@ -507,13 +508,34 @@ class Command(BaseCommand):
         if any(not value for value in ids) or len(set(ids)) != len(ids):
             raise CommandError("Every profile must have a unique, non-empty profile_id. No rows imported.")
 
-        created = preserved = 0
+        # Prepare and validate every candidate before the first database write.
+        # This makes the import all-or-nothing with respect to model validation.
+        from exams.rulebook_canonical import with_internal_rulebook_basis
+
+        prepared = []
+        validation_errors = []
         for profile in profiles:
             code = slugify(profile["profile_id"])[:180]
             defaults = {"code": code, **build_draft_defaults(profile)}
-            from exams.rulebook_canonical import with_internal_rulebook_basis
-
             defaults["scoring_rules"] = with_internal_rulebook_basis(defaults.get("scoring_rules"))
+            candidate = ExamConfiguration(**defaults)
+            try:
+                candidate.full_clean(validate_unique=False)
+            except ValidationError as exc:
+                validation_errors.append(
+                    f"{profile.get('profile_id') or code}: {exc.messages}"
+                )
+            prepared.append((profile, code, defaults))
+
+        if validation_errors:
+            details = "\\n".join(validation_errors)
+            raise CommandError(
+                "Rulebook preflight validation failed; no database rows were written:\\n"
+                + details
+            )
+
+        created = preserved = 0
+        for profile, code, defaults in prepared:
             exam, was_created = ExamConfiguration.objects.get_or_create(code=code, defaults=defaults)
             if was_created:
                 created += 1
