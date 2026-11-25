@@ -10,6 +10,14 @@
 {% if attempt.result_snapshot %}
 <section class="card" id="overall-result-summary">
   <h2>Overall examination result</h2>
+  {% if attempt.rules_snapshot.candidate_selectors %}
+  <dl class="pattern-grid" id="candidate-selection-summary">
+    {% if attempt.rules_snapshot.candidate_selectors.candidate_category %}<div><dt>Candidate category</dt><dd>{{ attempt.rules_snapshot.candidate_selectors.candidate_category }}</dd></div>{% endif %}
+    {% if attempt.rules_snapshot.candidate_selectors.variant_label %}<div><dt>Selected standard / variant</dt><dd>{{ attempt.rules_snapshot.candidate_selectors.variant_label }}</dd></div>{% endif %}
+    {% if attempt.rules_snapshot.candidate_selectors.post_id %}<div><dt>Selected post</dt><dd>{{ attempt.rules_snapshot.candidate_selectors.post_id }}</dd></div>{% endif %}
+    {% if attempt.rules_snapshot.candidate_selectors.eligibility_status %}<div><dt>Eligibility evidence</dt><dd>{{ attempt.rules_snapshot.candidate_selectors.eligibility_status|title }}</dd></div>{% endif %}
+  </dl>
+  {% endif %}
   <p class="lead"><strong>{{ attempt.result_snapshot.qualification_status|default:"NOT EVALUATED" }}</strong></p>
   <div class="metrics">
     {% if attempt.result_snapshot.gross_strokes != None %}<article class="metric-card"><span>Total strokes / keystrokes</span><strong>{{ attempt.result_snapshot.gross_strokes }}</strong></article>{% endif %}

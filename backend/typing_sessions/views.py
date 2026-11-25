@@ -16,6 +16,7 @@ from django.utils import timezone
 from .drafts import load_draft_text
 from .models import TypingSession
 from .services import abandon_active_attempts, activate_session, expire_session, save_draft, start_session, submit_session
+from .candidate_selectors import selector_configuration, validate_candidate_selections
 
 DISPLAY_MODES = {"normal", "highlighted", "offscreen"}
 
@@ -38,6 +39,7 @@ def start_typing_session(request, exam_code, passage_id):
         status=SimulatorPassage.Status.PUBLISHED,
     )
     try:
+        candidate_selections = validate_candidate_selections(exam, request.POST)
         # Before the first keystroke, the learner may return to the mode selector
         # and change the display mode on the same unstarted attempt.
         attempt = (
@@ -50,8 +52,17 @@ def start_typing_session(request, exam_code, passage_id):
             .order_by("-started_at")
             .first()
         )
-        if attempt is None or attempt.rules_snapshot.get("timer_started"):
-            attempt = start_session(learner=request.user, publication=publication)
+        existing_selections = (attempt.rules_snapshot.get("candidate_selectors") or {}) if attempt else {}
+        if (
+            attempt is None
+            or attempt.rules_snapshot.get("timer_started")
+            or existing_selections != candidate_selections
+        ):
+            attempt = start_session(
+                learner=request.user,
+                publication=publication,
+                candidate_selections=candidate_selections,
+            )
 
         # Official exam interface architecture is immutable for an exam attempt.
         # Learner-selected display modes remain available to practice profiles.

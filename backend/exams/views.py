@@ -68,7 +68,10 @@ def exam_detail(request, code):
     selected_passage_id = request.GET.get("passage", "").strip()
     if not selected_passage_id and available_passages:
         selected_passage_id = str(available_passages[0].serial_number)
+    from typing_sessions.candidate_selectors import selector_configuration
+    candidate_selector_config = selector_configuration(exam)
     return render(request, "exams/exam_detail.html", {
+        "candidate_selector_config": candidate_selector_config,
         "exam": exam,
         "duration_minutes": (exam.duration_seconds // 60) if exam.duration_seconds else None,
         "recent_passages": available_passages,

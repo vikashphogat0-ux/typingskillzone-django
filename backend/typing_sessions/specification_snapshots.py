@@ -6,7 +6,7 @@ scoring engine consumes them. The canonical resolver output is additive.
 from exams.specifications import resolve_exam_specification
 
 
-SESSION_SNAPSHOT_FORMAT_VERSION = 1
+SESSION_SNAPSHOT_FORMAT_VERSION = 2
 
 
 def build_exam_specification_snapshot(*, exam, publication, captured_at):

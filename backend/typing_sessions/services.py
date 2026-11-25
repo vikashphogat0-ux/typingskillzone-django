@@ -10,6 +10,7 @@ from .drafts import DRAFT_MAX_CHARS, clear_draft, save_draft_text
 from .models import TypingSession
 from .scoring import SCORING_VERSION, calculate_result
 from .specification_snapshots import build_exam_specification_snapshot
+from .candidate_selectors import apply_candidate_selections, validate_candidate_selections
 
 
 def _require_active_student(learner):
@@ -23,7 +24,7 @@ def _require_active_student(learner):
 
 
 @transaction.atomic
-def start_session(*, learner, publication):
+def start_session(*, learner, publication, candidate_selections=None):
     _require_active_student(learner)
     publication = SimulatorPassage.objects.select_related("exam", "source").get(pk=publication.pk)
     if (publication.status != SimulatorPassage.Status.PUBLISHED
@@ -39,11 +40,15 @@ def start_session(*, learner, publication):
     exam = publication.exam
     duration = exam.duration_seconds
     now = timezone.now()
+    validated_selections = validate_candidate_selections(exam, candidate_selections or {})
     snapshot = build_exam_specification_snapshot(
         exam=exam,
         publication=publication,
         captured_at=now,
     )
+    snapshot = apply_candidate_selections(snapshot, validated_selections)
+    if validated_selections.get("duration_seconds"):
+        duration = validated_selections["duration_seconds"]
     reference_text = publication.rendered_content
     if exam.code == "ssc-data-processing-assistant-grade-a":
         import re
@@ -94,10 +99,14 @@ def activate_session(*, session_id, learner, compensatory_time=False):
         if session.deadline_at is None:
             session.started_at = now
             scoring_rules = session.rules_snapshot.get("scoring_rules") or {}
+            selector_snapshot = session.rules_snapshot.get("candidate_selectors") or {}
+            selected_duration = session.rules_snapshot.get("selected_variant_duration_seconds")
+            if selected_duration:
+                session.duration_seconds = int(selected_duration)
             compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
             vh_profile = scoring_rules.get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
             if (
-                (vh_profile or compensatory_time)
+                (vh_profile or bool(selector_snapshot.get("eligibility_attested")))
                 and scoring_rules.get("compensatory_time_enabled")
                 and compensatory_seconds
             ):
@@ -110,7 +119,7 @@ def activate_session(*, session_id, learner, compensatory_time=False):
             "compensatory_time_applied": bool(
                 (
                     (session.rules_snapshot.get("scoring_rules") or {}).get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
-                    or compensatory_time
+                    or bool((session.rules_snapshot.get("candidate_selectors") or {}).get("eligibility_attested"))
                 )
                 and session.duration_seconds == int(
                     (session.rules_snapshot.get("scoring_rules") or {}).get("compensatory_duration_seconds") or 0

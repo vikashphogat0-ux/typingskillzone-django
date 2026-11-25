@@ -49,6 +49,40 @@
         </option>
         {% endfor %}
       </select>
+      {% if candidate_selector_config.categories %}
+        <label for="candidate_category" style="display:block;margin-top:16px"><strong>Candidate category</strong></label>
+        <select class="workspace-select" id="candidate_category" name="candidate_category" required>
+          <option value="">Select category</option>
+          {% for category in candidate_selector_config.categories %}
+            <option value="{{ category.id }}">{{ category.label }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      {% if candidate_selector_config.variants %}
+        <label for="candidate_variant" style="display:block;margin-top:16px"><strong>Exam standard / eligibility variant</strong></label>
+        <select class="workspace-select" id="candidate_variant" name="candidate_variant" required>
+          {% if candidate_selector_config.variants|length > 1 %}<option value="">Select standard / variant</option>{% endif %}
+          {% for variant in candidate_selector_config.variants %}
+            <option value="{{ variant.id }}"{% if variant.locked %} selected{% endif %}>{{ variant.label|default:variant.id }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      {% if candidate_selector_config.post_presets %}
+        <label for="candidate_post" style="display:block;margin-top:16px"><strong>Applicable post</strong></label>
+        <select class="workspace-select" id="candidate_post" name="candidate_post" required>
+          <option value="">Select post</option>
+          {% for post in candidate_selector_config.post_presets %}
+            <option value="{{ post.id }}">{{ post.label|default:post.id }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      {% if candidate_selector_config.variants %}
+        {% for variant in candidate_selector_config.variants %}
+          {% if variant.requires_eligibility or variant.requires_post_eligibility %}
+            <label style="display:block;margin-top:14px"><input type="checkbox" name="eligibility_confirmed" value="1"> I confirm that I meet the eligibility requirements for the selected variant/post.</label>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
       {% if exam.scoring_rules.formula == "SSC_DPA_GRADE_A" %}
         <p class="muted">5-minute non-evaluated interface demo, followed by a 15-minute evaluated typing test. Eligible candidates may receive the configured 20-minute test duration.</p>
         <p class="muted">Candidate category and compensatory-time eligibility are selected in the exam setup before the evaluated timer starts.</p>
