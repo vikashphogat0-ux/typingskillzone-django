@@ -252,3 +252,25 @@ class RulebookFormulaIntegrationTests(SimpleTestCase):
         self.assertEqual(result["formula_evaluation_status"], "EVALUATED")
         self.assertIn("error_percent", result["formula_metrics"])
         self.assertIsNone(result["score"])
+
+
+class RulebookFormulaInputContractTests(SimpleTestCase):
+    def test_formula_input_contract_matches_metrics_produced_by_submission_pipeline(self):
+        from .rulebook_scoring import FORMULA_INPUTS, required_formula_inputs
+
+        produced = {
+            "typed_characters", "correct_characters", "server_strokes", "correct_words",
+            "gross_words", "typed_words", "wrong_words", "weighted_mistakes",
+            "full_mistakes", "half_mistakes", "reference_words", "net_wpm",
+            "gross_wpm", "mistake_categories",
+        }
+        for formula in FORMULA_INPUTS:
+            with self.subTest(formula=formula):
+                required = required_formula_inputs({"formula": formula, "parameters": {}})
+                self.assertTrue(required.issubset(produced), (formula, required - produced))
+
+    def test_mphc_requires_backspace_telemetry_not_currently_produced(self):
+        from .rulebook_scoring import required_formula_inputs
+
+        required = required_formula_inputs({"formula": "MPHC_MARKS_BACKSPACE_DEDUCTION", "parameters": {}})
+        self.assertIn("backspace_presses", required)

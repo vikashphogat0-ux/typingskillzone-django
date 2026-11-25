@@ -26,6 +26,50 @@ FORMULAS = {
 }
 
 
+FORMULA_INPUTS = {
+    "GROSS_WPM_CHARACTERS_5": {"typed_characters"},
+    "GROSS_WPM_STROKES_5": {"server_strokes"},
+    "CORRECT_WORDS_PER_MINUTE": {"correct_words"},
+    "NET_WPM_WEIGHTED_MISTAKES": {"gross_words", "weighted_mistakes"},
+    "NET_WPM_CORRECT_WORDS": {"correct_words"},
+    "NET_WPM_FORGIVENESS_EXCESS_PENALTY": {"gross_words", "weighted_mistakes"},
+    "AIIMS_STROKE_DEDUCTION": {"server_strokes", "weighted_mistakes"},
+    "KDPH": {"server_strokes"},
+    "ERROR_PERCENT_WEIGHTED": {"weighted_mistakes", "reference_words"},
+    "MARKS_PER_CORRECT_WORD": {"correct_words"},
+    "UPSSSC_FIVE_EXEMPT_SIXFOLD": {"gross_words", "wrong_words"},
+    "SPMCIL_STROKE_ERROR_WORDS": {"server_strokes", "weighted_mistakes"},
+    "MP_CPCT_NET_WPM_SLABS": {"gross_words", "weighted_mistakes"},
+    "MPHC_MARKS_BACKSPACE_DEDUCTION": {"wrong_words", "backspace_presses"},
+}
+
+
+def required_formula_inputs(config):
+    """Return source metrics the selected formula actually consumes."""
+    if not isinstance(config, dict):
+        return set()
+    formula = config.get("formula")
+    if formula == "SPEED_BANDS":
+        params = config.get("parameters") or {}
+        metric = params.get("speed_metric", "net_wpm") if isinstance(params, dict) else None
+        return {metric} if isinstance(metric, str) and metric else set()
+    required = set(FORMULA_INPUTS.get(formula, set()))
+    if formula == "ERROR_PERCENT_WEIGHTED":
+        params = config.get("parameters") or {}
+        denominator = params.get("denominator", "reference_words") if isinstance(params, dict) else None
+        if denominator == "typed_words":
+            required.add("typed_words")
+        elif denominator != "reference_words":
+            required.add(f"unsupported_denominator:{denominator}")
+    if formula == "AIIMS_STROKE_DEDUCTION":
+        params = config.get("parameters") or {}
+        if isinstance(params, dict) and (
+            "full_mistake_strokes" in params or "half_mistake_strokes" in params
+        ):
+            required.update({"mistake_categories"})
+    return required
+
+
 def _decimal(value):
     if value is None or isinstance(value, bool):
         return None

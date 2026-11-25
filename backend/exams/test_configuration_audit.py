@@ -213,3 +213,33 @@ class SevenStagePipelineAuditTests(SimpleTestCase):
         self.assertFalse(checks["qualification_breakdown_contract"])
         self.assertFalse(checks["formula_metrics_contract"])
         self.assertEqual(result["stage_checks"]["result_and_audit"]["status"], "BLOCKED")
+
+
+class FormulaRuntimeInputAuditTests(SimpleTestCase):
+    def test_formula_is_blocked_when_required_runtime_metric_is_not_produced(self):
+        exam = ExamConfiguration(
+            code="mphc-runtime-input", name="MPHC runtime input", language="ENGLISH", script="LATIN",
+            duration_seconds=600,
+            passage_layout=ExamConfiguration.PassageLayout.PARAGRAPHS,
+            passage_source_mode=ExamConfiguration.PassageSourceMode.SCREEN,
+            backspace_policy=ExamConfiguration.BackspacePolicy.FULL, allow_backspace=True,
+            enter_behavior=ExamConfiguration.EnterBehavior.NEW_LINE,
+            space_behavior=ExamConfiguration.SpaceBehavior.NORMAL,
+            tab_behavior=ExamConfiguration.TabBehavior.INSERT_SPACES,
+            scoring_mode=ExamConfiguration.ScoringMode.CUSTOM,
+            scoring_rules={
+                "rulebook_verification": "internal",
+                "rulebook_scoring": {
+                    "engine_version": 1, "formula": "MPHC_MARKS_BACKSPACE_DEDUCTION",
+                    "parameters": {"maximum_marks": 50, "wrong_word_deduction": 0.5, "backspace_deduction": 0.1},
+                },
+            },
+            error_rules={"classes": {"full": ["omission"], "half": ["punctuation"]}},
+            qualification_rules={"engine_version": 1, "mode": "ALL", "criteria": [
+                {"id": "score", "metric": "score", "operator": "gte", "value": 0},
+            ]},
+        )
+        result = audit_exam_configuration(exam)
+        self.assertEqual(result["stage_checks"]["scoring"]["status"], "BLOCKED")
+        self.assertFalse(result["stage_checks"]["scoring"]["checks"]["formula_input_contract"])
+        self.assertTrue(any("backspace_presses" in issue for issue in result["errors"]))

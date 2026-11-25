@@ -63,6 +63,20 @@ def audit_exam_configuration(exam):
         "MP_CPCT_NET_WPM_SLABS", "MPHC_MARKS_BACKSPACE_DEDUCTION",
     }
     parameters = formula_config.get("parameters") or {}
+    from typing_sessions.rulebook_scoring import required_formula_inputs
+    formula_input_metrics = {
+        "typed_characters", "correct_characters", "server_strokes", "correct_words",
+        "gross_words", "typed_words", "wrong_words", "weighted_mistakes",
+        "full_mistakes", "half_mistakes", "reference_words", "net_wpm",
+        "gross_wpm", "mistake_categories",
+    }
+    required_inputs = required_formula_inputs(formula_config)
+    missing_formula_inputs = sorted(required_inputs - formula_input_metrics)
+    if formula_config and missing_formula_inputs:
+        formula_errors.append(
+            "Scoring formula requires runtime metrics that the submission pipeline does not produce: "
+            + ", ".join(missing_formula_inputs) + "."
+        )
     formula_errors = []
     if formula_config:
         if formula_config.get("engine_version") != 1:
@@ -174,6 +188,7 @@ def audit_exam_configuration(exam):
         "versioned_formula": bool(formula_config and formula_id in supported_formulas and not formula_errors),
         "error_taxonomy": bool(exam.error_rules),
         "formula_parameters": bool(formula_config and not formula_errors),
+        "formula_input_contract": bool(formula_config and not missing_formula_inputs),
         "mistake_classes": (
             bool(exam.error_rules.get("classes", {}).get("full") is not None
                  and exam.error_rules.get("classes", {}).get("half") is not None)
