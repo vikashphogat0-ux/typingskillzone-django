@@ -436,12 +436,15 @@ def build_draft_defaults(profile):
         candidate_formula = scoring_candidate.get("candidate_formula")
         if candidate_formula in supported_formulas:
             scoring_payload["formula"] = candidate_formula
-            scoring_payload["executable"] = True
+            scoring_payload["executable"] = candidate_formula != "SHARED_5_PERCENT_10_WORD_PENALTY"
         versioned_formula = _versioned_rulebook_scoring(scoring_candidate)
         if versioned_formula:
             scoring_payload["rulebook_scoring"] = versioned_formula
             scoring_payload["formula_engine_version"] = 1
-            scoring_payload["executable"] = True
+            # Shared 5%/10-word patterns remain draft candidates until the
+            # specific exam profile and its source rule are verified.
+            if candidate_formula != "SHARED_5_PERCENT_10_WORD_PENALTY":
+                scoring_payload["executable"] = True
         scoring_payload["profile_configuration"]["category_limits"] = (
             scoring_candidate.get("category_error_caps")
             or scoring_candidate.get("normal_error_caps") or {}
