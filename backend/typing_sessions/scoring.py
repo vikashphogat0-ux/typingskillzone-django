@@ -101,6 +101,7 @@ def _classify_dpa_mistakes(reference, typed):
             if clean_expected == clean_actual:
                 categories["substitution"] = max(0, categories.get("substitution", 0) - len(expected))
                 categories["word_spacing"] = categories.get("word_spacing", 0) + 1
+    swaps = 0
     for index in range(min(len(reference_words), len(typed_words)) - 1):
         if reference_words[index] == typed_words[index + 1] and reference_words[index + 1] == typed_words[index]:
             if categories.get("omission", 0) and categories.get("addition", 0):
@@ -108,7 +109,9 @@ def _classify_dpa_mistakes(reference, typed):
                 categories["addition"] -= 1
             elif categories.get("substitution", 0) >= 2:
                 categories["substitution"] -= 2
-            categories["transposition"] += 1
+            swaps += 1
+    # A swap the shared classifier already counted is not counted again.
+    categories["transposition"] = max(categories.get("transposition", 0), swaps)
     for expected, actual in zip((reference or "").splitlines(), (typed or "").splitlines()):
         if expected.startswith("\t") and actual.startswith(" ") and not actual.startswith("\t"):
             if categories.get("word_spacing", 0):
