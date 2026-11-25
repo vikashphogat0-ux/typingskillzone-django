@@ -8,6 +8,32 @@
 </section>
 
 {% if attempt.result_snapshot %}
+<section class="card" id="overall-result-summary">
+  <h2>Overall examination result</h2>
+  <p class="lead"><strong>{{ attempt.result_snapshot.qualification_status|default:"NOT EVALUATED" }}</strong></p>
+  <div class="metrics">
+    {% if attempt.result_snapshot.gross_strokes != None %}<article class="metric-card"><span>Total strokes / keystrokes</span><strong>{{ attempt.result_snapshot.gross_strokes }}</strong></article>{% endif %}
+    {% if attempt.result_snapshot.gross_words != None %}<article class="metric-card"><span>Words at stroke unit</span><strong>{{ attempt.result_snapshot.gross_words }}</strong></article>{% endif %}
+    {% if attempt.result_snapshot.tentative_wpm != None %}<article class="metric-card"><span>Tentative speed</span><strong>{{ attempt.result_snapshot.tentative_wpm }}</strong></article>{% endif %}
+    {% if attempt.result_snapshot.error_count != None %}<article class="metric-card"><span>Mistakes</span><strong>{{ attempt.result_snapshot.error_count }}</strong></article>{% endif %}
+    {% if attempt.result_snapshot.net_wpm != None %}<article class="metric-card"><span>Actual speed</span><strong>{{ attempt.result_snapshot.net_wpm }} WPM</strong></article>{% endif %}
+    {% if attempt.result_snapshot.gross_kdph != None %}<article class="metric-card"><span>Key depressions per hour</span><strong>{{ attempt.result_snapshot.gross_kdph }} KDPH</strong></article>{% endif %}
+    {% if attempt.result_snapshot.score != None %}<article class="metric-card"><span>Marks</span><strong>{{ attempt.result_snapshot.score }}{% if attempt.rules_snapshot.scoring_rules.maximum_marks %} / {{ attempt.rules_snapshot.scoring_rules.maximum_marks }}{% endif %}</strong></article>{% endif %}
+  </div>
+  {% if attempt.result_snapshot.qualification_note %}<p class="muted">{{ attempt.result_snapshot.qualification_note }}</p>{% endif %}
+  {% if attempt.result_snapshot.qualification_checks %}
+  <h3>Rulebook qualification breakdown</h3>
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Requirement</th><th>Required</th><th>Achieved</th><th>Outcome</th><th>Explanation</th></tr></thead>
+    <tbody>{% for check in attempt.result_snapshot.qualification_checks %}
+      <tr><td>{{ check.label }}</td><td>{{ check.required|default:"–" }}</td><td>{{ check.achieved|default:"–" }}</td><td>{{ check.status }}</td><td>{{ check.reason|default:"–" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% if attempt.result_snapshot.evaluation_status == "NOT_EVALUATED" or attempt.result_snapshot.qualification_status == "NOT EVALUATED" %}
+  <p class="notice warning">This attempt has performance metrics, but its complete exam-specific qualification rules were not available for a reliable pass/fail decision.</p>
+  {% endif %}
+</section>
 <section class="card" id="comparison-card">
   <h2>Original vs typed text</h2>
   <p class="muted" style="margin:6px 0 16px">Review the original passage beside the text you submitted.</p>
