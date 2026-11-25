@@ -137,7 +137,7 @@ class SevenStagePipelineAuditTests(SimpleTestCase):
             error_rules={"classes": {"full": ["omission"], "half": ["punctuation"]}},
             qualification_rules={
                 "engine_version": 1, "mode": "ALL",
-                "criteria": [{"id": "speed", "metric": "net_wpm", "operator": "gte", "value": 35}],
+                "criteria": [{"id": "error_limit", "metric": "error_percent", "operator": "lte", "value": 7}],
             },
         )
         result = audit_exam_configuration(exam)
