@@ -247,6 +247,27 @@ def _ssc_cgl_2025_scoring_candidate(name):
     return None
 
 
+def _upsssc_scoring_candidate(name, lines):
+    normalized = (name or "").lower()
+    if "upsssc" not in normalized or not any(token in normalized for token in ("junior assistant", "clerk", "typist")):
+        return None
+    if "hindi" in normalized:
+        minimum_wpm = 25
+    elif "english" in normalized:
+        minimum_wpm = 30
+    else:
+        return None
+    return {
+        "candidate_formula": "UPSSSC_FIVE_EXEMPT_SIXFOLD",
+        "exempt_wrong_words": 5,
+        "penalty_multiplier": 6,
+        "minimum_wpm": minimum_wpm,
+        "duration_seconds": 300,
+        "executable": False,
+        "verification_note": "Formula parameters are taken from the internally approved rulebook; launch and keyboard configuration still require audit.",
+    }
+
+
 def _versioned_rulebook_scoring(candidate):
     """Translate only explicit, supported source candidates to the v1 formula contract."""
     if not candidate:
@@ -263,6 +284,9 @@ def _versioned_rulebook_scoring(candidate):
                 "half": ["capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"],
             },
         }
+    elif formula == "UPSSSC_FIVE_EXEMPT_SIXFOLD":
+        formula_id = "UPSSSC_FIVE_EXEMPT_SIXFOLD"
+        params = {"exempt_wrong_words": 5, "penalty_multiplier": 6}
     elif formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
         formula_id = "ERROR_PERCENT_WEIGHTED"
         params = {
@@ -307,7 +331,10 @@ def _versioned_qualification(candidate, versioned_formula):
         return None
     formula = candidate.get("candidate_formula")
     criteria = []
-    if formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
+    if formula == "UPSSSC_FIVE_EXEMPT_SIXFOLD":
+        if candidate.get("minimum_wpm") is not None:
+            criteria.append({"id": "minimum_net_wpm", "label": "Minimum Net WPM", "metric": "net_wpm", "operator": "gte", "value": candidate["minimum_wpm"]})
+    elif formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
         if candidate.get("minimum_wpm") is not None:
             criteria.append({"id": "minimum_net_wpm", "label": "Minimum Net WPM", "metric": "net_wpm", "operator": "gte", "value": candidate["minimum_wpm"]})
         if candidate.get("minimum_strokes") is not None:
@@ -377,6 +404,8 @@ def build_draft_defaults(profile):
         scoring_candidate = _ssc_chsl_2025_scoring_candidate(name)
     if scoring_candidate is None:
         scoring_candidate = _ssc_cgl_2025_scoring_candidate(name)
+    if scoring_candidate is None:
+        scoring_candidate = _upsssc_scoring_candidate(name, lines)
     scoring_payload = {
         "source_formula_text": scoring_source,
         "executable": False,
@@ -400,7 +429,7 @@ def build_draft_defaults(profile):
     if scoring_candidate:
         scoring_payload.update(scoring_candidate)
         supported_formulas = {
-            "DELHI_POLICE_HCM_2025", "SHARED_5_PERCENT_10_WORD_PENALTY", "SSC_CHSL_2025_ENGLISH",
+            "DELHI_POLICE_HCM_2025", "SHARED_5_PERCENT_10_WORD_PENALTY", "UPSSSC_FIVE_EXEMPT_SIXFOLD", "SSC_CHSL_2025_ENGLISH",
             "SSC_CHSL_2025_VH_ENGLISH", "SSC_CGL_2025_DEST",
             "SSC_CGL_2025_VH_DEST",
         }
