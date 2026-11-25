@@ -19,6 +19,10 @@ FORMULAS = {
     "ERROR_PERCENT_WEIGHTED",
     "MARKS_PER_CORRECT_WORD",
     "SPEED_BANDS",
+    "UPSSSC_FIVE_EXEMPT_SIXFOLD",
+    "SPMCIL_STROKE_ERROR_WORDS",
+    "MP_CPCT_NET_WPM_SLABS",
+    "MPHC_MARKS_BACKSPACE_DEDUCTION",
 }
 
 
@@ -66,6 +70,8 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     correct_chars = _decimal(metrics.get("correct_characters"))
     strokes = _decimal(metrics.get("server_strokes"))
     correct_words = _decimal(metrics.get("correct_words"))
+    wrong_words = _decimal(metrics.get("wrong_words", metrics.get("word_errors")))
+    backspace_presses = _decimal(metrics.get("backspace_presses"))
     gross_words = _decimal(metrics.get("gross_words"))
     weighted = _decimal(metrics.get("weighted_mistakes"))
     full = _decimal(metrics.get("full_mistakes"))
@@ -172,6 +178,59 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
                 return {**unresolved, "formula_id": formula, "formula_note": "marks_per_correct_word must be explicitly configured."}
             marks = correct_words * rate
             outputs["score"] = _round(min(marks, maximum) if maximum is not None and maximum >= 0 else marks)
+    elif formula == "UPSSSC_FIVE_EXEMPT_SIXFOLD":
+        if not all((require("gross_words", gross_words), require("wrong_words", wrong_words))): pass
+        else:
+            exempt = _decimal(params.get("exempt_wrong_words", 5))
+            multiplier = _decimal(params.get("penalty_multiplier", 6))
+            if exempt is None or multiplier is None or exempt < 0 or multiplier < 1:
+                return {**unresolved, "formula_id": formula, "formula_note": "UPSSSC exemption and penalty multiplier must be valid."}
+            chargeable = max(Decimal(0), wrong_words - exempt)
+            outputs["exempt_wrong_words"] = _round(min(wrong_words, exempt))
+            outputs["chargeable_wrong_words"] = _round(chargeable)
+            outputs["penalty_words"] = _round(chargeable * multiplier)
+            outputs["net_words"] = max(Decimal(0), gross_words - chargeable * multiplier)
+            outputs["net_wpm"] = _round(outputs["net_words"] / minutes)
+    elif formula == "SPMCIL_STROKE_ERROR_WORDS":
+        if not all((require("server_strokes", strokes), require("weighted_mistakes", weighted))): pass
+        else:
+            divisor = _decimal(params.get("strokes_per_word", 5))
+            if divisor is None or divisor <= 0:
+                return {**unresolved, "formula_id": formula, "formula_note": "strokes_per_word must be positive."}
+            gross_equivalent = strokes / divisor
+            error_words = weighted / divisor
+            outputs["gross_word_equivalents"] = _round(gross_equivalent)
+            outputs["error_words"] = _round(error_words)
+            outputs["net_words"] = max(Decimal(0), gross_equivalent - error_words)
+            outputs["net_wpm"] = _round(outputs["net_words"] / minutes)
+    elif formula == "MP_CPCT_NET_WPM_SLABS":
+        if not all((require("gross_words", gross_words), require("weighted_mistakes", weighted))): pass
+        else:
+            deduction = _decimal(params.get("words_per_error", 1))
+            bands = params.get("bands")
+            if deduction is None or deduction < 0 or not isinstance(bands, list) or not bands:
+                return {**unresolved, "formula_id": formula, "formula_note": "MP-CPCT deduction and score bands must be configured."}
+            outputs["net_words"] = max(Decimal(0), gross_words - weighted * deduction)
+            outputs["net_wpm"] = _round(outputs["net_words"] / minutes)
+            eligible = []
+            for band in bands:
+                if isinstance(band, dict):
+                    threshold = _decimal(band.get("minimum_net_wpm"))
+                    percentage = _decimal(band.get("percentage"))
+                    if threshold is not None and percentage is not None and outputs["net_wpm"] >= threshold:
+                        eligible.append(percentage)
+            outputs["score_percent"] = _round(max(eligible)) if eligible else 0.0
+    elif formula == "MPHC_MARKS_BACKSPACE_DEDUCTION":
+        if not all((require("wrong_words", wrong_words), require("backspace_presses", backspace_presses))): pass
+        else:
+            maximum = _decimal(params.get("maximum_marks"))
+            wrong_rate = _decimal(params.get("wrong_word_deduction", 0.5))
+            backspace_rate = _decimal(params.get("backspace_deduction", 0.1))
+            if maximum is None or wrong_rate is None or backspace_rate is None or min(maximum, wrong_rate, backspace_rate) < 0:
+                return {**unresolved, "formula_id": formula, "formula_note": "MPHC marks and deduction parameters must be configured."}
+            outputs["wrong_word_deduction_marks"] = _round(wrong_words * wrong_rate)
+            outputs["backspace_deduction_marks"] = _round(backspace_presses * backspace_rate)
+            outputs["score"] = _round(max(Decimal(0), maximum - wrong_words * wrong_rate - backspace_presses * backspace_rate))
     elif formula == "SPEED_BANDS":
         speed_metric = params.get("speed_metric", "net_wpm")
         speed = _decimal(metrics.get(speed_metric))
