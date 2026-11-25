@@ -5,7 +5,7 @@ from .word_grading import grade_words
 import re
 import unicodedata
 from .mistake_classification import classify_typing_mistakes
-SCORING_VERSION = "tsz-rulebook-v4"
+SCORING_VERSION = "tsz-rulebook-v5"
 
 
 
@@ -791,6 +791,48 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
             f"{gross_strokes}/{minimum_strokes} keystrokes."
         )
+    rulebook_scoring = None
+    rulebook_formula = None
+    if scoring_rules.get("rulebook_verification") == "internal":
+        from .rulebook_scoring import evaluate_rulebook_scoring
+
+        formula_inputs = {
+            "typed_characters": len(typed),
+            "correct_characters": chars["correct_characters"],
+            "server_strokes": len(typed),
+            "correct_words": correct_words,
+            "gross_words": gross_words,
+            "weighted_mistakes": error_count,
+            "full_mistakes": full_mistakes if full_mistakes is not None else error_count,
+            "half_mistakes": half_mistakes if half_mistakes is not None else 0,
+            "reference_words": len(re.findall(r"\\S+", reference)),
+            "net_wpm": net_wpm,
+            "gross_wpm": gross_wpm,
+        }
+        rulebook_scoring = evaluate_rulebook_scoring(
+            scoring_rules.get("rulebook_scoring") or {},
+            formula_inputs,
+            duration_seconds=duration,
+        )
+        if rulebook_scoring["evaluation_status"] == "EVALUATED":
+            formula_metrics = rulebook_scoring["metrics"]
+            gross_wpm = formula_metrics.get("gross_wpm", gross_wpm)
+            net_wpm = formula_metrics.get("net_wpm", net_wpm)
+            gross_kdph = formula_metrics.get("gross_kdph", gross_kdph)
+            error_percent = formula_metrics.get("error_percent", error_percent)
+            score = formula_metrics.get("score", score)
+            net_words = formula_metrics.get("net_words", net_words)
+            error_percent_for_qualification = formula_metrics.get("error_percent", error_percent_for_qualification)
+        else:
+            # Do not present legacy-derived marks/speed as the official rulebook score.
+            score = None
+            score_note = "Rulebook score not evaluated: " + rulebook_scoring["formula_note"]
+            net_wpm = None
+            gross_wpm = None
+            gross_kdph = None
+    else:
+        rulebook_scoring = None
+
     qualification_metrics = {
         "net_wpm": net_wpm, "gross_wpm": gross_wpm,
         "accuracy_percent": accuracy, "error_percent": error_percent_for_qualification,
