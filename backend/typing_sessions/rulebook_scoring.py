@@ -75,7 +75,10 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     if isinstance(classification, dict) and isinstance(categories, dict):
         full_keys = classification.get("full") or []
         half_keys = classification.get("half") or []
-        if isinstance(full_keys, list) and isinstance(half_keys, list):
+        if (
+            isinstance(full_keys, list) and isinstance(half_keys, list)
+            and (full_keys or half_keys)
+        ):
             full = sum((_decimal(categories.get(key)) or Decimal(0) for key in full_keys), Decimal(0))
             half = sum((_decimal(categories.get(key)) or Decimal(0) for key in half_keys), Decimal(0))
     full_weight = _decimal(params.get("full_mistake_weight", 1))
