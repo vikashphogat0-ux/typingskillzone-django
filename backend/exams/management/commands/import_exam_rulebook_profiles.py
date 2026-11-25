@@ -481,7 +481,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("json_path", help="Path to exam_rulebook_profiles.json")
         parser.add_argument("--expected-count", type=int, default=161, help="Source entries expected (161).")
-        parser.add_argument("--canonical-count", type=int, default=156, help="Canonical profiles expected after merging duplicates (156).")
+        parser.add_argument("--canonical-count", type=int, default=161, help="Independent source profiles expected (161); no profile merging is performed.")
         parser.add_argument("--refresh-existing-drafts", action="store_true", help="Refresh rows previously imported from the rulebook, including active rows carrying the importer source marker; never touch manually sourced profiles.")
 
     def handle(self, *args, **options):
@@ -503,7 +503,7 @@ class Command(BaseCommand):
 
         profiles = canonicalize(profiles)
         if options["canonical_count"] and len(profiles) != options["canonical_count"]:
-            raise CommandError(f"Expected {options['canonical_count']} canonical profiles after merging; found {len(profiles)}. No rows imported.")
+            raise CommandError(f"Expected {options['canonical_count']} canonical profiles independent source profiles; found {len(profiles)}. No rows imported.")
         ids = [item.get("profile_id") for item in profiles]
         if any(not value for value in ids) or len(set(ids)) != len(ids):
             raise CommandError("Every profile must have a unique, non-empty profile_id. No rows imported.")
