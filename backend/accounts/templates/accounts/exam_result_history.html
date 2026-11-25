@@ -4,22 +4,30 @@
 <section class="page-head">
   <span class="eyebrow">Selected examination</span>
   <h1>{{ exam.name }} · Result history</h1>
-  <p class="lead">Your saved attempts for this examination only.</p>
+  <p class="lead">Exam-specific performance and qualification outcomes for this simulator.</p>
 </section>
 <section class="card">
   {% if page_obj.object_list %}
   <div class="table-wrap"><table class="data-table">
-    <thead><tr><th>Passage</th><th>Status</th><th>Started</th><th>Net WPM</th><th>Accuracy</th><th></th></tr></thead>
+    <thead><tr>
+      <th>Test name</th><th>Total strokes</th><th>Words / strokes</th><th>Tentative speed</th>
+      <th>Mistakes</th><th>Actual speed</th><th>Marks</th><th>Result</th><th>View typing result</th>
+    </tr></thead>
     <tbody>
     {% for session in page_obj.object_list %}
+      {% with result=session.result_snapshot %}
       <tr>
-        <td><a href="{% url 'exams:exam_detail' exam.code %}?passage={{ session.publication.serial_number }}">Passage {{ session.publication.serial_number }}</a></td>
-        <td><span class="status-pill">{{ session.get_state_display }}</span></td>
-        <td>{{ session.started_at|date:"d M Y, H:i" }}</td>
-        <td>{{ session.result_snapshot.net_wpm|default:"–" }}</td>
-        <td>{% if session.result_snapshot.accuracy_percent %}{{ session.result_snapshot.accuracy_percent }}%{% else %}–{% endif %}</td>
-        <td><a href="{% url 'typing_sessions:session' session.pk %}">View result</a></td>
+        <td><a href="{% url 'exams:exam_detail' exam.code %}?passage={{ session.publication.serial_number }}">Passage {{ session.publication.serial_number }}</a><br><span class="muted">{{ session.publication.source.language|default:exam.language|title }} · {{ session.started_at|date:"d M Y, H:i" }}</span></td>
+        <td>{{ result.gross_strokes|default:result.reported_keystrokes|default:"–" }}</td>
+        <td>{% if result.gross_words != None %}{{ result.gross_words }}{% elif result.gross_strokes != None %}{{ result.gross_strokes|floatformat:1 }}{% else %}–{% endif %}</td>
+        <td>{% if result.tentative_wpm != None %}{{ result.tentative_wpm }}{% else %}–{% endif %}</td>
+        <td>{{ result.error_count|default:result.weighted_mistakes|default:result.word_errors|default:"–" }}</td>
+        <td>{% if result.net_wpm != None %}{{ result.net_wpm }} WPM{% elif result.gross_kdph != None %}{{ result.gross_kdph }} KDPH{% else %}–{% endif %}</td>
+        <td>{% if result.score != None %}{{ result.score }}{% else %}N/A{% endif %}</td>
+        <td><span class="status-pill">{{ result.qualification_status|default:"NOT EVALUATED" }}</span></td>
+        <td><a class="btn btn-primary btn-small" href="{% url 'typing_sessions:session' session.pk %}">View result</a></td>
       </tr>
+      {% endwith %}
     {% endfor %}
     </tbody>
   </table></div>
