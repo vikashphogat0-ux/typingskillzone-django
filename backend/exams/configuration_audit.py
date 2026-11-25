@@ -63,6 +63,7 @@ def audit_exam_configuration(exam):
         "MP_CPCT_NET_WPM_SLABS", "MPHC_MARKS_BACKSPACE_DEDUCTION",
     }
     parameters = formula_config.get("parameters") or {}
+    formula_errors = []
     from typing_sessions.rulebook_scoring import required_formula_inputs
     formula_input_metrics = {
         "typed_characters", "correct_characters", "server_strokes", "correct_words",
@@ -77,7 +78,6 @@ def audit_exam_configuration(exam):
             "Scoring formula requires runtime metrics that the submission pipeline does not produce: "
             + ", ".join(missing_formula_inputs) + "."
         )
-    formula_errors = []
     if formula_config:
         if formula_config.get("engine_version") != 1:
             formula_errors.append("Versioned scoring engine version is missing or unsupported.")
