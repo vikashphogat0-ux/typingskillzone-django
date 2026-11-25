@@ -582,7 +582,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             qualification = bool(speed_met and stroke_floor_met and error_cap_met)
             qualification_note = (
                 f"{'Meets' if qualification else 'Does not meet'} the configured CHSL 2025 English "
-                f"criteria: {gross_wpm:.2f} WPM (minimum {minimum_wpm:g}), "
+                f"criteria: {net_wpm:.2f} Net WPM (minimum {minimum_wpm:g}), "
                 f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%), "
                 f"{gross_strokes}/{minimum_strokes} keystrokes."
             )
@@ -658,7 +658,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             error_cap_met = error_percent <= error_cap
             qualification = bool(speed_met and stroke_floor_met and error_cap_met)
             qualification_note = (
-                f"{'QUALIFIED' if qualification else 'NOT QUALIFIED'} — CHSL Hindi: {gross_wpm:.2f} WPM / {gross_kdph:.0f} KDPH; "
+                f"{'QUALIFIED' if qualification else 'NOT QUALIFIED'} — CHSL Hindi: {net_wpm:.2f} Net WPM / {gross_kdph:.0f} KDPH; "
                 f"{error_percent:.2f}% weighted errors (maximum {error_cap:g}%); {gross_strokes}/{minimum_strokes} strokes."
             )
             score = None
