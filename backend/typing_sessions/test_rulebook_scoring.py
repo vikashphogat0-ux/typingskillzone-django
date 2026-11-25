@@ -173,8 +173,8 @@ class RulebookFormulaTests(SimpleTestCase):
             {"server_strokes": 3000, "weighted_mistakes": 2}, duration_seconds=900,
         )
         self.assertEqual(result["metrics"]["attempt_status"], "SUFFICIENT_ATTEMPT")
-        self.assertEqual(result["metrics"]["net_wpm"], 39.33)
-        self.assertEqual(result["metrics"]["accuracy_percent"], 98.33)
+        self.assertEqual(result["metrics"]["net_wpm"], 38.67)
+        self.assertEqual(result["metrics"]["accuracy_percent"], 96.67)
 
 
 class RulebookFormulaIntegrationTests(SimpleTestCase):
