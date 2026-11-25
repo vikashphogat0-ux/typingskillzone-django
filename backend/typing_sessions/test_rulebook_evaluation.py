@@ -103,6 +103,40 @@ class RulebookEvaluationTests(SimpleTestCase):
         self.assertEqual(result["qualification_status"], "NOT EVALUATED")
 
 
+    def test_missing_selector_does_not_skip_conditional_higher_standard_rule(self):
+        config = {"engine_version": 1, "mode": "ALL", "criteria": [
+            {"id": "normal", "metric": "error_percent", "operator": "lte",
+             "category_values": {"UR": 20}},
+            {"id": "higher", "metric": "error_percent", "operator": "lte",
+             "category_values": {"UR": 5}, "when_selectors": {"standard_type": "HIGHER"}},
+        ]}
+        result = evaluate_rulebook_qualification(
+            config, {"error_percent": 2}, candidate_category="UR", selectors={},
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+        self.assertEqual(result["qualification_checks"][1]["status"], "UNRESOLVED")
+
+    def test_selector_argument_may_be_omitted_without_crashing(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "mode": "ALL", "criteria": [
+                {"metric": "net_wpm", "operator": "gte", "value": 30,
+                 "when_selectors": {"variant_id": "normal"}}
+            ]},
+            {"net_wpm": 35},
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+
+    def test_malformed_selector_mapping_is_not_executed(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "mode": "ALL", "criteria": [
+                {"metric": "net_wpm", "operator": "gte", "selector": "variant_id",
+                 "selector_values": ["normal", 30]}
+            ]},
+            {"net_wpm": 35}, selectors={"variant_id": "normal"},
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+
+
 class RulebookScoringIntegrationTests(SimpleTestCase):
     def test_internal_rulebook_profile_ignores_legacy_minimum_speed_fallback(self):
         from .scoring import calculate_result

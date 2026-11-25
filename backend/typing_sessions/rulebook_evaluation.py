@@ -41,6 +41,9 @@ def evaluate_rulebook_qualification(config, metrics, *, candidate_category=None,
     Category-specific thresholds use category_values; selector-specific
     profiles must be resolved before this function is called.
     """
+    selectors = selectors if isinstance(selectors, dict) else {}
+    if not isinstance(metrics, dict):
+        metrics = {}
     if not isinstance(config, dict) or config.get("engine_version") != ENGINE_VERSION:
         return {
             "evaluation_status": "NOT_EVALUATED",
@@ -76,6 +79,15 @@ def evaluate_rulebook_qualification(config, metrics, *, candidate_category=None,
                 "qualification_note": "A selector condition is malformed.",
                 "qualification_checks": checks,
             }
+        missing_selector_keys = [key for key in when_selectors if key not in selectors]
+        if missing_selector_keys:
+            checks.append({
+                "label": criterion.get("label") or criterion.get("id") or f"Criterion {index + 1}",
+                "required": when_selectors, "achieved": selectors,
+                "status": "UNRESOLVED",
+                "reason": "A required candidate selector was not saved; this criterion cannot be classified as applicable or not applicable.",
+            })
+            continue
         if any(selectors.get(key) != value for key, value in when_selectors.items()):
             checks.append({
                 "label": criterion.get("label") or criterion.get("id") or f"Criterion {index + 1}",
@@ -88,10 +100,14 @@ def evaluate_rulebook_qualification(config, metrics, *, candidate_category=None,
         operator = criterion.get("operator")
         expected = criterion.get("value")
         selector_values = criterion.get("selector_values")
-        if isinstance(selector_values, dict):
+        if "selector_values" in criterion:
             selector_key = criterion.get("selector")
-            selected_value = selectors.get(selector_key) if selector_key else None
-            if selected_value not in selector_values:
+            if not isinstance(selector_values, dict) or not selector_values or not isinstance(selector_key, str) or not selector_key:
+                expected = None
+                selected_value = None
+            else:
+                selected_value = selectors.get(selector_key)
+            if not isinstance(selector_values, dict) or not selector_values or not isinstance(selector_key, str) or not selector_key or selected_value not in selector_values:
                 expected = None
             else:
                 expected = selector_values[selected_value]
