@@ -133,7 +133,7 @@ def audit_exam_configuration(exam):
         "name": bool(exam.name),
         "language": bool(exam.language),
         "script": bool(exam.script),
-        "cycle_identity": bool(scoring.get("recruitment_cycle") or scoring.get("source_profile_id") or scoring.get("profile_configuration", {}).get("source_profile_id")),
+        "cycle_identity": bool(scoring.get("recruitment_cycle") or scoring.get("source_profile_id") or (scoring.get("profile_configuration") or {}).get("source_profile_id")),
     }
     selector_checks = {
         "variant_schema": not any("variants" in item for item in selector_errors),

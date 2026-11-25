@@ -61,7 +61,7 @@ class RulebookPipelineAuditTests(SimpleTestCase):
         self.assertFalse(result["ready"])
         self.assertEqual(result["stage_checks"]["scoring"]["status"], "BLOCKED")
         self.assertEqual(result["stage_checks"]["qualification"]["status"], "BLOCKED")
-        self.assertEqual(result["stage_checks"]["result"]["status"], "BLOCKED")
+        self.assertEqual(result["stage_checks"]["result_and_audit"]["status"], "BLOCKED")
 
     def test_category_qualification_requires_a_server_validated_selector(self):
         exam = ExamConfiguration(
