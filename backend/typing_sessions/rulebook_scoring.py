@@ -201,5 +201,9 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     return {
         "evaluation_status": "EVALUATED", "formula_status": "EVALUATED",
         "formula_id": formula, "formula_note": "Calculated using the configured versioned rulebook formula.",
-        "formula_checks": checks, "metrics": {key: _round(value) for key, value in outputs.items()},
+        "formula_checks": checks,
+        "metrics": {
+            key: value if isinstance(value, str) else _round(value)
+            for key, value in outputs.items()
+        },
     }
