@@ -54,7 +54,7 @@
           <strong>{{ session.publication.exam.name }}</strong><br>
           <span class="muted">Passage {{ session.publication.serial_number }} · {{ session.publication.source.language|default:session.publication.exam.language|title }}</span>
         </td>
-        <td>{{ result.gross_strokes|default:result.reported_keystrokes|default:"–" }}</td>
+        <td>{% if result.gross_strokes != None %}{{ result.gross_strokes }}{% else %}–{% endif %}</td>
         <td>{% if result.gross_words != None %}{{ result.gross_words }}{% elif result.gross_strokes != None %}{{ result.gross_strokes|floatformat:1 }}{% else %}–{% endif %}</td>
         <td>{% if result.tentative_wpm != None %}{{ result.tentative_wpm }}{% else %}–{% endif %}</td>
         <td>{{ result.error_count|default:result.weighted_mistakes|default:result.word_errors|default:"–" }}</td>
