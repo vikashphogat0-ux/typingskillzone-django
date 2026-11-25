@@ -1,0 +1,79 @@
+from django.test import SimpleTestCase
+
+from .rulebook_evaluation import evaluate_rulebook_qualification
+
+
+class RulebookEvaluationTests(SimpleTestCase):
+    def test_all_criteria_qualify_and_return_audit_rows(self):
+        result = evaluate_rulebook_qualification(
+            {
+                "engine_version": 1,
+                "mode": "ALL",
+                "criteria": [
+                    {"id": "speed", "label": "Minimum speed", "metric": "net_wpm", "operator": "gte", "value": 35},
+                    {"id": "errors", "label": "Maximum errors", "metric": "error_percent", "operator": "lte", "value": 7},
+                ],
+            },
+            {"net_wpm": 38, "error_percent": 5.5},
+        )
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+        self.assertEqual(result["evaluation_status"], "EVALUATED")
+        self.assertEqual([row["status"] for row in result["qualification_checks"]], ["MET", "MET"])
+
+    def test_failed_criterion_disqualifies_all_mode(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "mode": "ALL", "criteria": [
+                {"metric": "net_wpm", "operator": "gte", "value": 35},
+                {"metric": "error_percent", "operator": "lte", "value": 7},
+            ]},
+            {"net_wpm": 34.99, "error_percent": 4},
+        )
+        self.assertEqual(result["qualification_status"], "NOT QUALIFIED")
+        self.assertFalse(result["qualification"])
+
+    def test_any_mode_uses_any_criterion(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "mode": "ANY", "criteria": [
+                {"metric": "net_wpm", "operator": "gte", "value": 40},
+                {"metric": "score", "operator": "gte", "value": 10},
+            ]},
+            {"net_wpm": 35, "score": 12},
+        )
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+
+    def test_category_specific_limit_requires_selected_category(self):
+        config = {"engine_version": 1, "mode": "ALL", "criteria": [
+            {"label": "Category error ceiling", "metric": "error_percent", "operator": "lte",
+             "category_values": {"UR": 7, "SC": 10}}
+        ]}
+        missing = evaluate_rulebook_qualification(config, {"error_percent": 8})
+        self.assertEqual(missing["qualification_status"], "NOT EVALUATED")
+        selected = evaluate_rulebook_qualification(config, {"error_percent": 8}, candidate_category="SC")
+        self.assertEqual(selected["qualification_status"], "QUALIFIED")
+
+    def test_unsupported_or_missing_metric_never_becomes_a_fail_or_pass(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "criteria": [
+                {"metric": "unknown_metric", "operator": "gte", "value": 10}
+            ]},
+            {},
+        )
+        self.assertEqual(result["evaluation_status"], "NOT_EVALUATED")
+        self.assertIsNone(result["qualification"])
+
+    def test_unversioned_legacy_criteria_are_not_executed(self):
+        result = evaluate_rulebook_qualification(
+            {"all": [{"metric": "net_wpm", "operator": "gte", "value": 1}]},
+            {"net_wpm": 100},
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+        self.assertIsNone(result["qualification"])
+
+    def test_malformed_values_and_boolean_thresholds_are_rejected(self):
+        result = evaluate_rulebook_qualification(
+            {"engine_version": 1, "criteria": [
+                {"metric": "net_wpm", "operator": "gte", "value": True}
+            ]},
+            {"net_wpm": 50},
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
