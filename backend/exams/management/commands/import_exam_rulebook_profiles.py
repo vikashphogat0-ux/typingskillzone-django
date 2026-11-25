@@ -255,7 +255,14 @@ def _versioned_rulebook_scoring(candidate):
     params = {}
     if formula == "SHARED_5_PERCENT_10_WORD_PENALTY":
         formula_id = "NET_WPM_FORGIVENESS_EXCESS_PENALTY"
-        params = {"forgiveness_rate": 0.05, "excess_mistake_penalty_words": 10}
+        params = {
+            "forgiveness_rate": 0.05,
+            "excess_mistake_penalty_words": 10,
+            "mistake_classification": {
+                "full": ["omission", "substitution", "addition"],
+                "half": ["capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"],
+            },
+        }
     elif formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH"}:
         formula_id = "ERROR_PERCENT_WEIGHTED"
         params = {
@@ -265,6 +272,10 @@ def _versioned_rulebook_scoring(candidate):
             "minimum_net_wpm": candidate.get("minimum_wpm"),
             "minimum_strokes": candidate.get("minimum_strokes"),
             "error_caps": candidate.get("category_error_caps") or {},
+            "mistake_classification": {
+                "full": ["omission", "substitution", "addition"],
+                "half": ["capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "transposition"],
+            },
         }
     elif formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
         formula_id = "ERROR_PERCENT_WEIGHTED"
@@ -274,6 +285,10 @@ def _versioned_rulebook_scoring(candidate):
             "half_mistake_weight": 0.5,
             "normal_error_caps": candidate.get("normal_error_caps") or {},
             "higher_error_caps": candidate.get("higher_error_caps") or {},
+            "mistake_classification": {
+                "full": ["omission", "substitution", "addition", "spelling", "incomplete_word", "repeated_word"],
+                "half": ["capitalization", "punctuation", "internal_spacing", "word_spacing", "paragraph_breaks", "paragraph_indentation", "transposition"],
+            },
         }
     else:
         return None
