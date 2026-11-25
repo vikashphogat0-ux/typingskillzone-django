@@ -64,6 +64,21 @@ class AuditExamProfilesCommandTests(TestCase):
         ))
         self.assertEqual(after, before)
 
+    def test_active_only_keeps_source_catalogue_audit_global(self):
+        ExamConfiguration.objects.create(
+            code="inactive-rulebook-source", name="Inactive rulebook source",
+            source_title="Internal rule profile: Master Exam Rulebook (source-compiled, practice only)",
+            scoring_rules={"profile_configuration": {"source_profile_id": "source-inactive-001"}},
+            is_active=False,
+        )
+        output = StringIO()
+        call_command("audit_exam_profiles", "--active-only", "--json", stdout=output)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["profiles_audited"], 1)
+        self.assertEqual(report["source_catalogue"]["rulebook_profiles_found"], 1)
+        self.assertEqual(report["source_catalogue"]["active_rulebook_profiles"], 0)
+        self.assertEqual(report["source_catalogue"]["inactive_rulebook_profiles"], 1)
+
     def test_source_identity_report_detects_missing_and_duplicate_ids(self):
         marker = "Internal rule profile: Master Exam Rulebook (source-compiled, practice only)"
         ExamConfiguration.objects.create(
