@@ -953,7 +953,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "formula_checks": rulebook_scoring["formula_checks"] if rulebook_scoring else [],
         "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
-        "reference_word_count": reference_word_count if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"} or scoring_rules.get("rulebook_verification") == "internal" else None,
+        "reference_word_count": len(re.findall(r"\\S+", reference)) if (scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}) or scoring_rules.get("rulebook_verification") == "internal" else None,
         "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
