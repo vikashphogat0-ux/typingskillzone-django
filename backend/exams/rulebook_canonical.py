@@ -96,3 +96,10 @@ def alias_index(canonical):
         for alias in record["aliases"]:
             index[alias] = record
     return index
+
+
+def with_internal_rulebook_basis(scoring_rules):
+    """Mark scoring rules as internally verified from the master rulebook (not an official notice)."""
+    updated = dict(scoring_rules or {})
+    updated["rulebook_verification"] = "internal"
+    return updated

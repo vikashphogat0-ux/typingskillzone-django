@@ -511,6 +511,9 @@ class Command(BaseCommand):
         for profile in profiles:
             code = slugify(profile["profile_id"])[:180]
             defaults = {"code": code, **build_draft_defaults(profile)}
+            from exams.rulebook_canonical import with_internal_rulebook_basis
+
+            defaults["scoring_rules"] = with_internal_rulebook_basis(defaults.get("scoring_rules"))
             exam, was_created = ExamConfiguration.objects.get_or_create(code=code, defaults=defaults)
             if was_created:
                 created += 1

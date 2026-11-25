@@ -44,7 +44,17 @@ def build_exam_specification_snapshot(*, exam, publication, captured_at):
         "allow_passage_repeat": exam.allow_passage_repeat,
         "scoring_mode": exam.scoring_mode,
         "rule_config_version": exam.rule_config_version,
-        "verification_status": exam.verification_status,
+        "verification_status": (
+            "VERIFIED"
+            if exam.verification_status == "VERIFIED"
+            or (exam.scoring_rules or {}).get("rulebook_verification") == "internal"
+            else exam.verification_status
+        ),
+        "verification_basis": (
+            "official_notice" if exam.verification_status == "VERIFIED"
+            else "internal_rulebook" if (exam.scoring_rules or {}).get("rulebook_verification") == "internal"
+            else "none"
+        ),
         "official_source_url": exam.official_source_url,
         "error_rules": exam.error_rules,
         "scoring_rules": exam.scoring_rules,
