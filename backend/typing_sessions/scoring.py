@@ -575,7 +575,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             minimum_kdph = float(scoring_rules.get("minimum_kdph", 10500))
             minimum_strokes = int((minimum_kdph * duration + 3599) // 3600)
             required_keystrokes = minimum_strokes
-            speed_met = net_wpm >= minimum_wpm
+            speed_met = gross_wpm >= minimum_wpm
             stroke_floor_met = gross_strokes >= minimum_strokes
             required_keystrokes_met = stroke_floor_met
             error_cap_met = error_percent <= error_cap
@@ -958,7 +958,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "formula_checks": rulebook_scoring["formula_checks"] if rulebook_scoring else [],
         "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
-        "reference_word_count": len(re.findall(r"\\S+", reference)) if (scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}) or scoring_rules.get("rulebook_verification") == "internal" else None,
+        "reference_word_count": len(re.findall(r"\S+", reference)) if (scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH"}) or scoring_rules.get("rulebook_verification") == "internal" else None,
         "speed_requirement_met": speed_met if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"} else None,
         "correct_wpm": correct_wpm,
         "net_wpm": net_wpm,
