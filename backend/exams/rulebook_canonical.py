@@ -2,8 +2,8 @@
 
 Pure Python (no Django import) so the rules are testable on their own.
 
-- 161 source entries are grouped by cleaned exam name. Groups with more than one entry are merged.
-- Every source profile_id stays as an alias of its canonical profile.
+- All 161 source entries remain independent, addressable profile records.
+- Profiles may share an exam name, but their source profile_id and settings are never merged.
 - Explicit fields from the rulebook specification are applied after merging.
 - Hedged wording ("typically", "historically", ...) is kept as a caveat, and the constraint it
   describes is marked not enforced.
@@ -12,7 +12,7 @@ Pure Python (no Django import) so the rules are testable on their own.
 import re
 
 RAW_EXPECTED = 161
-CANONICAL_EXPECTED = 156
+CANONICAL_EXPECTED = 161
 HEDGE = re.compile(r"\b(typically|historically|recent court sittings?|third-party|uncertain|generally|usually|commonly|reportedly|often|likely)\b", re.I)
 
 
@@ -51,34 +51,27 @@ def _override(name):
 
 
 def canonicalize(profiles):
-    """Merge source profiles into canonical profiles. Input and output keep the importer's shape."""
-    groups = {}
-    order = []
-    for profile in profiles:
-        key = _key(profile.get("name") or profile.get("source_heading") or "")
-        if key not in groups:
-            groups[key] = []
-            order.append(key)
-        groups[key].append(profile)
-
+    """Preserve every source entry as an independent selectable profile."""
     canonical = []
-    for index, key in enumerate(order, start=1):
-        members = groups[key]
-        name = clean_name(members[0].get("name") or members[0].get("source_heading"))
-        lines = []
-        for member in members:
-            for line in member.get("source_text") or []:
-                if line not in lines:
-                    lines.append(line)
+    seen_ids = set()
+    for index, profile in enumerate(profiles, start=1):
+        name = clean_name(profile.get("name") or profile.get("source_heading"))
+        source_id = str(profile.get("profile_id") or "").strip()
+        if not source_id:
+            raise ValueError(f"Source profile at position {index} has no profile_id.")
+        if source_id in seen_ids:
+            raise ValueError(f"Duplicate source profile_id: {source_id}")
+        seen_ids.add(source_id)
+        lines = list(profile.get("source_text") or [])
         caveats = [line for line in lines if HEDGE.search(line)]
         record = {
-            "profile_id": _slug(name),
-            "number": index,
+            "profile_id": source_id,
+            "number": profile.get("number", index),
             "name": name,
-            "source_heading": name,
+            "source_heading": profile.get("source_heading") or name,
             "source_text": lines,
-            "aliases": [m.get("profile_id") for m in members if m.get("profile_id")],
-            "merged_source_count": len(members),
+            "aliases": [],
+            "merged_source_count": 1,
             "verification_status": "source-compiled",
             "exam_mode": "practice_only",
             "caveats": caveats,
@@ -87,7 +80,6 @@ def canonicalize(profiles):
         record.update(_override(name))
         canonical.append(record)
     return canonical
-
 
 def alias_index(canonical):
     index = {}
