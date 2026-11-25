@@ -25,6 +25,8 @@ class Command(BaseCommand):
                 "status": audit["status"],
                 "errors": audit["errors"],
                 "warnings": audit["warnings"],
+                "stage_checks": audit.get("stage_checks", {}),
+                "profile": audit.get("profile", {}),
             })
 
         ready = sum(item["status"] == "READY" for item in records)
@@ -34,6 +36,13 @@ class Command(BaseCommand):
                 "total": len(records),
                 "ready": ready,
                 "incomplete": incomplete,
+                "pipeline_stages": {
+                    stage: sum(
+                        1 for item in records
+                        if item.get("stage_checks", {}).get(stage, {}).get("status") == "READY"
+                    )
+                    for stage in ("launch", "capture", "scoring", "qualification", "result")
+                },
                 "profiles": records,
             }, ensure_ascii=False, indent=2))
             return
