@@ -825,12 +825,14 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             net_words = formula_metrics.get("net_words", net_words)
             error_percent_for_qualification = formula_metrics.get("error_percent", error_percent_for_qualification)
         else:
-            # Scoring-formula failure must not erase independently measurable
-            # attempt metrics. Explicit qualification criteria may still use
-            # server-derived gross/net speed even when no marks formula exists.
+            # Keep raw, independently measured gross speed available to explicit
+            # qualification criteria, but do not publish legacy-derived net
+            # speed or KDPH as an official rulebook result without a formula.
             # Marks remain unavailable; no legacy score is promoted.
             score = None
             score_note = "Rulebook score not evaluated: " + rulebook_scoring["formula_note"]
+            net_wpm = None
+            gross_kdph = None
     else:
         rulebook_scoring = None
 
