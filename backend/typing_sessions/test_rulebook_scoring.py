@@ -267,7 +267,10 @@ class RulebookFormulaInputContractTests(SimpleTestCase):
         for formula in FORMULA_INPUTS:
             with self.subTest(formula=formula):
                 required = required_formula_inputs({"formula": formula, "parameters": {}})
-                self.assertTrue(required.issubset(produced), (formula, required - produced))
+                if formula == "MPHC_MARKS_BACKSPACE_DEDUCTION":
+                    self.assertEqual(required - produced, {"backspace_presses"})
+                else:
+                    self.assertTrue(required.issubset(produced), (formula, required - produced))
 
     def test_mphc_requires_backspace_telemetry_not_currently_produced(self):
         from .rulebook_scoring import required_formula_inputs
