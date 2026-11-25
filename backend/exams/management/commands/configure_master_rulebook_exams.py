@@ -22,6 +22,7 @@ PROFILES = [
     ("SSC CHSL Hindi Kruti Dev 010", "SSC", "HINDI_KRUTI", 600, 30, 1, "SSC_CHSL_2025_HINDI_KRUTIDEV", None, "Kruti Dev 010", "DEVANAGARI_LEGACY", 1500, False),
     ("SSC CHSL Hindi Mangal", "SSC", "HINDI_MANGAL", 600, 30, 1, "SSC_CHSL_2025_HINDI_MANGAL", None, "Mangal", "DEVANAGARI_UNICODE", 1500, False),
     ("SSC CGL 2025 Typing Test", "SSC", "ENGLISH", 900, None, 1, "SSC_CGL_2025_DEST", None, "QWERTY", "LATIN", 2000, False),
+    ("SSC CGL 2025 Higher Standard DEST", "SSC", "ENGLISH", 900, None, 1, "SSC_CGL_2025_DEST", None, "QWERTY", "LATIN", 2000, False),
     ("SSC CAG DEO Standard 8000 KDPH", "SSC", "ENGLISH", 900, None, 1, "SSC_CGL_2025_DEST", None, "QWERTY", "LATIN", 2000, False),
     ("SSC CAG DEO Grade A 15000 KDPH", "SSC", "ENGLISH", 900, None, 1, "SSC_DPA_GRADE_A", None, "QWERTY", "LATIN", 3750, False),
     ("SSC CGL More Strokes Practice", "PRACTICE", "ENGLISH", 900, None, 1, "MODEL_A", None, "QWERTY", "LATIN", 2200, False),
@@ -186,7 +187,7 @@ class Command(BaseCommand):
             exam.strokes_per_word = 5
             exam.error_allowance_percent = error_cap
             exam.allow_passage_repeat = repeat
-            exam.scoring_mode = ExamConfiguration.ScoringMode.CUSTOM if formula.startswith("MODEL_") else ExamConfiguration.ScoringMode.GENERIC
+            exam.scoring_mode = ExamConfiguration.ScoringMode.CUSTOM if formula.startswith(("MODEL_", "SSC_")) else ExamConfiguration.ScoringMode.GENERIC
             exam.error_rules = {
                 "count_word_errors": True,
                 "mistake_weighting": "FULL_HALF",
@@ -201,6 +202,33 @@ class Command(BaseCommand):
                 "marks_configuration_status": "PENDING_OFFICIAL_SCHEDULE" if formula == "MODEL_D" else None,
                 "source_rulebook_mode": mode,
             }
+            if formula in {"SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL"}:
+                exam.scoring_rules.update({
+                    "minimum_wpm": target,
+                    "minimum_kdph": 10500 if language == "ENGLISH" else 9000,
+                    "category_error_caps": {
+                        "UR": 7, "OBC": 10, "EWS": 10, "SC": 10,
+                        "ST": 10, "ESM": 10, "OH": 10, "HH": 10,
+                        "VH": 10, "PWD": 10, "OTHER_RESERVED": 10,
+                    },
+                    "error_denominator": "reference_words",
+                })
+            if formula in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST"}:
+                higher_standard = "Higher Standard" in name
+                exam.scoring_rules.update({
+                    "standard_type": "HIGHER" if higher_standard else "NORMAL",
+                    "normal_error_caps": {
+                        "UR": 20, "OBC": 25, "EWS": 25, "SC": 30,
+                        "ST": 30, "ESM": 30, "OH": 30, "HH": 30,
+                        "VH": 30, "PWD": 30,
+                    },
+                    "higher_error_caps": {
+                        "UR": 5, "OBC": 7, "EWS": 7, "SC": 7,
+                        "ST": 7, "ESM": 7, "OH": 10, "HH": 10,
+                        "VH": 10, "PWD": 10,
+                    },
+                    "error_denominator": "typed_words",
+                })
             conditions = []
             if target is not None:
                 metric = "gross_wpm" if formula == "MODEL_A" else "net_wpm"
