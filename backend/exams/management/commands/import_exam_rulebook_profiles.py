@@ -528,9 +528,9 @@ class Command(BaseCommand):
             prepared.append((profile, code, defaults))
 
         if validation_errors:
-            details = "\\n".join(validation_errors)
+            details = "\n".join(validation_errors)
             raise CommandError(
-                "Rulebook preflight validation failed; no database rows were written:\\n"
+                "Rulebook preflight validation failed; no database rows were written:\n"
                 + details
             )
 
