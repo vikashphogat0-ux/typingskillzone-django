@@ -64,7 +64,7 @@ def audit_exam_configuration(exam):
     }
     parameters = formula_config.get("parameters") or {}
     formula_errors = []
-    from typing_sessions.rulebook_scoring import required_formula_inputs
+    from typing_sessions.rulebook_scoring import required_formula_inputs, required_formula_outputs, FORMULA_DERIVED_METRICS
     formula_input_metrics = {
         "typed_characters", "correct_characters", "server_strokes", "correct_words",
         "gross_words", "typed_words", "wrong_words", "weighted_mistakes",
@@ -108,7 +108,14 @@ def audit_exam_configuration(exam):
         if qualification.get("engine_version") != 1 or not isinstance(qualification.get("criteria"), list) or not qualification.get("criteria"):
             qualification_errors.append("Versioned qualification criteria are not configured.")
         else:
+            formula_outputs = required_formula_outputs(formula_config)
             for index, criterion in enumerate(qualification["criteria"], start=1):
+                if isinstance(criterion, dict):
+                    metric_name = criterion.get("metric")
+                    if metric_name in FORMULA_DERIVED_METRICS and metric_name not in formula_outputs:
+                        qualification_errors.append(
+                            f"Qualification criterion {index} uses '{metric_name}', but the selected scoring formula does not produce that metric."
+                        )
                 if not isinstance(criterion, dict) or criterion.get("metric") not in {
                     "net_wpm", "gross_wpm", "correct_wpm", "accuracy_percent",
                     "error_percent", "score", "correct_words", "word_errors",
@@ -200,6 +207,15 @@ def audit_exam_configuration(exam):
         "structured_criteria": bool(qualification.get("engine_version") == 1 and qualification.get("criteria") and not qualification_errors),
         "candidate_selectors": all(selector_checks.values()),
         "criteria_have_supported_metrics": bool(qualification.get("criteria")) and not qualification_errors,
+        "formula_output_contract": (
+            not qualification.get("criteria")
+            or all(
+                not isinstance(item, dict)
+                or item.get("metric") not in FORMULA_DERIVED_METRICS
+                or item.get("metric") in required_formula_outputs(formula_config)
+                for item in qualification.get("criteria", [])
+            )
+        ),
     }
     result_template_path = (
         Path(__file__).resolve().parent.parent
@@ -228,7 +244,8 @@ def audit_exam_configuration(exam):
         "result_and_audit": {"status": "READY" if all(result_checks.values()) and all(scoring_checks.values()) and all(qualification_checks.values()) else "BLOCKED",
                              "checks": {**result_checks,
                                         "formula_metrics_available": all(scoring_checks.values()),
-                                        "qualification_decision_available": all(qualification_checks.values())}},
+                                        "qualification_decision_available": all(qualification_checks.values()),
+                                        "formula_qualification_metric_contract": qualification_checks["formula_output_contract"]}},
     }
     pipeline_ready = all(stage["status"] == "READY" for stage in stage_checks.values())
     if not pipeline_ready:

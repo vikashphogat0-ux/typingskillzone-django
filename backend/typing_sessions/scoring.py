@@ -816,26 +816,27 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             formula_inputs,
             duration_seconds=duration,
         )
+        from .rulebook_scoring import FORMULA_DERIVED_METRICS
+
         if rulebook_scoring["evaluation_status"] == "EVALUATED":
             formula_metrics = rulebook_scoring["metrics"]
-            gross_wpm = formula_metrics.get("gross_wpm", gross_wpm)
-            net_wpm = formula_metrics.get("net_wpm", net_wpm)
-            gross_kdph = formula_metrics.get("gross_kdph", gross_kdph)
-            error_percent = formula_metrics.get("error_percent", error_percent)
-            # Internal rulebook formulas are authoritative. Never retain a legacy
-            # marks result when the selected formula does not produce marks.
+            # Formula-owned metrics are authoritative. A metric omitted by the
+            # selected formula is unavailable; never fall back to a legacy value.
+            gross_wpm = formula_metrics.get("gross_wpm")
+            net_wpm = formula_metrics.get("net_wpm")
+            gross_kdph = formula_metrics.get("gross_kdph")
+            error_percent = formula_metrics.get("error_percent")
+            if "accuracy_percent" in formula_metrics:
+                accuracy = formula_metrics["accuracy_percent"]
             score = formula_metrics.get("score")
-            net_words = formula_metrics.get("net_words", net_words)
-            error_percent_for_qualification = formula_metrics.get("error_percent", error_percent_for_qualification)
+            net_words = formula_metrics.get("net_words")
+            error_percent_for_qualification = error_percent
         else:
-            # Keep raw, independently measured gross speed available to explicit
-            # qualification criteria, but do not publish legacy-derived net
-            # speed or KDPH as an official rulebook result without a formula.
-            # Marks remain unavailable; no legacy score is promoted.
+            # No legacy-derived metric may decide an internal rulebook result.
             score = None
             score_note = "Rulebook score not evaluated: " + rulebook_scoring["formula_note"]
-            net_wpm = None
-            gross_kdph = None
+            gross_wpm = net_wpm = gross_kdph = error_percent = net_words = None
+            error_percent_for_qualification = None
     else:
         rulebook_scoring = None
 

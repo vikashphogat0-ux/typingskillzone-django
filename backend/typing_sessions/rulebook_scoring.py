@@ -44,6 +44,42 @@ FORMULA_INPUTS = {
 }
 
 
+# Metrics whose official values must come from the selected formula, never a
+# legacy compatibility calculation. The audit and runtime use this same map.
+FORMULA_OUTPUTS = {
+    "GROSS_WPM_CHARACTERS_5": {"gross_wpm"},
+    "GROSS_WPM_STROKES_5": {"gross_wpm"},
+    "CORRECT_WORDS_PER_MINUTE": {"net_wpm"},
+    "NET_WPM_WEIGHTED_MISTAKES": {"net_words", "net_wpm"},
+    "NET_WPM_CORRECT_WORDS": {"net_wpm"},
+    "NET_WPM_FORGIVENESS_EXCESS_PENALTY": {"net_words", "net_wpm"},
+    "AIIMS_STROKE_DEDUCTION": {"gross_wpm", "net_wpm", "accuracy_percent", "weighted_mistakes"},
+    "KDPH": {"gross_kdph"},
+    "ERROR_PERCENT_WEIGHTED": {"error_percent"},
+    "MARKS_PER_CORRECT_WORD": {"score"},
+    "SPEED_BANDS": {"score"},
+    "UPSSSC_FIVE_EXEMPT_SIXFOLD": {"net_words", "net_wpm"},
+    "SPMCIL_STROKE_ERROR_WORDS": {"net_words", "net_wpm"},
+    "MP_CPCT_NET_WPM_SLABS": {"net_words", "net_wpm", "score_percent"},
+    "MPHC_MARKS_BACKSPACE_DEDUCTION": {"score"},
+}
+
+FORMULA_DERIVED_METRICS = {
+    "gross_wpm", "net_wpm", "gross_kdph", "error_percent",
+    "score", "net_words",
+}
+
+
+def required_formula_outputs(config):
+    """Return formula-owned metrics that qualification criteria may consume."""
+    if not isinstance(config, dict):
+        return set()
+    formula = config.get("formula")
+    if formula == "SPEED_BANDS":
+        return {"score"}
+    return set(FORMULA_OUTPUTS.get(formula, set()))
+
+
 def required_formula_inputs(config):
     """Return source metrics the selected formula actually consumes."""
     if not isinstance(config, dict):

@@ -4,6 +4,18 @@ from .rulebook_scoring import evaluate_rulebook_scoring
 
 
 class RulebookFormulaTests(SimpleTestCase):
+    def test_formula_output_contract_declares_only_metrics_produced_by_formula(self):
+        from .rulebook_scoring import required_formula_outputs
+
+        self.assertEqual(
+            required_formula_outputs({"formula": "MPHC_MARKS_BACKSPACE_DEDUCTION"}),
+            {"score"},
+        )
+        self.assertEqual(
+            required_formula_outputs({"formula": "NET_WPM_WEIGHTED_MISTAKES"}),
+            {"net_words", "net_wpm"},
+        )
+
     def test_weighted_net_wpm_uses_explicit_formula_and_parameters(self):
         result = evaluate_rulebook_scoring(
             {"engine_version": 1, "formula": "NET_WPM_WEIGHTED_MISTAKES",
@@ -178,6 +190,34 @@ class RulebookFormulaTests(SimpleTestCase):
 
 
 class RulebookFormulaIntegrationTests(SimpleTestCase):
+    def test_internal_formula_missing_output_metric_cannot_fall_back_to_legacy_speed(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta gamma delta",
+            typed="alpha beta gamma delta",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "scoring_mode": "GENERIC",
+                "scoring_rules": {
+                    "rulebook_verification": "internal",
+                    "rulebook_scoring": {
+                        "engine_version": 1,
+                        "formula": "MPHC_MARKS_BACKSPACE_DEDUCTION",
+                        "parameters": {"maximum_marks": 50, "wrong_word_deduction": 0.5,
+                                       "backspace_deduction": 0.1},
+                    },
+                },
+                "qualification_rules": {"engine_version": 1, "mode": "ALL", "criteria": [
+                    {"id": "speed", "metric": "net_wpm", "operator": "gte", "value": 1},
+                ]},
+            },
+        )
+        self.assertEqual(result["formula_evaluation_status"], "NOT_EVALUATED")
+        self.assertIsNone(result["net_wpm"])
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+
     def test_internal_profile_uses_versioned_formula_for_score_and_speed(self):
         from .scoring import calculate_result
 

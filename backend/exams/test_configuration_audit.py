@@ -243,3 +243,54 @@ class FormulaRuntimeInputAuditTests(SimpleTestCase):
         self.assertEqual(result["stage_checks"]["scoring"]["status"], "BLOCKED")
         self.assertFalse(result["stage_checks"]["scoring"]["checks"]["formula_input_contract"])
         self.assertTrue(any("backspace_presses" in issue for issue in result["errors"]))
+
+
+
+class FormulaQualificationContractTests(SimpleTestCase):
+    def _profile(self, formula, criterion_metric):
+        return ExamConfiguration(
+            code=f"contract-{formula.lower()}-{criterion_metric}",
+            name="Formula qualification contract",
+            language="ENGLISH",
+            script="LATIN",
+            duration_seconds=600,
+            passage_format=ExamConfiguration.PassageFormat.TCS,
+            passage_layout=ExamConfiguration.PassageLayout.TCS,
+            passage_source_mode=ExamConfiguration.PassageSourceMode.SCREEN,
+            backspace_policy=ExamConfiguration.BackspacePolicy.FULL,
+            allow_backspace=True,
+            enter_behavior=ExamConfiguration.EnterBehavior.NEW_LINE,
+            space_behavior=ExamConfiguration.SpaceBehavior.NORMAL,
+            tab_behavior=ExamConfiguration.TabBehavior.INSERT_SPACES,
+            keyboard_layout="QWERTY",
+            presentation_reference_status=ExamConfiguration.PresentationReferenceStatus.VERIFIED,
+            scoring_mode=ExamConfiguration.ScoringMode.CUSTOM,
+            scoring_rules={
+                "recruitment_cycle": "2025",
+                "rulebook_verification": "internal",
+                "rulebook_scoring": {
+                    "engine_version": 1, "formula": formula,
+                    "parameters": {"maximum_marks": 50, "wrong_word_deduction": 0.5,
+                                   "backspace_deduction": 0.1} if formula == "MPHC_MARKS_BACKSPACE_DEDUCTION" else {},
+                },
+                "profile_configuration": {"source_profile_id": "contract-test"},
+            },
+            error_rules={"classes": {"full": ["omission"], "half": ["punctuation"]}},
+            qualification_rules={"engine_version": 1, "mode": "ALL", "criteria": [
+                {"id": "criterion", "metric": criterion_metric, "operator": "gte", "value": 1},
+            ]},
+        )
+
+    def test_formula_that_does_not_produce_net_wpm_blocks_net_speed_qualification(self):
+        result = audit_exam_configuration(
+            self._profile("MPHC_MARKS_BACKSPACE_DEDUCTION", "net_wpm")
+        )
+        self.assertEqual(result["stage_checks"]["qualification"]["status"], "BLOCKED")
+        self.assertTrue(any("does not produce that metric" in item for item in result["errors"]))
+
+    def test_formula_output_metric_is_accepted_by_qualification_audit(self):
+        result = audit_exam_configuration(
+            self._profile("MPHC_MARKS_BACKSPACE_DEDUCTION", "score")
+        )
+        self.assertFalse(any("does not produce that metric" in item for item in result["errors"]))
+        self.assertTrue(result["stage_checks"]["qualification"]["checks"]["formula_output_contract"])
