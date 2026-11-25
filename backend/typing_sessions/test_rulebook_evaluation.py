@@ -77,3 +77,49 @@ class RulebookEvaluationTests(SimpleTestCase):
             {"net_wpm": 50},
         )
         self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+
+
+class RulebookScoringIntegrationTests(SimpleTestCase):
+    def test_internal_rulebook_profile_ignores_legacy_minimum_speed_fallback(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta gamma delta",
+            typed="alpha beta gamma delta",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "minimum_wpm": 999,
+                "scoring_mode": "GENERIC",
+                "scoring_rules": {"rulebook_verification": "internal"},
+                "qualification_rules": {},
+            },
+        )
+        self.assertEqual(result["qualification_status"], "NOT EVALUATED")
+        self.assertIsNone(result["qualification"])
+        self.assertEqual(result["evaluation_status"], "NOT_EVALUATED")
+
+    def test_internal_rulebook_profile_uses_only_versioned_structured_criteria(self):
+        from .scoring import calculate_result
+
+        result = calculate_result(
+            reference="alpha beta gamma delta",
+            typed="alpha beta gamma delta",
+            duration_seconds=60,
+            rules={
+                "verification_status": "VERIFIED",
+                "minimum_wpm": 999,
+                "scoring_mode": "GENERIC",
+                "scoring_rules": {"rulebook_verification": "internal"},
+                "qualification_rules": {
+                    "engine_version": 1,
+                    "mode": "ALL",
+                    "criteria": [
+                        {"metric": "gross_wpm", "operator": "gte", "value": 4}
+                    ],
+                },
+            },
+        )
+        self.assertEqual(result["qualification_status"], "QUALIFIED")
+        self.assertTrue(result["qualification"])
+        self.assertEqual(result["qualification_checks"][0]["status"], "MET")
