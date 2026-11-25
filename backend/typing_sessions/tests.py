@@ -776,3 +776,62 @@ class TypingMistakeClassificationTests(TestCase):
         result = classify_typing_mistakes("भारत बहुत महान है", "भारत है")
         self.assertEqual(result["categories"]["omission"], 2)
         self.assertEqual(result["total_detected_errors"], 2)
+ 
+    def test_post_eligibility_attestation_does_not_automatically_grant_compensatory_time(self):
+        exam = ExamConfiguration.objects.create(
+            code="higher-post-no-extra-time", name="Higher post", language="ENGLISH",
+            script="LATIN", duration_seconds=900, scoring_rules={
+                "formula": "SSC_CGL_2025_DEST",
+                "compensatory_time_enabled": True,
+                "compensatory_duration_seconds": 1200,
+                "standard_duration_seconds": 900,
+            },
+        )
+        source = PassageSource.objects.create(
+            title="Higher post source", content="One two.", language="ENGLISH",
+            script="LATIN", status=PassageSource.Status.PUBLISHED,
+        )
+        publication = publish_source_to_exam(source, exam)
+        attempt = start_session(
+            learner=self.learner, publication=publication,
+            candidate_selections={
+                "variant_id": "higher", "standard_type": "HIGHER",
+                "eligibility_attested": True, "eligibility_status": "CANDIDATE_ATTESTED",
+            },
+        )
+        activated = activate_session(session_id=attempt.pk, learner=self.learner)
+        self.assertEqual(activated.duration_seconds, 900)
+        self.assertFalse(activated.rules_snapshot["compensatory_time_applied"])
+
+    def test_explicit_configured_compensatory_attestation_applies_only_when_requested(self):
+        exam = ExamConfiguration.objects.create(
+            code="comp-time-explicit", name="Comp time", language="ENGLISH",
+            script="LATIN", duration_seconds=900, scoring_rules={
+                "formula": "SSC_DPA_GRADE_A",
+                "compensatory_time_enabled": True,
+                "compensatory_duration_seconds": 1200,
+                "standard_duration_seconds": 900,
+            },
+        )
+        source = PassageSource.objects.create(
+            title="Comp source", content="One two.", language="ENGLISH",
+            script="LATIN", status=PassageSource.Status.PUBLISHED,
+        )
+        publication = publish_source_to_exam(source, exam)
+        standard = start_session(learner=self.learner, publication=publication)
+        standard_active = activate_session(session_id=standard.pk, learner=self.learner)
+        self.assertEqual(standard_active.duration_seconds, 900)
+        self.assertFalse(standard_active.rules_snapshot["compensatory_time_applied"])
+
+        extended = start_session(learner=self.learner, publication=publication)
+        extended_active = activate_session(
+            session_id=extended.pk, learner=self.learner, compensatory_time=True,
+        )
+        self.assertEqual(extended_active.duration_seconds, 1200)
+        self.assertTrue(extended_active.rules_snapshot["compensatory_time_applied"])
+        self.assertTrue(extended_active.rules_snapshot["candidate_selectors"]["compensatory_time_attested"])
+
+    def test_unconfigured_compensatory_time_request_is_rejected(self):
+        attempt = start_session(learner=self.learner, publication=self.publication)
+        with self.assertRaises(ValidationError):
+            activate_session(session_id=attempt.pk, learner=self.learner, compensatory_time=True)

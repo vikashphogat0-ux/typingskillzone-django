@@ -193,3 +193,23 @@ class SevenStagePipelineAuditTests(SimpleTestCase):
         self.assertTrue(checks["qualification_status_contract"])
         self.assertTrue(checks["qualification_breakdown_contract"])
         self.assertTrue(checks["formula_metrics_contract"])
+
+    def test_result_contract_checks_detect_removed_formula_and_qualification_fields(self):
+        from unittest.mock import patch
+
+        import exams.configuration_audit as audit_module
+
+        exam = ExamConfiguration(
+            code="broken-result-contract", name="Broken result", language="ENGLISH", script="LATIN",
+        )
+        with patch.object(audit_module, "Path") as mocked_path:
+            path_instance = mocked_path.return_value.resolve.return_value.parent.parent.joinpath.return_value
+            path_instance.is_file.return_value = True
+            path_instance.read_text.return_value = "<html>no result fields</html>"
+            result = audit_module.audit_exam_configuration(exam)
+        checks = result["stage_checks"]["result_and_audit"]["checks"]
+        self.assertFalse(checks["formula_status_contract"])
+        self.assertFalse(checks["qualification_status_contract"])
+        self.assertFalse(checks["qualification_breakdown_contract"])
+        self.assertFalse(checks["formula_metrics_contract"])
+        self.assertEqual(result["stage_checks"]["result_and_audit"]["status"], "BLOCKED")

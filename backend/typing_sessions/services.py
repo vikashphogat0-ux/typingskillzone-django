@@ -105,26 +105,31 @@ def activate_session(*, session_id, learner, compensatory_time=False):
             if selected_duration:
                 session.duration_seconds = int(selected_duration)
             compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
-            vh_profile = scoring_rules.get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
-            if (
-                (vh_profile or bool(selector_snapshot.get("eligibility_attested")))
-                and scoring_rules.get("compensatory_time_enabled")
-                and compensatory_seconds
-            ):
+            if compensatory_time:
+                if not scoring_rules.get("compensatory_time_enabled") or not compensatory_seconds:
+                    raise ValidationError("Compensatory time is not configured for this examination profile.")
+                # The explicit in-exam attestation is used only by profiles whose
+                # setup exposes this control (for example, the DPA Grade-A profile).
+                # A post-eligibility attestation must never grant extra time.
                 session.duration_seconds = int(compensatory_seconds)
+                selector_snapshot = {
+                    **selector_snapshot,
+                    "eligibility_attested": True,
+                    "eligibility_status": "CANDIDATE_ATTESTED",
+                    "compensatory_time_attested": True,
+                }
             if session.duration_seconds:
                 session.deadline_at = now + timedelta(seconds=session.duration_seconds)
+        scoring_rules = session.rules_snapshot.get("scoring_rules") or {}
+        compensatory_seconds = scoring_rules.get("compensatory_duration_seconds")
         session.rules_snapshot = {
             **session.rules_snapshot,
+            "candidate_selectors": selector_snapshot,
             "timer_started": True,
             "compensatory_time_applied": bool(
-                (
-                    (session.rules_snapshot.get("scoring_rules") or {}).get("formula") == "SSC_CHSL_2025_VH_ENGLISH"
-                    or bool((session.rules_snapshot.get("candidate_selectors") or {}).get("eligibility_attested"))
-                )
-                and session.duration_seconds == int(
-                    (session.rules_snapshot.get("scoring_rules") or {}).get("compensatory_duration_seconds") or 0
-                )
+                compensatory_seconds
+                and session.duration_seconds == int(compensatory_seconds)
+                and session.duration_seconds > int(scoring_rules.get("standard_duration_seconds") or 0)
             ),
         }
         session.save(update_fields=("started_at", "deadline_at", "duration_seconds", "rules_snapshot"))

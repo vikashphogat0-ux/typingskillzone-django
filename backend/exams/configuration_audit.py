@@ -190,12 +190,17 @@ def audit_exam_configuration(exam):
         Path(__file__).resolve().parent.parent
         / "typing_sessions" / "templates" / "typing_sessions" / "result.html"
     )
+    result_template = (
+        result_template_path.read_text(encoding="utf-8")
+        if result_template_path.is_file()
+        else ""
+    )
     result_checks = {
-        "result_template_exists": result_template_path.is_file(),
-        "formula_status_contract": True,
-        "qualification_status_contract": True,
-        "qualification_breakdown_contract": True,
-        "formula_metrics_contract": True,
+        "result_template_exists": bool(result_template),
+        "formula_status_contract": "formula_evaluation_status" in result_template and "formula_id" in result_template,
+        "qualification_status_contract": "qualification_status" in result_template and "NOT EVALUATED" in result_template,
+        "qualification_breakdown_contract": "qualification_checks" in result_template and "check.status" in result_template,
+        "formula_metrics_contract": "formula_metrics" in result_template and "formula_checks" in result_template,
     }
     stage_checks = {
         "catalogue": {"status": "READY" if all(catalogue_checks.values()) else "BLOCKED", "checks": catalogue_checks},
