@@ -846,6 +846,24 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         qualification_status = "QUALIFIED" if qualification else "NOT_QUALIFIED"
         qualification_note = "Qualification calculated from the configured minimum marks."
 
+    rulebook_evaluation = None
+    if scoring_rules.get("rulebook_verification") == "internal":
+        from .rulebook_evaluation import evaluate_rulebook_qualification
+
+        rulebook_evaluation = evaluate_rulebook_qualification(
+            configured_qualification,
+            qualification_metrics,
+            candidate_category=rules.get("candidate_category"),
+            selectors=rules.get("candidate_selectors"),
+        )
+        # Internally approved rulebook profiles are evaluated only by the
+        # versioned structured criteria. Legacy thresholds/formula branches
+        # remain available for historical compatibility, but cannot decide
+        # a new internal-rulebook attempt.
+        qualification = rulebook_evaluation["qualification"]
+        qualification_status = rulebook_evaluation["qualification_status"]
+        qualification_note = rulebook_evaluation["qualification_note"]
+
     return {
         "scoring_version": SCORING_VERSION,
         "duration_seconds": duration,
@@ -893,6 +911,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "net_wpm": net_wpm,
         "qualification": qualification,
         "qualification_status": qualification_status,
+        "evaluation_status": rulebook_evaluation["evaluation_status"] if rulebook_evaluation else ("EVALUATED" if qualification is not None else "NOT_EVALUATED"),
+        "qualification_checks": rulebook_evaluation["qualification_checks"] if rulebook_evaluation else [],
+
         "disqualified": qualification_status.endswith("NOT_QUALIFIED") or qualification_status.endswith("DISQUALIFIED"),
         "disqualification_reason": (
             f"Net speed below the minimum qualifying speed of {scoring_rules.get('minimum_wpm', rules.get('minimum_wpm'))} WPM."
