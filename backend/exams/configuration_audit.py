@@ -7,6 +7,54 @@ from pathlib import Path
 from .models import ExamConfiguration
 
 
+
+def _audit_runtime_pipeline_contract():
+    """Verify the executable session pipeline and its named URL routes."""
+    import inspect
+
+    from django.urls import resolve, reverse
+    from typing_sessions import services, views
+    from typing_sessions.rulebook_evaluation import evaluate_rulebook_qualification
+    from typing_sessions.scoring import calculate_result
+    from typing_sessions.specification_snapshots import build_exam_specification_snapshot
+
+    checks = {}
+
+    def accepts(callable_object, required):
+        if not callable(callable_object):
+            return False
+        try:
+            parameters = inspect.signature(callable_object).parameters
+        except (TypeError, ValueError):
+            return False
+        return all(name in parameters for name in required)
+
+    checks["start_service"] = accepts(services.start_session, ("learner", "publication", "candidate_selections"))
+    checks["activation_service"] = accepts(services.activate_session, ("session_id", "learner", "compensatory_time"))
+    checks["submission_service"] = accepts(services.submit_session, ("session_id", "learner", "typed_text", "reported_keystrokes", "client_policy_events"))
+    checks["snapshot_builder"] = accepts(build_exam_specification_snapshot, ("exam", "publication", "captured_at"))
+    checks["scoring_engine"] = accepts(calculate_result, ("reference", "typed", "duration_seconds", "rules", "reported_keystrokes"))
+    checks["qualification_engine"] = accepts(evaluate_rulebook_qualification, ("config", "metrics", "candidate_category", "selectors"))
+
+    routes = {
+        "start_selected": ("start_selected_typing_session", {"exam_code": "audit-profile"}),
+        "start": ("start_typing_session", {"exam_code": "audit-profile", "passage_id": "1"}),
+        "session": ("typing_session", {"session_id": "00000000-0000-0000-0000-000000000001"}),
+        "activate": ("activate_typing_session", {"session_id": "00000000-0000-0000-0000-000000000001"}),
+        "submit": ("submit_typing_session", {"session_id": "00000000-0000-0000-0000-000000000001"}),
+        "draft": ("save_typing_draft", {"session_id": "00000000-0000-0000-0000-000000000001"}),
+        "cancel": ("cancel_typing_session", {"session_id": "00000000-0000-0000-0000-000000000001"}),
+    }
+    for route_name, (view_name, kwargs) in routes.items():
+        key = "route_" + route_name
+        try:
+            match = resolve(reverse("typing_sessions:" + route_name, kwargs=kwargs))
+            checks[key] = match.func is getattr(views, view_name, None)
+        except Exception:
+            checks[key] = False
+    return checks
+
+
 def audit_exam_configuration(exam):
     errors = []
     warnings = []
@@ -167,10 +215,16 @@ def audit_exam_configuration(exam):
         ) or bool(profile.get("category_selector")),
         "conditional_activation": not (profile.get("conditional_activation") and not variants and not posts),
     }
+    runtime_checks = _audit_runtime_pipeline_contract()
     launch_checks = {
         "duration": bool(exam.duration_seconds),
         "active_profile": bool(exam.is_active),
         "published_passage_source": exam.passage_source_mode != ExamConfiguration.PassageSourceMode.UNSPECIFIED,
+        "session_start_service": runtime_checks["start_service"],
+        "session_activation_service": runtime_checks["activation_service"],
+        "specification_snapshot_builder": runtime_checks["snapshot_builder"],
+        "start_routes": runtime_checks["route_start"] and runtime_checks["route_start_selected"],
+        "activation_route": runtime_checks["route_activate"],
     }
     interaction_checks = {
         "backspace_policy": exam.backspace_policy != ExamConfiguration.BackspacePolicy.NOT_SPECIFIED,
@@ -196,6 +250,7 @@ def audit_exam_configuration(exam):
         "error_taxonomy": bool(exam.error_rules),
         "formula_parameters": bool(formula_config and not formula_errors),
         "formula_input_contract": bool(formula_config and not missing_formula_inputs),
+        "scoring_engine_runtime": runtime_checks["scoring_engine"],
         "mistake_classes": (
             bool(exam.error_rules.get("classes", {}).get("full") is not None
                  and exam.error_rules.get("classes", {}).get("half") is not None)
@@ -206,6 +261,7 @@ def audit_exam_configuration(exam):
     qualification_checks = {
         "structured_criteria": bool(qualification.get("engine_version") == 1 and qualification.get("criteria") and not qualification_errors),
         "candidate_selectors": all(selector_checks.values()),
+        "qualification_engine_runtime": runtime_checks["qualification_engine"],
         "criteria_have_supported_metrics": bool(qualification.get("criteria")) and not qualification_errors,
         "formula_output_contract": (
             not qualification.get("criteria")
@@ -232,6 +288,10 @@ def audit_exam_configuration(exam):
         "qualification_status_contract": "qualification_status" in result_template and "NOT EVALUATED" in result_template,
         "qualification_breakdown_contract": "qualification_checks" in result_template and "check.status" in result_template,
         "formula_metrics_contract": "formula_metrics" in result_template and "formula_checks" in result_template,
+        "submission_route": runtime_checks["route_submit"],
+        "result_route": runtime_checks["route_session"],
+        "draft_route": runtime_checks["route_draft"],
+        "cancel_route": runtime_checks["route_cancel"],
     }
     stage_checks = {
         "catalogue": {"status": "READY" if all(catalogue_checks.values()) else "BLOCKED", "checks": catalogue_checks},
