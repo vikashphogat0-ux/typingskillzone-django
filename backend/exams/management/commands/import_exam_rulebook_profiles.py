@@ -460,8 +460,8 @@ def build_draft_defaults(profile):
         "error_rules": {"source_text": lines, "executable": False},
         "scoring_rules": scoring_payload,
         "qualification_rules": {"source_criteria_text": qualification_source, "executable": bool(scoring_payload.get("executable")), "evaluation_mode": scoring_payload["profile_configuration"]["evaluation_mode"]},
-        "verification_status": ExamConfiguration.Verification.VERIFIED,
-        "source_title": "Internal rule profile: Master Exam Rulebook (user-verified)",
+        "verification_status": ExamConfiguration.Verification.UNVERIFIED,
+        "source_title": "Internal rule profile: Master Exam Rulebook (source-compiled, practice only)",
         "source_checked_at": __import__("datetime").date(2026, 11, 25),
         "rule_notes": (
             "Imported from source profile " + str(profile.get("number")) + " / "
@@ -479,7 +479,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("json_path", help="Path to exam_rulebook_profiles.json")
-        parser.add_argument("--expected-count", type=int, default=161)
+        parser.add_argument("--expected-count", type=int, default=161, help="Source entries expected (161).")
+        parser.add_argument("--canonical-count", type=int, default=156, help="Canonical profiles expected after merging duplicates (156).")
         parser.add_argument("--refresh-existing-drafts", action="store_true", help="Refresh rows previously imported from the rulebook, including active rows carrying the importer source marker; never touch manually sourced profiles.")
 
     def handle(self, *args, **options):
@@ -497,6 +498,11 @@ class Command(BaseCommand):
             raise CommandError("Unsupported rulebook JSON schema.")
         if expected and len(profiles) != expected:
             raise CommandError(f"Expected {expected} profiles; found {len(profiles)}. No rows imported.")
+        from exams.rulebook_canonical import canonicalize
+
+        profiles = canonicalize(profiles)
+        if options["canonical_count"] and len(profiles) != options["canonical_count"]:
+            raise CommandError(f"Expected {options['canonical_count']} canonical profiles after merging; found {len(profiles)}. No rows imported.")
         ids = [item.get("profile_id") for item in profiles]
         if any(not value for value in ids) or len(set(ids)) != len(ids):
             raise CommandError("Every profile must have a unique, non-empty profile_id. No rows imported.")
@@ -524,5 +530,5 @@ class Command(BaseCommand):
             f"{preserved} existing profiles preserved/refreshed; {len(profiles)} source entries processed."
         ))
         self.stdout.write(self.style.WARNING(
-            "Profiles are marked verified from the user-confirmed internal rulebook. Only formulas implemented by the scoring engine are marked executable; other profiles retain full source criteria and admin-configurable structured settings. Existing importer-owned profiles are refreshed only with --refresh-existing-drafts."
+            "Profiles are imported as source-compiled, practice-only rules until each notice is verified. Only formulas implemented by the scoring engine are marked executable; other profiles retain full source criteria and admin-configurable structured settings. Existing importer-owned profiles are refreshed only with --refresh-existing-drafts."
         ))
