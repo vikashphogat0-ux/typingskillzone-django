@@ -64,8 +64,11 @@ FORMULA_OUTPUTS = {
     "MPHC_MARKS_BACKSPACE_DEDUCTION": {"score"},
 }
 
+# gross_wpm is independently measured from server-side strokes by the
+# submission pipeline. A formula may refine it, but qualification can use the
+# raw measurement even when a selected formula does not calculate gross speed.
 FORMULA_DERIVED_METRICS = {
-    "gross_wpm", "net_wpm", "gross_kdph", "error_percent",
+    "net_wpm", "gross_kdph", "error_percent",
     "score", "net_words",
 }
 

@@ -822,7 +822,7 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             formula_metrics = rulebook_scoring["metrics"]
             # Formula-owned metrics are authoritative. A metric omitted by the
             # selected formula is unavailable; never fall back to a legacy value.
-            gross_wpm = formula_metrics.get("gross_wpm")
+            gross_wpm = formula_metrics.get("gross_wpm", gross_wpm)
             net_wpm = formula_metrics.get("net_wpm")
             gross_kdph = formula_metrics.get("gross_kdph")
             error_percent = formula_metrics.get("error_percent")
@@ -835,7 +835,9 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             # No legacy-derived metric may decide an internal rulebook result.
             score = None
             score_note = "Rulebook score not evaluated: " + rulebook_scoring["formula_note"]
-            gross_wpm = net_wpm = gross_kdph = error_percent = net_words = None
+            # Gross WPM is a raw server-measured metric, not a legacy-derived
+            # formula output. It remains valid for explicit gross-speed criteria.
+            net_wpm = gross_kdph = error_percent = net_words = None
             error_percent_for_qualification = None
     else:
         rulebook_scoring = None
