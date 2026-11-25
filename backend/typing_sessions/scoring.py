@@ -805,9 +805,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
             "weighted_mistakes": error_count,
             "full_mistakes": full_mistakes if full_mistakes is not None else error_count,
             "half_mistakes": half_mistakes if half_mistakes is not None else 0,
-            "reference_words": len(re.findall(r"\\S+", reference)),
+            "reference_words": len(re.findall(r"\S+", reference)),
             "net_wpm": net_wpm,
             "gross_wpm": gross_wpm,
+            "mistake_categories": mistake_analysis.get("categories", {}),
         }
         rulebook_scoring = evaluate_rulebook_scoring(
             scoring_rules.get("rulebook_scoring") or {},
@@ -944,6 +945,10 @@ def calculate_result(*, reference, typed, duration_seconds, rules, reported_keys
         "accuracy_percent": accuracy,
         "gross_wpm": gross_wpm,
         "gross_kdph": gross_kdph,
+        "formula_evaluation_status": rulebook_scoring["evaluation_status"] if rulebook_scoring else None,
+        "formula_id": rulebook_scoring["formula_id"] if rulebook_scoring else None,
+        "formula_note": rulebook_scoring["formula_note"] if rulebook_scoring else None,
+        "formula_checks": rulebook_scoring["formula_checks"] if rulebook_scoring else [],
         "gross_kdph": gross_kdph if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "candidate_category": candidate_category if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
         "category_error_cap": error_cap if scoring_mode == "CUSTOM" and scoring_rules.get("formula") in {"SSC_CGL_2025_DEST", "SSC_CGL_2025_VH_DEST", "SSC_CHSL_2025_ENGLISH", "SSC_CHSL_2025_VH_ENGLISH", "SSC_CHSL_2025_HINDI", "SSC_CHSL_2025_HINDI_KRUTIDEV", "SSC_CHSL_2025_HINDI_MANGAL", "SSC_DPA_GRADE_A"} else None,
