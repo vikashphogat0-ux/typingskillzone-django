@@ -108,6 +108,54 @@ class RulebookFormulaTests(SimpleTestCase):
         self.assertEqual(result["metrics"], {})
 
 
+    def test_upsssc_exempts_first_five_wrong_words_then_applies_sixfold_penalty(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "UPSSSC_FIVE_EXEMPT_SIXFOLD",
+             "parameters": {"exempt_wrong_words": 5, "penalty_multiplier": 6}},
+            {"gross_words": 100, "wrong_words": 8}, duration_seconds=300,
+        )
+        self.assertEqual(result["evaluation_status"], "EVALUATED")
+        self.assertEqual(result["metrics"]["chargeable_wrong_words"], 3.0)
+        self.assertEqual(result["metrics"]["penalty_words"], 18.0)
+        self.assertEqual(result["metrics"]["net_words"], 82.0)
+        self.assertEqual(result["metrics"]["net_wpm"], 16.4)
+
+    def test_spmcil_converts_weighted_mistakes_to_five_stroke_error_words(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "SPMCIL_STROKE_ERROR_WORDS",
+             "parameters": {"strokes_per_word": 5}},
+            {"server_strokes": 2000, "weighted_mistakes": 10}, duration_seconds=600,
+        )
+        self.assertEqual(result["metrics"]["gross_word_equivalents"], 400.0)
+        self.assertEqual(result["metrics"]["error_words"], 2.0)
+        self.assertEqual(result["metrics"]["net_wpm"], 39.8)
+
+    def test_mp_cpct_requires_and_applies_explicit_net_speed_slabs(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "MP_CPCT_NET_WPM_SLABS",
+             "parameters": {"words_per_error": 1, "bands": [
+                 {"minimum_net_wpm": 30, "percentage": 50},
+                 {"minimum_net_wpm": 41, "percentage": 60},
+             ]}},
+            {"gross_words": 600, "weighted_mistakes": 30}, duration_seconds=900,
+        )
+        self.assertEqual(result["metrics"]["net_wpm"], 38.0)
+        self.assertEqual(result["metrics"]["score_percent"], 50.0)
+
+    def test_mphc_marks_requires_server_measured_backspace_presses(self):
+        config = {"engine_version": 1, "formula": "MPHC_MARKS_BACKSPACE_DEDUCTION",
+                  "parameters": {"maximum_marks": 50, "wrong_word_deduction": 0.5,
+                                 "backspace_deduction": 0.1}}
+        unresolved = evaluate_rulebook_scoring(
+            config, {"wrong_words": 10}, duration_seconds=600,
+        )
+        self.assertEqual(unresolved["evaluation_status"], "NOT_EVALUATED")
+        result = evaluate_rulebook_scoring(
+            config, {"wrong_words": 10, "backspace_presses": 20}, duration_seconds=600,
+        )
+        self.assertEqual(result["metrics"]["score"], 43.0)
+
+
 class RulebookFormulaIntegrationTests(SimpleTestCase):
     def test_internal_profile_uses_versioned_formula_for_score_and_speed(self):
         from .scoring import calculate_result
