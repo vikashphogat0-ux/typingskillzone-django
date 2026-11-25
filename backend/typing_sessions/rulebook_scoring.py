@@ -56,7 +56,7 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     formula = config.get("formula")
     params = config.get("parameters") or {}
     if formula not in FORMULAS or not isinstance(params, dict):
-        return {**unresolved, "formula_note": "The configured rulebook scoring formula is unsupported or malformed."}
+        return {**unresolved, "formula_id": formula, "formula_note": "The configured rulebook scoring formula is unsupported or malformed."}
 
     duration = _decimal(duration_seconds)
     if duration is None or duration <= 0:
