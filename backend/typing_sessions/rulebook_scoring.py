@@ -86,6 +86,7 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
     if full is not None and half is not None and full_weight is not None and half_weight is not None:
         weighted = full * full_weight + half * half_weight
     reference_words = _decimal(metrics.get("reference_words"))
+    typed_words = _decimal(metrics.get("typed_words", metrics.get("gross_words")))
     outputs = {}
     checks = []
 
@@ -143,9 +144,25 @@ def evaluate_rulebook_scoring(config, metrics, *, duration_seconds):
         if not all((require("weighted_mistakes", weighted), require("reference_words", reference_words))): pass
         else:
             denominator = params.get("denominator", "reference_words")
-            if denominator != "reference_words":
-                return {**unresolved, "formula_id": formula, "formula_note": "Only the explicitly supported reference_words denominator is currently available."}
-            outputs["error_percent"] = _round(weighted * Decimal(100) / max(Decimal(1), reference_words))
+            denominator_metrics = {
+                "reference_words": reference_words,
+                "typed_words": typed_words,
+            }
+            denominator_value = denominator_metrics.get(denominator)
+            if denominator_value is None:
+                return {
+                    **unresolved,
+                    "formula_id": formula,
+                    "formula_note": (
+                        "ERROR_PERCENT_WEIGHTED denominator must be reference_words "
+                        "or typed_words, and its source metric must be available."
+                    ),
+                }
+            if denominator_value < 0:
+                return {**unresolved, "formula_id": formula, "formula_note": "Error denominator cannot be negative."}
+            outputs["error_percent"] = _round(weighted * Decimal(100) / max(Decimal(1), denominator_value))
+            outputs["error_denominator"] = _round(denominator_value)
+            outputs["error_denominator_type"] = denominator
     elif formula == "MARKS_PER_CORRECT_WORD":
         if not require("correct_words", correct_words): pass
         else:
