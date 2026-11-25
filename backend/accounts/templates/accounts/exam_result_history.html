@@ -18,13 +18,13 @@
       {% with result=session.result_snapshot %}
       <tr>
         <td><a href="{% url 'exams:exam_detail' exam.code %}?passage={{ session.publication.serial_number }}">Passage {{ session.publication.serial_number }}</a><br><span class="muted">{{ session.publication.source.language|default:exam.language|title }} · {{ session.started_at|date:"d M Y, H:i" }}</span></td>
-        <td>{{ result.gross_strokes|default:result.reported_keystrokes|default:"–" }}</td>
-        <td>{% if result.gross_words != None %}{{ result.gross_words }}{% elif result.gross_strokes != None %}{{ result.gross_strokes|floatformat:1 }}{% else %}–{% endif %}</td>
-        <td>{% if result.tentative_wpm != None %}{{ result.tentative_wpm }}{% else %}–{% endif %}</td>
-        <td>{{ result.error_count|default:result.weighted_mistakes|default:result.word_errors|default:"–" }}</td>
-        <td>{% if result.net_wpm != None %}{{ result.net_wpm }} WPM{% elif result.gross_kdph != None %}{{ result.gross_kdph }} KDPH{% else %}–{% endif %}</td>
-        <td>{% if result.score != None %}{{ result.score }}{% else %}N/A{% endif %}</td>
-        <td><span class="status-pill">{{ result.qualification_status|default:"NOT EVALUATED" }}</span></td>
+        <td>{% if "gross_strokes" in result and result.gross_strokes != None %}{{ result.gross_strokes }}{% elif "reported_keystrokes" in result and result.reported_keystrokes != None %}{{ result.reported_keystrokes }}{% else %}–{% endif %}</td>
+        <td>{% if "gross_words" in result and result.gross_words != None %}{{ result.gross_words }}{% elif "gross_strokes" in result and result.gross_strokes != None %}{{ result.gross_strokes|floatformat:1 }}{% else %}–{% endif %}</td>
+        <td>{% if "tentative_wpm" in result and result.tentative_wpm != None %}{{ result.tentative_wpm }}{% else %}–{% endif %}</td>
+        <td>{% if "error_count" in result and result.error_count != None %}{{ result.error_count }}{% elif "weighted_mistakes" in result and result.weighted_mistakes != None %}{{ result.weighted_mistakes }}{% elif "word_errors" in result and result.word_errors != None %}{{ result.word_errors }}{% else %}–{% endif %}</td>
+        <td>{% if "net_wpm" in result and result.net_wpm != None %}{{ result.net_wpm }} WPM{% elif "gross_kdph" in result and result.gross_kdph != None %}{{ result.gross_kdph }} KDPH{% else %}–{% endif %}</td>
+        <td>{% if "score" in result and result.score != None %}{{ result.score }}{% else %}N/A{% endif %}</td>
+        <td><span class="status-pill">{% if "qualification_status" in result and result.qualification_status %}{{ result.qualification_status }}{% else %}NOT EVALUATED{% endif %}</span></td>
         <td><a class="btn btn-primary btn-small" href="{% url 'typing_sessions:session' session.pk %}">View result</a></td>
       </tr>
       {% endwith %}
