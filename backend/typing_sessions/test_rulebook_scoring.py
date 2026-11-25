@@ -156,6 +156,27 @@ class RulebookFormulaTests(SimpleTestCase):
         self.assertEqual(result["metrics"]["score"], 43.0)
 
 
+    def test_aiims_marks_insufficient_attempt_below_language_stroke_floor(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "AIIMS_STROKE_DEDUCTION",
+             "parameters": {"minimum_strokes": 2625, "penalty_strokes_per_mistake": 50}},
+            {"server_strokes": 2500, "weighted_mistakes": 2}, duration_seconds=900,
+        )
+        self.assertEqual(result["evaluation_status"], "EVALUATED")
+        self.assertEqual(result["metrics"]["attempt_status"], "INSUFFICIENT_ATTEMPT")
+        self.assertIsNone(result["metrics"]["net_wpm"])
+
+    def test_aiims_applies_fifty_stroke_penalty_after_minimum_attempt(self):
+        result = evaluate_rulebook_scoring(
+            {"engine_version": 1, "formula": "AIIMS_STROKE_DEDUCTION",
+             "parameters": {"minimum_strokes": 2625, "penalty_strokes_per_mistake": 50}},
+            {"server_strokes": 3000, "weighted_mistakes": 2}, duration_seconds=900,
+        )
+        self.assertEqual(result["metrics"]["attempt_status"], "SUFFICIENT_ATTEMPT")
+        self.assertEqual(result["metrics"]["net_wpm"], 39.33)
+        self.assertEqual(result["metrics"]["accuracy_percent"], 98.33)
+
+
 class RulebookFormulaIntegrationTests(SimpleTestCase):
     def test_internal_profile_uses_versioned_formula_for_score_and_speed(self):
         from .scoring import calculate_result
