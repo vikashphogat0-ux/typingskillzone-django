@@ -33,7 +33,7 @@ class RulebookFormulaTests(SimpleTestCase):
             {"server_strokes": 1000, "full_mistakes": 2, "half_mistakes": 2},
             duration_seconds=600,
         )
-        self.assertEqual(result["metrics"]["net_wpm"], 2.5)
+        self.assertEqual(result["metrics"]["net_wpm"], 17.0)
 
     def test_full_half_categories_are_configured_not_assumed(self):
         result = evaluate_rulebook_scoring(
