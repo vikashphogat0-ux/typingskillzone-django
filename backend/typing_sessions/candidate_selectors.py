@@ -219,7 +219,7 @@ def _apply_preset(snapshot, preset, *, kind):
     for key, value in preset.items():
         if key in _RUNTIME_ROOT_FIELDS and key != "duration_seconds":
             root_overrides[key] = value
-        elif key in base_scoring and key not in _PRESET_METADATA_FIELDS:
+        if key in base_scoring and key not in _PRESET_METADATA_FIELDS:
             scoring_overrides[key] = value
 
     if preset.get("duration_seconds") is not None:
