@@ -13,6 +13,7 @@ test database are used. No live payments, no production data.
 import threading
 
 from django.test import LiveServerTestCase, override_settings
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from playwright.sync_api import sync_playwright, expect
@@ -38,6 +39,10 @@ PASSWORD = "Browser-Test-Password-2026!"
 
 class BrowserCoreWorkflowTests(LiveServerTestCase):
     def setUp(self):
+        # Authentication throttles are cache-backed and the test runner reuses
+        # the process cache across LiveServerTestCase instances. Start each
+        # browser workflow with isolated throttle counters.
+        cache.clear()
         self.student = User.objects.create_user(
             email=STUDENT_EMAIL,
             password=PASSWORD,
