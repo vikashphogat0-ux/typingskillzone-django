@@ -48,7 +48,8 @@ def start_session(*, learner, publication, candidate_selections=None):
         captured_at=now,
     )
     snapshot = apply_candidate_selections(snapshot, validated_selections)
-    if validated_selections.get("duration_seconds"):
+    duration = snapshot.get("duration_seconds") or duration
+    if duration is None and validated_selections.get("duration_seconds"):
         duration = validated_selections["duration_seconds"]
     reference_text = publication.rendered_content
     if exam.code == "ssc-data-processing-assistant-grade-a":
@@ -189,6 +190,10 @@ def submit_session(*, session_id, learner, typed_text, reported_keystrokes=None,
         reported_keystrokes=reported_keystrokes,
     )
     result["candidate_selections"] = dict(scoring_snapshot.get("candidate_selectors") or {})
+    if scoring_snapshot.get("resolved_candidate_configuration"):
+        result["resolved_candidate_configuration"] = dict(
+            scoring_snapshot["resolved_candidate_configuration"]
+        )
     # Clipboard and backspace blocks are counted in the browser only. Keep the count as
     # clearly labelled, unverified telemetry; it never changes the score.
     if client_policy_events is not None:
