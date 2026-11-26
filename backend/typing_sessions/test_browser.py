@@ -359,8 +359,14 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
             page.locator('input[name="display_mode"][value="normal"]').check()
             page.click('button[type="submit"]')
             page.wait_for_load_state("networkidle", timeout=10000)
-            assert "/typing/" in page.url, f"typing start failed: {page.url} — {page.locator('body').inner_text()}"
+            typing_path = page.url.split("?", 1)[0].rstrip("/")
+            assert typing_path.startswith("/typing/") and typing_path.count("/") == 2, (
+                f"typing start did not reach the session page: {page.url} — "
+                f"{page.locator('body').inner_text()}"
+            )
+            expect(page.locator("#typing-form")).to_be_visible(timeout=10000)
             editor = page.locator("#typed-text")
+            expect(editor).to_be_visible(timeout=10000)
             editor.fill("one")
             editor.press("Space")
             editor.type("two")
