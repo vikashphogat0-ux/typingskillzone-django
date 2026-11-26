@@ -18,6 +18,13 @@
     {% if attempt.rules_snapshot.candidate_selectors.eligibility_status %}<div><dt>Eligibility evidence</dt><dd>{{ attempt.rules_snapshot.candidate_selectors.eligibility_status|title }}</dd></div>{% endif %}
   </dl>
   {% endif %}
+  {% if attempt.rules_snapshot.resolved_candidate_configuration %}
+  <dl class="pattern-grid" id="resolved-exam-runtime-summary">
+    <div><dt>Effective attempt duration</dt><dd>{{ attempt.rules_snapshot.resolved_candidate_configuration.duration_seconds|default:attempt.duration_seconds }} seconds</dd></div>
+    <div><dt>Applied standard</dt><dd>{{ attempt.rules_snapshot.resolved_candidate_configuration.standard_type|default:"Profile default" }}</dd></div>
+    <div><dt>Runtime settings audit</dt><dd>Verified at attempt start · {{ attempt.rules_snapshot.resolved_candidate_configuration.runtime_contract_sha256|slice:":12" }}</dd></div>
+  </dl>
+  {% endif %}
   <p class="lead"><strong>{{ attempt.result_snapshot.qualification_status|default:"NOT EVALUATED" }}</strong></p>
   <div class="metrics">
     {% if attempt.result_snapshot.gross_strokes != None %}<article class="metric-card"><span>Total strokes / keystrokes</span><strong>{{ attempt.result_snapshot.gross_strokes }}</strong></article>{% endif %}
