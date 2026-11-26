@@ -147,20 +147,183 @@ def validate_candidate_selections(exam, submitted):
     return selections
 
 
+
+def _deep_merge(base, override):
+    """Merge trusted profile dictionaries without mutating either input."""
+    result = dict(base or {})
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+_RUNTIME_ROOT_FIELDS = {
+    "allow_backspace", "backspace_policy", "allow_delete",
+    "allow_arrow_navigation", "allow_paste", "allow_copy", "allow_cut",
+    "enter_behavior", "space_behavior", "tab_behavior", "keyboard_layout",
+    "text_encoding", "passage_source_mode", "passage_layout", "passage_format",
+    "passage_font_family", "passage_font_size_pt", "passage_line_height",
+    "passage_alignment", "passage_preserve_tabs", "passage_tab_size",
+    "minimum_wpm", "required_keystrokes", "strokes_per_word",
+    "error_allowance_percent", "mistake_penalty_strokes", "trial_seconds",
+    "review_seconds", "correction_seconds", "transcription_seconds",
+    "allow_passage_repeat", "scoring_mode", "duration_seconds",
+}
+_PRESET_METADATA_FIELDS = {
+    "id", "label", "name", "description", "standard_type",
+    "requires_post_eligibility", "requires_eligibility",
+    "eligibility_status", "eligibility_note", "locked",
+}
+
+
+def _apply_preset(snapshot, preset, *, kind):
+    """Apply profile-owned preset values to the exact keys consumed at runtime."""
+    if not isinstance(preset, dict):
+        return {}, {}
+    root_overrides = {}
+    scoring_overrides = {}
+    error_overrides = {}
+    qualification_overrides = {}
+    explicit = preset.get("runtime_overrides", preset.get("overrides", {})) or {}
+    if not isinstance(explicit, dict):
+        raise ValidationError(f"The configured {kind} preset has invalid runtime overrides.")
+
+    for key, value in explicit.items():
+        if key in _RUNTIME_ROOT_FIELDS:
+            root_overrides[key] = value
+        elif key == "scoring_rules" and isinstance(value, dict):
+            scoring_overrides = _deep_merge(scoring_overrides, value)
+        elif key == "error_rules" and isinstance(value, dict):
+            error_overrides = _deep_merge(error_overrides, value)
+        elif key == "qualification_rules" and isinstance(value, dict):
+            qualification_overrides = _deep_merge(qualification_overrides, value)
+        else:
+            raise ValidationError(
+                f"The configured {kind} preset contains an unsupported runtime override: {key}."
+            )
+
+    for key, target in (
+        ("scoring_overrides", scoring_overrides),
+        ("error_overrides", error_overrides),
+        ("qualification_overrides", qualification_overrides),
+    ):
+        values = preset.get(key) or {}
+        if values and not isinstance(values, dict):
+            raise ValidationError(f"The configured {kind} preset has invalid {key.replace('_', ' ')}.")
+        if values:
+            target.update(_deep_merge(target, values))
+
+    base_scoring = snapshot.get("scoring_rules") or {}
+    for key, value in preset.items():
+        if key in _RUNTIME_ROOT_FIELDS and key != "duration_seconds":
+            root_overrides[key] = value
+        elif key in base_scoring and key not in _PRESET_METADATA_FIELDS:
+            scoring_overrides[key] = value
+
+    if preset.get("duration_seconds") is not None:
+        try:
+            duration = int(preset["duration_seconds"])
+        except (TypeError, ValueError):
+            raise ValidationError(f"The configured {kind} preset has an invalid duration.")
+        if duration <= 0:
+            raise ValidationError(f"The configured {kind} preset has an invalid duration.")
+        root_overrides["duration_seconds"] = duration
+
+    for key, value in root_overrides.items():
+        snapshot[key] = value
+    if scoring_overrides:
+        snapshot["scoring_rules"] = _deep_merge(snapshot.get("scoring_rules") or {}, scoring_overrides)
+    if error_overrides:
+        snapshot["error_rules"] = _deep_merge(snapshot.get("error_rules") or {}, error_overrides)
+    if qualification_overrides:
+        snapshot["qualification_rules"] = _deep_merge(
+            snapshot.get("qualification_rules") or {}, qualification_overrides
+        )
+    return {
+        "root": root_overrides,
+        "scoring_rules": scoring_overrides,
+        "error_rules": error_overrides,
+        "qualification_rules": qualification_overrides,
+    }, dict(preset)
+
+
+def _runtime_contract(snapshot):
+    """Return the immutable settings consumed by the live engine and scorer."""
+    keys = sorted(_RUNTIME_ROOT_FIELDS - {"duration_seconds"})
+    return {
+        "root": {key: snapshot.get(key) for key in keys if key in snapshot},
+        "duration_seconds": snapshot.get("duration_seconds"),
+        "error_rules": snapshot.get("error_rules") or {},
+        "scoring_rules": snapshot.get("scoring_rules") or {},
+        "qualification_rules": snapshot.get("qualification_rules") or {},
+    }
+
+
+def _contract_digest(snapshot):
+    import hashlib
+    import json
+
+    payload = json.dumps(_runtime_contract(snapshot), sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def apply_candidate_selections(snapshot, selections):
-    """Apply validated selections to the attempt's private, immutable rules snapshot."""
+    """Resolve validated category, variant and post choices into runtime rules."""
     snapshot = dict(snapshot)
     selections = dict(selections or {})
     snapshot["candidate_selector_configuration"] = selector_configuration_from_snapshot(snapshot)
     snapshot["candidate_selectors"] = selections
+
     if selections.get("candidate_category"):
         snapshot["candidate_category"] = selections["candidate_category"]
+
     scoring = dict(snapshot.get("scoring_rules") or {})
     if selections.get("standard_type"):
         scoring["standard_type"] = selections["standard_type"]
-    if selections.get("duration_seconds"):
-        snapshot["selected_variant_duration_seconds"] = selections["duration_seconds"]
     snapshot["scoring_rules"] = scoring
+
+    selector_config = snapshot["candidate_selector_configuration"]
+    variant = next(
+        (item for item in selector_config.get("variants", [])
+         if item.get("id") == selections.get("variant_id")),
+        None,
+    )
+    post = next(
+        (item for item in selector_config.get("post_presets", [])
+         if item.get("id") == selections.get("post_id")),
+        None,
+    )
+    applied = {"variant": {}, "post": {}}
+    if variant:
+        applied["variant"], _ = _apply_preset(snapshot, variant, kind="variant")
+    if post:
+        applied["post"], _ = _apply_preset(snapshot, post, kind="post")
+
+    scoring = dict(snapshot.get("scoring_rules") or {})
+    if selections.get("standard_type"):
+        scoring["standard_type"] = selections["standard_type"]
+    snapshot["scoring_rules"] = scoring
+
+    effective_duration = snapshot.get("duration_seconds")
+    if selections.get("duration_seconds") is not None:
+        effective_duration = int(selections["duration_seconds"])
+    if effective_duration is not None:
+        snapshot["duration_seconds"] = int(effective_duration)
+        snapshot["selected_variant_duration_seconds"] = int(effective_duration)
+
+    snapshot["resolved_candidate_configuration"] = {
+        "schema_version": 1,
+        "variant_id": selections.get("variant_id"),
+        "post_id": selections.get("post_id"),
+        "standard_type": scoring.get("standard_type"),
+        "duration_seconds": snapshot.get("duration_seconds"),
+        "variant_snapshot": dict(variant) if variant else None,
+        "post_snapshot": dict(post) if post else None,
+        "applied_overrides": applied,
+    }
+    snapshot["resolved_candidate_configuration"]["runtime_contract_sha256"] = _contract_digest(snapshot)
     return snapshot
 
 
