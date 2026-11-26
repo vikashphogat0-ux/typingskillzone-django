@@ -272,6 +272,102 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
 
         self._run_playwright(flow)
 
+    def test_explicit_enter_new_line_overrides_continuous_passage_layout(self):
+        self.exam.passage_layout = ExamConfiguration.PassageLayout.CONTINUOUS
+        self.exam.enter_behavior = ExamConfiguration.EnterBehavior.NEW_LINE
+        self.exam.save(update_fields=("passage_layout", "enter_behavior"))
+
+        def flow(page):
+            self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
+            page.goto(self.live_server_url + f"/simulators/{self.exam.code}/passages/{self.publication.passage_id}/")
+            page.click('button[type="submit"]')
+            page.wait_for_load_state("networkidle", timeout=10000)
+            editor = page.locator("#typed-text")
+            editor.fill("alpha")
+            editor.press("Enter")
+            assert editor.input_value() == "alpha\\n"
+
+        self._run_playwright(flow)
+
+    def test_explicit_tab_insert_spaces_is_not_overridden_by_preserve_tabs(self):
+        self.exam.passage_layout = ExamConfiguration.PassageLayout.PARA_TAB
+        self.exam.passage_preserve_tabs = True
+        self.exam.passage_tab_size = 3
+        self.exam.tab_behavior = ExamConfiguration.TabBehavior.INSERT_SPACES
+        self.exam.save(update_fields=(
+            "passage_layout", "passage_preserve_tabs", "passage_tab_size", "tab_behavior",
+        ))
+
+        def flow(page):
+            self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
+            page.goto(self.live_server_url + f"/simulators/{self.exam.code}/passages/{self.publication.passage_id}/")
+            page.click('button[type="submit"]')
+            page.wait_for_load_state("networkidle", timeout=10000)
+            editor = page.locator("#typed-text")
+            editor.fill("x")
+            editor.press("Tab")
+            assert editor.input_value() == "x   "
+
+        self._run_playwright(flow)
+
+    def test_disabled_keyboard_actions_are_enforced(self):
+        self.exam.backspace_policy = ExamConfiguration.BackspacePolicy.DISABLED
+        self.exam.allow_backspace = False
+        self.exam.allow_delete = False
+        self.exam.allow_arrow_navigation = False
+        self.exam.enter_behavior = ExamConfiguration.EnterBehavior.DISABLED
+        self.exam.space_behavior = ExamConfiguration.SpaceBehavior.DISABLED
+        self.exam.tab_behavior = ExamConfiguration.TabBehavior.DISABLED
+        self.exam.save(update_fields=(
+            "backspace_policy", "allow_backspace", "allow_delete", "allow_arrow_navigation",
+            "enter_behavior", "space_behavior", "tab_behavior",
+        ))
+
+        def flow(page):
+            self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
+            page.goto(self.live_server_url + f"/simulators/{self.exam.code}/passages/{self.publication.passage_id}/")
+            page.click('button[type="submit"]')
+            page.wait_for_load_state("networkidle", timeout=10000)
+            editor = page.locator("#typed-text")
+            editor.fill("abc")
+            editor.press("Backspace")
+            assert editor.input_value() == "abc"
+            editor.evaluate("(el) => el.setSelectionRange(0, 0)")
+            editor.press("Delete")
+            assert editor.input_value() == "abc"
+            editor.evaluate("(el) => el.setSelectionRange(3, 3)")
+            editor.press("ArrowLeft")
+            assert editor.evaluate("(el) => el.selectionStart") == 3
+            for key in ("Space", "Enter", "Tab"):
+                editor.press(key)
+            assert editor.input_value() == "abc"
+
+        self._run_playwright(flow)
+
+    def test_word_lock_after_separator_allows_current_word_retyping_only(self):
+        self.exam.backspace_policy = ExamConfiguration.BackspacePolicy.WORD_LOCK_AFTER_SEPARATOR
+        self.exam.allow_backspace = True
+        self.exam.space_behavior = ExamConfiguration.SpaceBehavior.COMMIT_WORD
+        self.exam.enter_behavior = ExamConfiguration.EnterBehavior.NEW_LINE
+        self.exam.save(update_fields=(
+            "backspace_policy", "allow_backspace", "space_behavior", "enter_behavior",
+        ))
+
+        def flow(page):
+            self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
+            page.goto(self.live_server_url + f"/simulators/{self.exam.code}/passages/{self.publication.passage_id}/")
+            page.click('button[type="submit"]')
+            page.wait_for_load_state("networkidle", timeout=10000)
+            editor = page.locator("#typed-text")
+            editor.fill("one")
+            editor.press("Space")
+            editor.type("two")
+            for _ in range(4):
+                editor.press("Backspace")
+            assert editor.input_value() == "one "
+
+        self._run_playwright(flow)
+
     def test_typing_start_to_result_flow(self):
         def flow(page):
             self._login(page, "/institutes/student/login/", STUDENT_EMAIL)

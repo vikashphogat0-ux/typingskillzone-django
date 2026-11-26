@@ -125,7 +125,9 @@
   const backspacePolicy = rules.backspace_policy === "NOT_SPECIFIED" && rules.allow_backspace === false ? "DISABLED" : (rules.backspace_policy || (rules.allow_backspace === false ? "DISABLED" : "NOT_SPECIFIED"));
   const allowArrows = rules.allow_arrow_navigation !== false;
   const layout = rules.passage_layout || "UNCONFIGURED";
-  const allowEnter = rules.enter_behavior === "DISABLED" ? false : ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout);
+  const enterBehavior = rules.enter_behavior || "UNSPECIFIED";
+  const allowEnter = enterBehavior === "NEW_LINE" || enterBehavior === "COMMIT_WORD" ||
+    (enterBehavior === "UNSPECIFIED" && ["PARAGRAPHS","PARA_TAB","TCS","CUSTOM","UNCONFIGURED"].includes(layout));
   const tabBehavior = rules.tab_behavior || "UNSPECIFIED";
   let committedBoundary = 0;
   let pendingCommit = null;
@@ -176,19 +178,26 @@
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && rules.allow_paste === false) event.preventDefault();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && rules.allow_copy === false) event.preventDefault();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && rules.allow_cut === false) event.preventDefault();
-    if (event.key === " " && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.space_behavior === "COMMIT_WORD")) {
+    if (!event.defaultPrevented && event.key === " " &&
+        (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.space_behavior === "COMMIT_WORD")) {
       pendingCommit = input.selectionStart + 1;
     }
-    if (event.key === "Enter" && (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || rules.enter_behavior === "COMMIT_WORD")) {
+    if (!event.defaultPrevented && event.key === "Enter" &&
+        (backspacePolicy === "WORD_LOCK_AFTER_SEPARATOR" || enterBehavior === "COMMIT_WORD")) {
       pendingCommit = input.selectionStart + 1;
     }
     if (event.key === "Tab") {
       event.preventDefault();
-      if (tabBehavior === "INSERT_TAB" || tabBehavior === "INSERT_SPACES" ||
-          (tabBehavior === "UNSPECIFIED" && (layout === "PARA_TAB" || rules.passage_preserve_tabs === true))) {
+      const insertLiteralTab = tabBehavior === "INSERT_TAB" ||
+        (tabBehavior === "UNSPECIFIED" && rules.passage_preserve_tabs === true);
+      const insertConfiguredSpaces = tabBehavior === "INSERT_SPACES" ||
+        (tabBehavior === "UNSPECIFIED" && layout === "PARA_TAB" && rules.passage_preserve_tabs !== true);
+      if (insertLiteralTab || insertConfiguredSpaces) {
         const start=input.selectionStart, end=input.selectionEnd;
-        const tab=tabBehavior === "INSERT_TAB" || rules.passage_preserve_tabs ? "\t" : " ".repeat(Math.max(1,Number(rules.passage_tab_size||4)));
-        input.setRangeText(tab,start,end,"end");
+        const insertedText = insertLiteralTab
+          ? "\t"
+          : " ".repeat(Math.max(1,Number(rules.passage_tab_size||4)));
+        input.setRangeText(insertedText,start,end,"end");
         input.dispatchEvent(new Event("input",{bubbles:true}));
       }
     }
