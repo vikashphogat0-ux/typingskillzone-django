@@ -47,6 +47,9 @@ def start_session(*, learner, publication, candidate_selections=None):
         publication=publication,
         captured_at=now,
     )
+    # Persist the base duration in the same immutable contract as any selected
+    # variant/post override so the timer, scorer and result audit agree.
+    snapshot["duration_seconds"] = duration
     snapshot = apply_candidate_selections(snapshot, validated_selections)
     duration = snapshot.get("duration_seconds") or duration
     if duration is None and validated_selections.get("duration_seconds"):
