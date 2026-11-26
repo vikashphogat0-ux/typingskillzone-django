@@ -38,6 +38,63 @@ class TypingSessionTests(TestCase):
         self.assertIsNone(attempt.deadline_at)
 
 
+    def test_selected_variant_and_post_rules_drive_attempt_timer_and_result_audit(self):
+        self.exam.duration_seconds = 600
+        self.exam.scoring_mode = "CUSTOM"
+        self.exam.verification_status = "VERIFIED"
+        self.exam.scoring_rules = {
+            "formula": "SSC_CGL_2025_DEST",
+            "normal_error_caps": {"UR": 20},
+            "higher_error_caps": {"UR": 8},
+            "minimum_wpm": 30,
+            "profile_configuration": {
+                "variants": [{
+                    "id": "higher", "label": "Higher standard",
+                    "standard_type": "HIGHER", "duration_seconds": 900,
+                    "scoring_overrides": {"minimum_wpm": 40},
+                    "requires_post_eligibility": True,
+                }],
+                "post_presets": [{
+                    "id": "tax_assistant", "label": "Tax Assistant",
+                    "requires_eligibility": True,
+                    "scoring_overrides": {"higher_error_caps": {"UR": 5}},
+                    "runtime_overrides": {"allow_backspace": False},
+                }],
+            },
+        }
+        self.exam.save()
+        selections = {
+            "candidate_category": "UR",
+            "candidate_variant": "higher",
+            "candidate_post": "tax_assistant",
+            "eligibility_confirmed": "1",
+        }
+        attempt = start_session(
+            learner=self.learner,
+            publication=self.publication,
+            candidate_selections=selections,
+        )
+        self.assertEqual(attempt.duration_seconds, 900)
+        self.assertEqual(attempt.rules_snapshot["duration_seconds"], 900)
+        self.assertFalse(attempt.rules_snapshot["allow_backspace"])
+        self.assertEqual(attempt.rules_snapshot["scoring_rules"]["standard_type"], "HIGHER")
+        self.assertEqual(attempt.rules_snapshot["scoring_rules"]["minimum_wpm"], 40)
+        self.assertEqual(attempt.rules_snapshot["scoring_rules"]["higher_error_caps"]["UR"], 5)
+
+        result = submit_session(
+            session_id=attempt.pk,
+            learner=self.learner,
+            typed_text=attempt.reference_text,
+        )
+        self.assertEqual(
+            result.result_snapshot["resolved_candidate_configuration"]["post_id"],
+            "tax_assistant",
+        )
+        self.assertEqual(
+            result.result_snapshot["resolved_candidate_configuration"]["duration_seconds"],
+            900,
+        )
+
     def test_exam_clock_starts_on_first_input_activation(self):
         attempt = start_session(learner=self.learner, publication=self.publication)
         original_started_at = attempt.started_at
