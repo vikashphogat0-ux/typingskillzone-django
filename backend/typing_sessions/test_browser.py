@@ -285,7 +285,7 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
             editor = page.locator("#typed-text")
             editor.fill("alpha")
             editor.press("Enter")
-            assert editor.input_value() == "alpha\\n"
+            assert editor.input_value() == "alpha\n"
 
         self._run_playwright(flow)
 
@@ -356,8 +356,10 @@ class BrowserCoreWorkflowTests(LiveServerTestCase):
         def flow(page):
             self._login(page, "/institutes/student/login/", STUDENT_EMAIL)
             page.goto(self.live_server_url + f"/simulators/{self.exam.code}/passages/{self.publication.passage_id}/")
+            page.locator('input[name="display_mode"][value="normal"]').check()
             page.click('button[type="submit"]')
             page.wait_for_load_state("networkidle", timeout=10000)
+            assert "/typing/" in page.url, f"typing start failed: {page.url} — {page.locator('body').inner_text()}"
             editor = page.locator("#typed-text")
             editor.fill("one")
             editor.press("Space")
