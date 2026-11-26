@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
 from exams.models import ExamConfiguration
-from typing_sessions.candidate_selectors import apply_candidate_selections, selector_configuration, validate_candidate_selections
+from typing_sessions.candidate_selectors import apply_candidate_selections, selector_configuration, validate_candidate_selections, validate_candidate_snapshot
 
 
 class CandidateSelectorTests(SimpleTestCase):

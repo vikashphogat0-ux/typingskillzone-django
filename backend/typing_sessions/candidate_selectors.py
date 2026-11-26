@@ -227,4 +227,12 @@ def validate_candidate_snapshot(snapshot):
         if variant.get("requires_post_eligibility") or variant.get("requires_eligibility"):
             if selected.get("eligibility_attested") is not True or selected.get("eligibility_status") != "CANDIDATE_ATTESTED":
                 raise ValidationError("The required candidate eligibility attestation is missing; this attempt cannot be scored.")
+    # Post-only selectors are also enforced when a profile has no variant list.
+    posts = config.get("post_presets") or []
+    selected_post = next((item for item in posts if item.get("id") == selected.get("post_id")), None)
+    if selected.get("post_id") and selected_post is None:
+        raise ValidationError("The saved post selection is missing or inconsistent; this attempt cannot be scored.")
+    if selected_post and selected_post.get("requires_eligibility"):
+        if selected.get("eligibility_attested") is not True or selected.get("eligibility_status") != "CANDIDATE_ATTESTED":
+            raise ValidationError("The selected post's eligibility attestation is missing; this attempt cannot be scored.")
     return selected
