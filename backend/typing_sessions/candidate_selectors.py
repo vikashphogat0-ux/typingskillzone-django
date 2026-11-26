@@ -307,7 +307,7 @@ def apply_candidate_selections(snapshot, selections):
     snapshot["scoring_rules"] = scoring
 
     effective_duration = snapshot.get("duration_seconds")
-    if selections.get("duration_seconds") is not None:
+    if effective_duration is None and selections.get("duration_seconds") is not None:
         effective_duration = int(selections["duration_seconds"])
     if effective_duration is not None:
         snapshot["duration_seconds"] = int(effective_duration)
@@ -398,4 +398,19 @@ def validate_candidate_snapshot(snapshot):
     if selected_post and selected_post.get("requires_eligibility"):
         if selected.get("eligibility_attested") is not True or selected.get("eligibility_status") != "CANDIDATE_ATTESTED":
             raise ValidationError("The selected post's eligibility attestation is missing; this attempt cannot be scored.")
+
+    resolved = snapshot.get("resolved_candidate_configuration")
+    if resolved is not None:
+        if not isinstance(resolved, dict) or resolved.get("schema_version") != 1:
+            raise ValidationError("The resolved examination settings are invalid; this attempt cannot be scored.")
+        if resolved.get("variant_id") != selected.get("variant_id") or resolved.get("post_id") != selected.get("post_id"):
+            raise ValidationError("The resolved examination settings do not match the saved candidate selections.")
+        scoring = snapshot.get("scoring_rules") or {}
+        if resolved.get("standard_type") != scoring.get("standard_type"):
+            raise ValidationError("The resolved examination standard does not match the scoring rules.")
+        if resolved.get("duration_seconds") != snapshot.get("duration_seconds"):
+            raise ValidationError("The resolved examination duration does not match the attempt snapshot.")
+        expected_digest = resolved.get("runtime_contract_sha256")
+        if not expected_digest or expected_digest != _contract_digest(snapshot):
+            raise ValidationError("The examination runtime settings were changed after the attempt started.")
     return selected
