@@ -104,3 +104,73 @@ class CandidateSelectorTests(SimpleTestCase):
         self.assertEqual(selected["candidate_category"], "SC")
         with self.assertRaises(ValidationError):
             validate_candidate_selections(exam, {})
+
+
+    def test_variant_and_post_runtime_overrides_are_resolved_into_scoring_snapshot(self):
+        exam = self.exam({
+            "formula": "SSC_CGL_2025_DEST",
+            "normal_error_caps": {"UR": 20, "SC": 30},
+            "higher_error_caps": {"UR": 5, "SC": 10},
+            "minimum_wpm": 30,
+            "profile_configuration": {
+                "variants": [
+                    {"id": "higher", "label": "Higher", "standard_type": "HIGHER",
+                     "duration_seconds": 900,
+                     "scoring_overrides": {"minimum_wpm": 40}},
+                ],
+                "post_presets": [
+                    {"id": "tax_assistant", "label": "Tax Assistant",
+                     "scoring_overrides": {"higher_error_caps": {"UR": 3}},
+                     "runtime_overrides": {"allow_backspace": False}},
+                ],
+            },
+        })
+        from typing_sessions.candidate_selectors import apply_candidate_selections
+
+        selected = validate_candidate_selections(exam, {
+            "candidate_category": "UR",
+            "candidate_variant": "higher",
+            "candidate_post": "tax_assistant",
+            "eligibility_confirmed": "1",
+        })
+        snapshot = apply_candidate_selections({
+            "duration_seconds": 600,
+            "allow_backspace": True,
+            "scoring_rules": exam.scoring_rules,
+            "error_rules": {},
+            "qualification_rules": {},
+        }, selected)
+
+        self.assertEqual(snapshot["duration_seconds"], 900)
+        self.assertEqual(snapshot["selected_variant_duration_seconds"], 900)
+        self.assertFalse(snapshot["allow_backspace"])
+        self.assertEqual(snapshot["scoring_rules"]["standard_type"], "HIGHER")
+        self.assertEqual(snapshot["scoring_rules"]["minimum_wpm"], 40)
+        self.assertEqual(snapshot["scoring_rules"]["higher_error_caps"]["UR"], 3)
+        self.assertEqual(snapshot["candidate_selectors"]["post_id"], "tax_assistant")
+        self.assertIn("runtime_contract_sha256", snapshot["resolved_candidate_configuration"])
+        self.assertEqual(validate_candidate_snapshot(snapshot), selected)
+
+    def test_resolved_runtime_contract_rejects_tampering_before_scoring(self):
+        from typing_sessions.candidate_selectors import apply_candidate_selections
+
+        exam = self.exam({
+            "formula": "SSC_CGL_2025_DEST",
+            "normal_error_caps": {"UR": 20},
+            "profile_configuration": {
+                "variants": [{"id": "normal", "label": "Normal", "standard_type": "NORMAL"}],
+            },
+        })
+        selected = validate_candidate_selections(exam, {
+            "candidate_category": "UR",
+            "candidate_variant": "normal",
+        })
+        snapshot = apply_candidate_selections({
+            "duration_seconds": 600,
+            "scoring_rules": exam.scoring_rules,
+            "error_rules": {},
+            "qualification_rules": {},
+        }, selected)
+        snapshot["scoring_rules"]["normal_error_caps"]["UR"] = 999
+        with self.assertRaises(ValidationError):
+            validate_candidate_snapshot(snapshot)
